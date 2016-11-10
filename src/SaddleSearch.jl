@@ -1,5 +1,7 @@
 module SaddleSearch
 
-# package code goes here
+include("dimer.jl")
+
+include("string.jl")
 
 end # module
