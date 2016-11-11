@@ -4,6 +4,7 @@ export StaticDimerMethod, run!
 
 
 Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
+Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
 
 """
 `StaticDimerMethod`: the most basic dimer variant, simply taking alternating
@@ -36,8 +37,6 @@ steps with a fixed step-size.
 end
 
 
-
-
 function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
 
    # read all the parameters
@@ -52,7 +51,7 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
    # and just start looping
    if verbose >= 2
       @printf(" nit |  |∇E|_∞    |∇R|_∞     λ   \n")
-      @printf("-----|----------------------------- \n")
+      @printf("-----|-----------------------------\n")
    end
    for nit = 0:maxnit
       # normalise v
