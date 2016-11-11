@@ -10,7 +10,7 @@ using Parameters
    res_rot::Vector{Float64} = Float64[]
 end
 
-function push!(log::IterationLog, numE, numdE, res_trans, res_rot)
+function Base.push!(log::IterationLog, numE, numdE, res_trans, res_rot)
    push!(log.numE, numE)
    push!(log.numdE, numdE)
    push!(log.res_trans, res_trans)
