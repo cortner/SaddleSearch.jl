@@ -17,6 +17,11 @@ x, v, log = run!(dimer, E, dE, x0, v0)
 @test log.res_trans[end] <= dimer.tol_trans
 @test log.res_rot[end] <= dimer.tol_rot
 
+bbdimer = BBDimer(a0_trans=0.002, a0_rot=0.002, maxnumdE=100, verbose=verbose)
+xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
+@test bblog.res_trans[end] <= dimer.tol_trans
+@test bblog.res_rot[end] <= dimer.tol_rot
+@test vecnorm(xbb - x, Inf) < 1e-4
 
 println("Test with the standard double-well")
 V = DoubleWell()
@@ -27,6 +32,12 @@ dimer = StaticDimerMethod(a_trans=0.66, a_rot=0.4, len=1e-3, maxnit=100, verbose
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test log.res_trans[end] <= dimer.tol_trans
 @test log.res_rot[end] <= dimer.tol_rot
+
+bbdimer = BBDimer(a0_trans=0.5, a0_rot=0.5, maxnumdE=100, verbose=verbose)
+xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
+@test bblog.res_trans[end] <= dimer.tol_trans
+@test bblog.res_rot[end] <= dimer.tol_rot
+@test vecnorm(xbb - x, Inf) < 1e-4
 
 
 println("Test with ill-conditioned double-well")
@@ -39,11 +50,24 @@ x, v, log = run!(dimer, E, dE, x0, v0)
 @test log.res_trans[end] <= dimer.tol_trans
 @test log.res_rot[end] <= dimer.tol_rot
 
+bbdimer = BBDimer(a0_trans=0.1, a0_rot=0.1, maxnumdE=100, verbose=verbose)
+xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
+@test bblog.res_trans[end] <= dimer.tol_trans
+@test bblog.res_rot[end] <= dimer.tol_rot
+@test vecnorm(xbb - x, Inf) < 1e-4
+
 println("same test, but now with preconditioner")
 dimer = StaticDimerMethod(a_trans=0.66, a_rot=0.4, len=1e-3, maxnit=100,
                            verbose=verbose, precon=V.A, precon_rot=true)
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test log.res_trans[end] <= dimer.tol_trans
 @test log.res_rot[end] <= dimer.tol_rot
+
+bbdimer = BBDimer(a0_trans=0.66, a0_rot=0.4, maxnumdE=100,
+            precon=V.A, precon_rot=true, verbose=verbose)
+xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
+@test bblog.res_trans[end] <= dimer.tol_trans
+@test bblog.res_rot[end] <= dimer.tol_rot
+@test vecnorm(xbb - x, Inf) < 1e-4
 
 end

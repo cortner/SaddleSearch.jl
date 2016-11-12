@@ -26,7 +26,7 @@ Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
 
 include("staticdimer.jl")
 
-include("seqmindimer.jl")
+include("bbdimer.jl")
 
 
 include("string.jl")
