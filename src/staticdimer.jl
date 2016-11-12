@@ -1,10 +1,8 @@
 
 
-export StaticDimerMethod, run!
+export StaticDimerMethod
 
-
-Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
-Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
+# TODO: change maxnit to maxn_dE
 
 """
 `StaticDimerMethod`: the most basic dimer variant, simply taking alternating
@@ -29,7 +27,7 @@ steps with a fixed step-size.
    tol_trans::Float64 = 1e-5
    tol_rot::Float64 = 1e-2
    maxnit::Int = 1000
-   len::Float64 = 1e-2
+   len::Float64 = 1e-3
    precon = I
    precon_prep! = (P, x) -> P
    verbose::Int = 2
@@ -73,8 +71,8 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       if res_trans <= tol_trans && res_rot <= tol_rot
          if verbose >= 1
             println("StaticDimerMethod terminates succesfully after $(nit) iterations")
-            return x, v, log
          end
+         return x, v, log
       end
       # translation step
       p_trans = - P \ dE0 + 2.0 * dot(v, dE0) * v
@@ -87,6 +85,6 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
    end
    if verbose >= 1
       println("StaticDimerMethod terminated unsuccesfully after $(maxnit) iterations.")
-      return x, v, log
    end
+   return x, v, log
 end

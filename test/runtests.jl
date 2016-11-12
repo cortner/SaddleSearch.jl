@@ -30,9 +30,7 @@ x, v, log = run!(dimer, E, dE, x0, v0)
 
 
 println("Test with ill-conditioned double-well")
-c = 10.0
-A = diagm([1.0,c])
-V = DoubleWell(A=A)
+V = DoubleWell(diagm([1.0, 10.0]))
 x0, v0 = ic_dimer(V, :near)
 E, dE = objective(V)
 
@@ -43,7 +41,7 @@ x, v, log = run!(dimer, E, dE, x0, v0)
 
 println("same test, but now with preconditioner")
 dimer = StaticDimerMethod(a_trans=0.66, a_rot=0.4, len=1e-3, maxnit=100,
-                           verbose=verbose, precon=A, precon_rot=true)
+                           verbose=verbose, precon=V.A, precon_rot=true)
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test log.res_trans[end] <= dimer.tol_trans
 @test log.res_rot[end] <= dimer.tol_rot
