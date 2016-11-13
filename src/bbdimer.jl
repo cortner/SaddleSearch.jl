@@ -11,7 +11,7 @@ type stability check.
 ### Parameters:
 * `a0_trans` : initial translation step
 * `a0_rot` : initial rotation step
-
+* `ls` : linesearch
 
 ### Shared Parameters
 * `tol_trans` : translation residual tolerance
@@ -42,6 +42,7 @@ http://arxiv.org/abs/1407.2817
 @with_kw type BBDimer
    a0_trans::Float64
    a0_rot::Float64
+   ls = StaticLineSearch()
    # ------ shared parameters ------
    tol_trans::Float64 = 1e-5
    tol_rot::Float64 = 1e-2
@@ -58,7 +59,7 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
 
    # read all the parameters
    @unpack a0_trans, a0_rot, tol_trans, tol_rot, maxnumdE, len,
-            precon_prep!, verbose, precon_rot = method
+            precon_prep!, verbose, precon_rot, ls = method
    P=method.precon
    # initialise variables
    x, v = copy(x0), copy(v0)
@@ -69,8 +70,8 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    p_rot_old = zeros(length(x0))
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  |∇E|_∞    |∇R|_∞     λ    α    β \n")
-      @printf("-----|-----------------------------------\n")
+      @printf(" nit |  |∇E|_∞    |∇R|_∞        λ         β         γ \n")
+      @printf("-----|------------------------------------------------\n")
    end
    nit = 0
    while true
@@ -80,18 +81,20 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       P = precon_prep!(P, x)
       v /= sqrt(dot(v, P, v))
       # evaluate gradients, and more stuff
-      dE0 = dE(x)
-      dEv = dE(x + len * v)
+      dEm = dE(x - len/2 * v)
+      dEp = dE(x + len/2 * v)
       numdE += 2
-      Hv = (dEv - dE0) / len
+      Hv = (dEp - dEm) / len
+      dE0 = 0.5 * (dEp + dEm)
       # translation and rotation residual, store history
       res_trans = vecnorm(dE0, Inf)
-      p_rot = - Hv + dot(v, Hv) * (P * v)
+      λ = dot(v, Hv)
+      p_rot = - Hv + λ * (P * v)
       res_rot = vecnorm(p_rot, Inf)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
-         @printf("%4d | %1.2e  %1.2e  %4.2f  %1.2e  %1.2e \n",
-               nit, res_trans, res_rot, dot(v, Hv), β, γ)
+         @printf("%4d | %1.2e  %1.2e  %1.2e  %1.2e  %1.2e \n",
+               nit, res_trans, res_rot, λ, β, γ)
       end
 
       # check whether to terminate
@@ -114,7 +117,7 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
          p_rot = P \ p_rot
       end
 
-      # choose step-sizes
+      # initial step-sizes guess
       if nit == 1     # first iteration
          β = a0_trans
          γ = a0_rot
@@ -125,6 +128,19 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
          β = abs( dot(Δx, P, Δg) / dot(Δg, P, Δg) )
          γ = abs( dot(Δv, P, Δd) / dot(Δd, P, Δd) )
       end
+
+      # perform linesearch on the translation step
+      F_trans = xx -> localmerit(xx, x, v, len, dE0, λ, E)
+      β, numE_ls, _ = linesearch!(ls, F_trans, F_trans(x), - dot(p_trans, P, p_trans),
+                                    x, p_trans, β)
+      numE += numE_ls
+
+      # perform line-search on rotation step
+      E0 = E(x);  numE += 1
+      F_rot = vv -> rayleigh(vv, x, len, E0, E, P)
+      γ, numE_ls, _ = linesearch!(ls, F_rot, F_rot(v), -dot(p_rot, P, p_rot),
+                                    v, p_rot, γ)
+      numE += numE_ls
 
       # translation step
       x += β * p_trans

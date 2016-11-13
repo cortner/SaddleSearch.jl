@@ -24,6 +24,8 @@ Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
 Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
 
 
+include("linesearch.jl")
+
 include("staticdimer.jl")
 
 include("bbdimer.jl")
