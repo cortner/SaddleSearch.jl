@@ -30,6 +30,7 @@ include("staticdimer.jl")
 
 include("bbdimer.jl")
 
+include("rotoptimdimer.jl")
 
 include("string.jl")
 
