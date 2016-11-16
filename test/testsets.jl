@@ -11,6 +11,17 @@ objective(V) = x->energy(V, x), x->gradient(V, x)
 # no need to compute gradients if ForwardDiff does it for us.
 gradient(V, x) = ForwardDiff.gradient(y->energy(V,y), x)
 
+hessian(V, x) = ForwardDiff.hessian(y->energy(V,y), x)
+
+function hessprecond(V, x; stab=0.0)
+   H = Symmetric(hessian(V, x))
+   D, V = eig(H)
+   D = abs.(D) + stab
+   return V * diagm(D) * V'
+end
+
+
+
 # ============================================================================
 # TEST CASE 1: Müller Potential
 #   TODO: add reference
@@ -41,7 +52,7 @@ end
 # ============================================================================
 
 @with_kw type DoubleWell
-   A::Matrix{Float64} = [1.0 0.0; 0.0 1.0]
+   A::Matrix{Float64} = eye(2)
 end
 
 DoubleWell(c::Float64) = DoubleWell( diagm([1.0, c])  )
