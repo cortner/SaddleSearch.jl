@@ -65,9 +65,7 @@ function run!{T}(method::RotOptimDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       P = precon_prep!(P, x)
       # evaluate gradients, and more stuff
       # rotation step
-#     res = optimize(E,v,method=LBFGS(m = rmemory, linesearch! = Optim.mt_linesearch!, P = P),g_tol = tol_rot,store_trace=true,show_trace=true)
       res = optimize(dimerE,v,method=LBFGS(m = rmemory, linesearch! = Optim.mt_linesearch!),g_tol = tol_rot,store_trace=true,show_trace=true)
-#     res = optimize(dimerE,v,method=LBFGS(m = rmemory, linesearch! = Optim.mt_linesearch!),g_tol = tol_rot)
       v = res.minimum
       v /= sqrt(dot(v, P, v))
       # translation step
