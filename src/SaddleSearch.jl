@@ -30,7 +30,6 @@ include("staticdimer.jl")
 
 include("bbdimer.jl")
 
-
 include("string.jl")
 
 end # module
