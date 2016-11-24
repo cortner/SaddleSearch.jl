@@ -12,11 +12,27 @@ localmerit(x, x0, v0, len, g0, λ0, E) = (
    - λ0 * dot(v0, x-x0)^2  )
 
 
+# ================================================
+
+"""
+`type StaticLineSearch`: does nothing, i.e., just returns the step
+proposal.
+"""
 type StaticLineSearch end
 
 linesearch!(ls::StaticLineSearch, F, f0, df0, x, p, α; f0_goal=f0) = α, 0, nothing
 
 
+"""
+`type Backtracking`
+
+kw-parameters:
+* `c1`: Armijo constant
+* `order`: order of interpolation during backtracking; currently only 2 is
+   implemented
+* `minα`: smallest allowed step (throws exception otherwise)
+* `mindecfact`: minimal decrease factor
+"""
 @with_kw type Backtracking
    c1::Float64 = 0.1
    order::Int = 2

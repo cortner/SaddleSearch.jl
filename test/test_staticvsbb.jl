@@ -35,7 +35,7 @@ x, v, log = run!(dimer, E, dE, x0, v0)
 @test log.res_rot[end] <= dimer.tol_rot
 
 
-##### TODO: this test still fails
+##### TODO: this test still fails - WHY?!?!?
 # dimer = BBDimer( a0_trans=0.1, a0_rot=0.1, len=1e-3, maxnumdE=100,
 #       verbose=2, precon=eye(2), precon_rot=true,
 #       precon_prep! = (P,x) -> hessprecond(V, x),
