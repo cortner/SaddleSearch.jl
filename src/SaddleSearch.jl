@@ -34,4 +34,6 @@ include("rotoptimdimer.jl")
 
 include("string.jl")
 
+include("testsets.jl")
+
 end # module

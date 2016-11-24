@@ -42,7 +42,7 @@ push!(methods,  BBDimer(a0_trans=0.002, a0_rot=0.002, maxnumdE=maxnumdE,
 push!(methods,  BBDimer(a0_trans=0.002, a0_rot=0.002, maxnumdE=maxnumdE,
                         verbose=verbose, ls = Backtracking(), id="BBDimer+LS") )
 
-push!(methods,  RotOptimDimer(a_trans=0.001, maxnumdE=maxnumdE, verbose=2 ) )
+push!(methods,  RotOptimDimer(a_trans=0.001, maxnumdE=maxnumdE, verbose=verbose) )
 
 
 

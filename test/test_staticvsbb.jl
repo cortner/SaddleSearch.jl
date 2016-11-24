@@ -1,4 +1,5 @@
 
+using SaddleSearch.TestSets: hessprecond
 
 @testset "StaticDimerMethod vs BBDimer" begin
 
@@ -20,7 +21,7 @@ xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
 
 
 dimer = StaticDimerMethod( a_trans=0.25, a_rot=0.5, len=1e-3, maxnit=100,
-      verbose=2, precon=eye(2), precon_rot=true,
+      verbose=verbose, precon=eye(2), precon_rot=true,
       precon_prep! = (P,x) -> hessprecond(V, x) )
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test log.res_trans[end] <= dimer.tol_trans

@@ -1,10 +1,10 @@
-using SaddleSearch
+using SaddleSearch, SaddleSearch.TestSets
 using Base.Test
 
 verbose=1
 
 # import the different test sets
-include("testsets.jl")
+# include("testsets.jl")
 
 tests = [
    "staticvsbb",
