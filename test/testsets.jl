@@ -73,3 +73,44 @@ function ic_dimer(V::DoubleWell, case=:near)
    end
    error("unknown initial condition")
 end
+
+# ============================================================================
+# TEST CASE 3: Lennard-Jones Cluster
+# ============================================================================
+
+@with_kw type LJcluster
+   ε::Float64 = 0.25
+   σ::Float64 = 1.
+   ρ_min::Float64 = 2.0^(1./6)
+end
+
+diffs(r) = broadcast(-,r,[r[i]' for i=1:7]')
+dists(r) = broadcast(norm,diffs(r))
+dispForce(V::LJcluster, r) = (V.σ ./ dists(r)).^6
+
+energy(V::LJcluster, r) = 4V.ε * sum(triu( (dispForce(V,r) - 1)
+                                                      .* dispForce(V,r), 1 ))
+
+function ic_dimer(V::LJcluster, case=:near)
+#  TODO add ICs for dimer method
+end
+
+function ic_string(V::LJcluster, case=:near)
+   if case == :near
+      omega=pi/3
+      r_0=[ 0; 0]
+      r_1=[ 1; 0]; r_2=[cos( omega ); sin( omega )]
+      r_3=[cos(2*omega); sin(2*omega)]
+      r_4=[-1; 0]; r_5=[cos(4*omega); sin(4*omega)]
+      r_6=[cos(5*omega); sin(5*omega)]
+
+      r1 = Array{Array{Float64}}(0)
+      r2 = Array{Array{Float64}}(0)
+      push!(r1, r_4, r_3, r_2, r_1, r_6, r_5, r_0)
+      push!(r2, r_4, r_2, r_0, r_1, r_6, r_5, r_3)
+      return V.ρ_min*r1, V.ρ_min*r2
+  #  elseif case ==:far
+  #     return
+   end
+   error("unknown initial condition")
+end
