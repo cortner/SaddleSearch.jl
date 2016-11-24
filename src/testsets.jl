@@ -91,28 +91,43 @@ end
    ρ_min::Float64 = 2.0^(1./6)
 end
 
-dists(r::Matrix) = [norm(r[:,i]-r[:,j]) for i = 1:6, j = i+1:7]
+dists(r::Matrix) = [norm(r[:,i]-r[:,j]) for i = 1:6 for j = i+1:7]
 
-dists(r::Vector) = dists2(reshape(r, 2, length(r) ÷ 2))
+dists(r::Vector) = dists(reshape(r, 2, length(r) ÷ 2))
 
 dispForce(V::LJcluster, r) = (V.σ ./ dists(r)).^6
 
 energy(V::LJcluster, r) = 4.0 * V.ε * sum( (dispForce(V,r) - 1.0) .* dispForce(V,r) )
 
-function ic_dimer(V::LJcluster)
-   R = lj_refconfig()
-   R[4] *= 1.5         # push third atom outwards
-   R[1] += 0.5 * R[4]  # push middle atom outwards towards third atom
-   R[3] *= 0.7         # push second atom towards centre
-   x = vcat(R...)
-   v = [ R[4] [0,0] (- 0.5 * R[3]) R[4] [0,0] [0,0] [0,0] ]
-end
 
 function lj_refconfig()
    ω = π / 3.0
    return [ [ 0.0, 0.0], [ 1.0, 0.0], [cos(ω), sin(ω)], [cos(2*ω), sin(2*ω)],
             [-1.0, 0.0], [cos(4*ω), sin(4*ω)], [cos(5*ω), sin(5*ω)] ]
 end
+
+function ic_dimer(V::LJcluster, case=:near)
+   if case == :near
+      x = [-0.516917, 0.46756, 1.06511, -0.0369461, 0.350324, 0.476477,
+            -0.229551, 1.31733, -1.15186, -0.120603, -0.501187, -0.870874,
+            0.502517, -0.870205]
+      v = [-0.254188, 0.666259, -0.017954, 0.0379428, -0.226884, -0.232232,
+           -0.0667094, 0.546372, 0.279263, 0.056547, 0.00602156, -0.0110506,
+            0.00103608, 0.000875767]
+      return x, v
+   elseif case == :far
+      R = lj_refconfig()
+      S = copy(R)
+      R[4] += 0.5 * R[3]     # push third atom outwards
+      R[1] += 0.5 * S[4] + 0.25 * R[5] # push middle atom outwards towards third atom
+      R[3] *= 0.5            # push second atom towards centre
+      x = vcat(R...)
+      v = [ R[4] [0,0] (- 0.5 * R[3]) R[4] [0,0] [0,0] [0,0] ][:]
+      return x, v
+   end
+   error("unkown `case` in `icdimer(::LJCluster,...)`")
+end
+
 
 function ic_string(V::LJcluster)
    R = lj_refconfig()
