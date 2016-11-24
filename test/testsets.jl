@@ -69,7 +69,7 @@ function ic_dimer(V::DoubleWell, case=:near)
       x0 = [0.7; 0.2 * dA.^(-1/2)]
       return x0, - x0
    elseif case ==:far
-      return [0.8; 0.1*dA^(-1/2)], [-1.0, zeros(d)]
+      return [0.8; 0.1*dA.^(-1/2)], [-1.0, zeros(d)]
    end
    error("unknown initial condition")
 end
