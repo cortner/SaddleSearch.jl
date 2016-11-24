@@ -41,7 +41,7 @@ function ic_dimer(V::MullerPotential, case=:near)
    if case == :near
       return [-0.6, 0.5], [-1.0, 1.0]
    elseif case ==:far
-      return [-0.8, 1.3], [-1.0, -1.0]
+      return [-0.75, 1.0], [-1.0, -1.0]
    end
    error("unknown initial condition")
 end

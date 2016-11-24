@@ -1,11 +1,11 @@
-using Optim
+import Optim, LineSearches
 
 export RotOptimDimer
 
 # TODO: change maxnit to maxn_dE
 
 """
-`RotOptimDimer`: dimer variant with optimised rotation 
+`RotOptimDimer`: dimer variant with optimised rotation
 
 ### Parameters:
 * `a_trans` : translation step
@@ -23,7 +23,7 @@ export RotOptimDimer
    # ------ shared parameters ------
    tol_trans::Float64 = 1e-5
    tol_rot::Float64 = 1e-2
-   maxnit::Int = 1000
+   maxnumdE::Int = 1000
    len::Float64 = 1e-3
    precon = I
    precon_prep! = (P, x) -> P
@@ -31,13 +31,14 @@ export RotOptimDimer
    precon_rot::Bool = false
    rmemory::Int = 100
    tmemory::Int = 100
+   id::AbstractString = "RotOptDimer"
 end
 
 
 function run!{T}(method::RotOptimDimer, E, dE, x0::Vector{T}, v0::Vector{T})
 
    # read all the parameters
-   @unpack a_trans, tol_trans, tol_rot, maxnit, len,
+   @unpack a_trans, tol_trans, tol_rot, maxnumdE, len,
             precon_prep!, verbose, rmemory, tmemory, precon_rot = method
    P=method.precon
    # initialise variables
@@ -60,13 +61,13 @@ function run!{T}(method::RotOptimDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    P = precon_prep!(P, x)
    v /= sqrt(dot(v, P, v))
    dimerE(v) = ( E(x + len * v / sqrt(dot(v, P, v))) + E(x - len * v / sqrt(dot(v, P, v))) ) / len^2
-   for nit = 0:maxnit
+   for nit = 0:2*maxnumdE
       # normalise v
       P = precon_prep!(P, x)
       # evaluate gradients, and more stuff
       # rotation step
-      res = optimize(dimerE,v,method=LBFGS(m = rmemory, linesearch! = Optim.mt_linesearch!),g_tol = tol_rot,store_trace=true,show_trace=true)
-      v = res.minimum
+      res = Optim.optimize(dimerE,v,method=Optim.LBFGS(m = rmemory, linesearch! = LineSearches.morethuente!),g_tol = tol_rot,store_trace=true,show_trace=true)
+      v = Optim.minimizer(res)
       v /= sqrt(dot(v, P, v))
       # translation step
       dE0 = dE(x)
@@ -137,9 +138,14 @@ function run!{T}(method::RotOptimDimer, E, dE, x0::Vector{T}, v0::Vector{T})
          end
          return x, v, log
       end
+      if numdE > maxnumdE
+         if verbose >= 1
+            println("BBDimer terminates unsuccesfully due to numdE >= $(maxnumdE)")
+         end
+         return x, v, log
+      end
+
    end
-   if verbose >= 1
-      println("RotOptimDimer terminated unsuccesfully after $(maxnit) iterations.")
-   end
+   error("why am I here?")
    return x, v, log
 end

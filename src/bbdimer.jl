@@ -52,6 +52,7 @@ http://arxiv.org/abs/1407.2817
    precon_prep! = (P, x) -> P
    verbose::Int = 2
    precon_rot::Bool = false
+   id::AbstractString = "BBDimer"
 end
 
 
@@ -76,6 +77,9 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    nit = 0
    while true
       nit += 1
+
+      @assert !any(isnan(v))
+      @assert !any(isnan(x))
 
       # normalise v
       P = precon_prep!(P, x)
