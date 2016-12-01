@@ -32,6 +32,8 @@ include("bbdimer.jl")
 
 include("rotoptimdimer.jl")
 
+include("superlineardimer.jl")
+
 include("string.jl")
 
 include("testsets.jl")

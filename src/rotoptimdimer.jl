@@ -55,8 +55,8 @@ function run!{T}(method::RotOptimDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    vec0 = x
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  |∇E|_∞    |∇R|_∞  \n")
-      @printf("-----|--------------------\n")
+      @printf(" nit |  |∇E|_∞    |∇R|_∞    λ   \n")
+      @printf("-----|--------------------------\n")
    end
    P = precon_prep!(P, x)
    v /= sqrt(dot(v, P, v))
@@ -66,7 +66,8 @@ function run!{T}(method::RotOptimDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       P = precon_prep!(P, x)
       # evaluate gradients, and more stuff
       # rotation step
-      res = Optim.optimize(dimerE,v,method=Optim.LBFGS(m = rmemory, linesearch! = LineSearches.morethuente!),g_tol = tol_rot,store_trace=true,show_trace=(verbose>2))
+#     res = Optim.optimize(dimerE,v,method=Optim.LBFGS(m = rmemory, linesearch! = LineSearches.morethuente!),g_tol = tol_rot,store_trace=true,show_trace=(verbose>2))
+      res = Optim.optimize(dimerE,v,method=Optim.LBFGS(m = rmemory),g_tol = tol_rot,store_trace=true,show_trace=(verbose>2))
       v = Optim.minimizer(res)
       v /= sqrt(dot(v, P, v))
       # translation step
@@ -130,7 +131,7 @@ function run!{T}(method::RotOptimDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       numdE += res.g_calls + 1
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
-         @printf("%4d | %1.2e  %1.2e  \n", nit, res_trans, res_rot)
+         @printf("%4d | %1.2e  %1.2e  %1.2e \n", nit, res_trans, res_rot, res.f_minimum)
       end
       if res_trans <= tol_trans
          if verbose >= 1

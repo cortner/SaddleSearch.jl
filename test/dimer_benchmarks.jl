@@ -44,6 +44,7 @@ push!(methods,  BBDimer(a0_trans=0.002, a0_rot=0.002, maxnumdE=maxnumdE,
 
 push!(methods,  RotOptimDimer(a_trans=0.001, maxnumdE=maxnumdE, verbose=verbose) )
 
+push!(methods,  SuperlinearDimer(maximum_translation=0.1, max_num_rot=1, maxnumdE=maxnumdE, verbose=verbose) )
 
 
 # ============= run the all the benchmarks ================

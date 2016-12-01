@@ -37,6 +37,11 @@ xrot, vrot, logrot = run!(rotdimer, E, dE, x0, v0)
 @test logrot.res_trans[end] <= rotdimer.tol_trans
 @test vecnorm(xrot - x, Inf) < 1e-4
 
+supdimer = SuperlinearDimer(maximum_translation=0.02, max_num_rot=1, len=1e-3, maxnumdE=1000, verbose=verbose)
+xsup, vsup, logsup = run!(supdimer, E, dE, x0, v0)
+@test logsup.res_trans[end] <= supdimer.tol_trans
+@test vecnorm(xsup - x, Inf) < 1e-4
+
 
 println("Test with the standard double-well potential")
 V = DoubleWell()
@@ -72,5 +77,10 @@ rotdimer = RotOptimDimer(a_trans=0.66, len=1e-3, maxnumdE=1000, verbose=verbose)
 xrot, vrot, logrot = run!(rotdimer, E, dE, x0, v0)
 @test logrot.res_trans[end] <= rotdimer.tol_trans
 @test vecnorm(xrot - x, Inf) < 1e-4
+
+supdimer = SuperlinearDimer(maximum_translation=1.0, max_num_rot=1, len=1e-3, maxnumdE=1000, verbose=verbose)
+xsup, vsup, logsup = run!(supdimer, E, dE, x0, v0)
+@test logsup.res_trans[end] <= supdimer.tol_trans
+@test vecnorm(xsup - x, Inf) < 1e-4
 
 end
