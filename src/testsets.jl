@@ -136,4 +136,11 @@ function ic_string(V::LJcluster)
    return V.ρ_min * r1, V.ρ_min * r2
 end
 
+
+
+
+
+# TODO: add 2D LJ vacancy example
+
+
 end

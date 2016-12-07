@@ -1,6 +1,7 @@
 export SuperlinearDimer
 
 # TODO: change maxnit to maxn_dE
+#       allow CG, LBFGS, SD + switch to symbols
 
 """
 `SuperlinearDimer`: dimer variant based on Kastner's JCP 128, 014106 (2008) article & ASE implementation
@@ -19,9 +20,9 @@ export SuperlinearDimer
    max_num_rot::Int = 1
    trial_angle::Float64 = pi / 4.0
    trial_trans_step::Float64 = 0.0001
-   use_central_forces::Bool = false
+   use_central_forces::Bool = false     # probably does not work well; maybe dont bother
    extrapolate::Bool = true
-   translation_method::AbstractString = "LCG"
+   translation_method::AbstractString = "CG"  # CG, LBFGS, SD
    # ------ shared parameters ------
    tol_trans::Float64 = 1e-5
    tol_rot::Float64 = 1e-1
@@ -35,11 +36,11 @@ end
 
 
 function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
-
    # read all the parameters
-   @unpack maximum_translation, max_num_rot, trial_angle, trial_trans_step, use_central_forces, extrapolate, translation_method, 
-           tol_trans, tol_rot, maxnumdE, len, precon_prep!, verbose = method 
-   P=method.precon
+   @unpack maximum_translation, max_num_rot, trial_angle, trial_trans_step, use_central_forces, extrapolate, translation_method,
+           tol_trans, tol_rot, maxnumdE, len, precon_prep!, verbose = method
+  @show translation_method
+  P=method.precon
    # initialise variables
    x, v = copy(x0), copy(v0)
    nit = 0
@@ -56,19 +57,24 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       rho = []
       x0, v0 = x, v
       vec0 = x
+   else
+      error("unknown translation_method")
    end
+
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  |∇E|_∞    |∇R|_∞    λ    \n")
-      @printf("-----|---------------------------\n")
+      @printf(" nit |  n∇E  |   |∇E|_∞    |∇R|_∞    λ        \n")
+      @printf("-----|-------|--------------------------------\n")
    end
    P = precon_prep!(P, x)
    v /= sqrt(dot(v, P, v))
    normalize(a) = a / norm(a)
-   parallel_vector(a, b) = dot(a, b) * b
+   parallel_vector(a, b) = dot(a, b) * b    # assume b is normalised
    perpendicular_vector(a, b) = a - parallel_vector(a, b)
-   rotate_vectors(a, b, phi) = normalize(a * cos(phi) + b * sin(phi)) * norm(a), normalize(b * cos(phi) - a * sin(phi)) * norm(b)
-   curv = 0
+   rotate_vectors(a, b, phi) =    # do a, b need to be normalised??? CHECK!
+         normalize(a * cos(phi) + b * sin(phi)) * norm(a),
+         normalize(b * cos(phi) - a * sin(phi)) * norm(b)
+   curv = 0.0
    for nit = 0:2*maxnumdE
       # normalise v
       P = precon_prep!(P, x)
@@ -80,10 +86,11 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
 
       stoprot = false
       nrot = 0
-      dE1e = nothing
-      while !stoprot
+      dE1e = nothing      # extrapolated guess for dE1
+      res_rot = 0.0
+      while !stoprot     # ROTATION STEP
 
-          nrot += 1 
+          nrot += 1
 
           if dE1e == nothing
              dE1 = dE(x + len * v)
@@ -92,20 +99,22 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
              dE1 = dE1e
           end
           if use_central_forces
-             dE2 = dE1 - 2.0 * dE0
+             dE2 = dE1 - 2.0 * dE0    # extrapolated guess for dE2
           else
              dE2 = dE(x - len * v)
              numdE += 1
           end
 
-          dE1a = dE1
+          dE1a = dE1     # dE1a store for later use (TODO: does it need to be a copy?)
 
-          curv = dot(dE1 - dE2, v) / 2.0 / len
-          f_rot_A = perpendicular_vector(dE2 - dE1, v) / 2.0 / len
+          Hxv = (dE1 - dE2) / 2.0 / len
+          curv = dot(Hxv, v)
+          f_rot_A = perpendicular_vector(Hxv, v)   # rotation residual!
+          res_rot = norm(f_rot_A, Inf)
 
-          if norm(f_rot_A) <= tol_rot
+          if res_rot <= tol_rot
              stoprot = true
-          else
+          else                  # single rotation step
              n_A = v
              rot_unit_A = normalize(f_rot_A)
 
@@ -167,15 +176,17 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
           end
       end
 
-      # translation step
+      # TRANSLATION STEP
 
+      # choose e-vec following or standard dimer direction
       if curv > 0
          f0p = -parallel_vector(-dE0, v)
       else
          f0p = -dE0 - 2.0 * parallel_vector(-dE0, v)
       end
-      direction = f0p 
-      
+      direction = f0p
+
+      # mix up directions according to CG or LBFGS (or nothing)
       if translation_method == "CG"
          if cg_init
             cg_init = false
@@ -196,17 +207,23 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
          direction_old = direction
 
          direction = cg_direction
-      elseif translation_method == "LBFGS" 
+      elseif translation_method == "LBFGS"
+         error("LBFGS not implemented")
       end
+
 
       direction = normalize(direction)
 
       if curv > 0.0
-         xstep = direction * maximum_translation 
+         xstep = direction * maximum_translation
       else
          dE0t = dE(x + direction * trial_trans_step)
          numdE += 1
          f0tp = -dE0t - 2.0 * parallel_vector(-dE0t, v)
+         # f0p: current translation residual (not necessarily search direction!)
+         # f0tp: translation residual at trial step
+         # F: some kind of slope in search direction???
+         # C: curvature in search direction?
          F = dot(f0tp + f0p, direction) / 2.0
          C = dot(f0tp - f0p, direction) / trial_trans_step
          xstep = ( -F / C + trial_trans_step / 2.0 ) * direction
@@ -215,15 +232,13 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
          end
       end
 
-      x += xstep 
+      x += xstep
 
       # translation residual, store history
       res_trans = vecnorm(dE0, Inf)
-#     res_rot = tol_rot
-      res_rot = norm(v)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
-         @printf("%4d | %1.2e  %1.2e  %1.2e \n", nit, res_trans, res_rot, curv)
+         @printf("%4d | %4d  |  %1.2e  %1.2e  %1.2e \n", nit, numdE, res_trans, res_rot, curv)
       end
       if res_trans <= tol_trans
          if verbose >= 1
