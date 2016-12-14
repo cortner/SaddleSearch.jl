@@ -66,7 +66,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
          end
          x -= alpha * dE0perp
          # reparametrise
-         ds = [norm(x[i+1]-x[i]) for i=1:length(x)-1]
+         ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
          s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
          s /= s[end]; s[end] = 1.
          S = spline(s, x)
