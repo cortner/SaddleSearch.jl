@@ -30,7 +30,7 @@ end
 
 
 # ============================================================================
-# TEST CASE 1: Müller Potential
+# TEST SET: Müller Potential
 #   TODO: add reference
 # ============================================================================
 
@@ -55,7 +55,7 @@ end
 
 
 # ============================================================================
-# TEST CASE 2: DoubleWell
+# TEST SET: DoubleWell
 # ============================================================================
 
 @with_kw type DoubleWell
@@ -82,23 +82,24 @@ function ic_dimer(V::DoubleWell, case=:near)
 end
 
 # ============================================================================
-# TEST CASE 3: Lennard-Jones Cluster
+# TEST SET: Lennard-Jones Cluster
 # ============================================================================
 
 @with_kw type LJcluster
    ε::Float64 = 0.25
    σ::Float64 = 1.
-   ρ_min::Float64 = 2.0^(1./6)
+   ρ_min::Float64 = 1.0
 end
 
-dists(r::Matrix) = [norm(r[:,i]-r[:,j]) for i = 1:6 for j = i+1:7]
+dists(r::Matrix) = [norm(r[:,i]-r[:,j])
+                     for i = 1:size(r,2)-1 for j = i+1:size(r,2)]
 
 dists(r::Vector) = dists(reshape(r, 2, length(r) ÷ 2))
 
-dispForce(V::LJcluster, r) = (V.σ ./ dists(r)).^6
+LJpot(r) = r.^(-12) - 2 * r.^(-6)
+LJenergy(r) = sum(Ljpot(dists(r)))
 
-energy(V::LJcluster, r) = 4.0 * V.ε * sum( (dispForce(V,r) - 1.0) .* dispForce(V,r) )
-
+energy(V::LJcluster, r) = 4.0 * V.ε * LJenergy(r / V.σ)
 
 function lj_refconfig()
    ω = π / 3.0
@@ -138,9 +139,54 @@ end
 
 
 
+# ============================================================================
+# TEST SET: 2D LJ Vacancy
+# ============================================================================
 
+type LJVacancy2D
+   R::Float64
+   Xref::Matrix{Float64}
+   Ifree::Vector{Int}
+end
 
-# TODO: add 2D LJ vacancy example
+LJVacancy2D(;R::Float64 = 5.1) = LJVacancy2D(R, vacancy_refconfig(R)...)
+
+energy(V::LJVacancy2D, r) = LJenergy(dofs2pos(V,r))
+
+function vacancy_refconfig(R)
+   A = [1.0 cos(π/3); 0.0 sin(π/3)]
+   cR = ceil(Int, R / minimum(svd(A)[2]))
+   t = collect(-cR:cR)
+   x = ones(length(t)) * t'
+   y = t * ones(length(t))'
+   X = A * [x[:] y[:]]'
+   r = sqrt(sumabs2(X, 1))
+   Xref = X[:, find(0 .< r .<= R)]
+   r = sqrt(sumabs2(Xref, 1))
+   I0 = find(r .<= 1.1)[1]
+   if I0 != 1
+      Xref[:, [1,I0]] = Xref[:, [I0,1]]
+      r[[1,I0]] = r[[I0,1]]
+   end
+   Ifree = find(r .<= R - 2.1)   # freeze two layers of atoms
+   return Xref, Ifree
+end
+
+function dofs2pos(V::LJVacancy2D, r)
+   X = copy(V.Xref)
+   X[:, V.Ifree][:] = r
+   return X
+end
+
+function ic_dimer(V::LJVacancy2D, case=:near)
+   X = copy(V.Xref)
+   if case == :near
+      X[:, 1] *= 0.25
+   elseif case == :far
+      X[:, 1] *= 0.75
+   end
+   error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
+end
 
 
 end
