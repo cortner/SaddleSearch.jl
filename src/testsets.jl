@@ -5,7 +5,7 @@ using Parameters
 import ForwardDiff
 
 export objective,
-   MullerPotential, DoubleWell, LJcluster,
+   MullerPotential, DoubleWell, LJcluster, LJVacancy2D,
    ic_dimer, ic_string
 
 
@@ -97,7 +97,7 @@ dists(r::Matrix) = [norm(r[:,i]-r[:,j])
 dists(r::Vector) = dists(reshape(r, 2, length(r) ÷ 2))
 
 LJpot(r) = r.^(-12) - 2 * r.^(-6)
-LJenergy(r) = sum(Ljpot(dists(r)))
+LJenergy(r) = sum(LJpot(dists(r)))
 
 energy(V::LJcluster, r) = 4.0 * V.ε * LJenergy(r / V.σ)
 
@@ -172,21 +172,53 @@ function vacancy_refconfig(R)
    return Xref, Ifree
 end
 
-function dofs2pos(V::LJVacancy2D, r)
-   X = copy(V.Xref)
-   X[:, V.Ifree][:] = r
+function dofs2pos{T}(V::LJVacancy2D, r::Vector{T})
+   X = convert(Matrix{T}, V.Xref)
+   X[:, V.Ifree] = reshape(r, 2, length(r) ÷ 2)
    return X
 end
 
 function ic_dimer(V::LJVacancy2D, case=:near)
    X = copy(V.Xref)
    if case == :near
-      X[:, 1] *= 0.25
+      X[:, 1] *= 0.6
    elseif case == :far
-      X[:, 1] *= 0.75
+      X[:, 1] *= 0.9
+   else
+      error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
    end
-   error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
+   x0 = X[:, V.Ifree][:]
+   v0 = zeros(length(x0))
+   v0[1:2] = - x0[1:2] / norm(x0[1:2])
+   return x0, v0
 end
 
+
+function exp_precond(V::LJVacancy2D, r; rcut = 2.5, α=3.0, μ=70.0)
+   X = dofs2pos(V, r)
+   nX = size(X, 2)
+   P = zeros(nX, nX)
+   for i = 1:nX, j = 1:nX
+      Rij = X[:,i] - X[:,j]
+      rij = norm(Rij)
+      if 0 < rij < rcut
+         Ii = (i-1) * 2 + [1,2]
+         Ij = (j-1) * 2 + [1,2]
+         a = μ * (exp(-α * (rij - 1.0)) - exp(-α * (rcut - 1.0)))
+         # A = a * eye(2)  # (Rij/rij) * (Rij/rij)'
+         # P[Ii, Ii] += A
+         # P[Ij, Ij] += A
+         # P[Ii, Ij] -= A
+         # P[Ij, Ii] -= A
+         P[i,j] -= a
+         P[j,i] -= a
+         P[i,i] += a
+         P[j,j] += a
+      end
+   end
+   # free = [ (V.Ifree - 1) * 2 + 1; (V.Ifree - 1) * 2 + 2 ][:]
+   P = sparse(P[V.Ifree, V.Ifree])
+   return kron(P, speye(2))
+end
 
 end

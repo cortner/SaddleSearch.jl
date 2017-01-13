@@ -1,7 +1,7 @@
 using SaddleSearch, SaddleSearch.TestSets
 using Base.Test
 
-verbose=1
+verbose=2
 
 
 # tests = [
@@ -22,4 +22,6 @@ verbose=1
 # include("dimer_benchmarks.jl")
 
 
-include("test_superlinear.jl")
+# include("test_superlinear.jl")
+
+include("test_vacancy.jl")
