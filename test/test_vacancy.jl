@@ -3,42 +3,54 @@ using SaddleSearch
 using SaddleSearch.TestSets
 using SaddleSearch.TestSets: hessprecond, precond, hessian
 
-# @testset "LJ Vacancy Tests" begin
+@testset "LJ Vacancy Tests" begin
 
-println("Test with the LJVacancy2D potential")
-V = LJVacancy2D(R = 5.1, bc = :free)
-x0, v0 = ic_dimer(V, :near)
-E, dE = objective(V)
+   println("LJVacancy2D Test and Benchmark: ")
+   locverb = 0
 
-dimer = StaticDimerMethod(a_trans=0.002, a_rot=0.002, len=1e-3, maxnit=1000, verbose=verbose)
-x, v, log = run!(dimer, E, dE, x0, v0)
-@test log.res_trans[end] <= dimer.tol_trans
-@test log.res_rot[end] <= dimer.tol_rot
+   for R in (3.1, 4.1, 5.1, 7.1)
 
-# bbdimer = BBDimer(a0_trans=0.001, a0_rot=0.001, maxnumdE=1000, verbose=verbose)
-# xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
-# @test bblog.res_trans[end] <= dimer.tol_trans
-# @test bblog.res_rot[end] <= dimer.tol_rot
-# @test vecnorm(xbb - x, Inf) < 1e-4
+      V = LJVacancy2D(R = R, bc = :free)
+      x0, v0 = ic_dimer(V, :near)
+      E, dE = objective(V)
 
+      println("R = $R : Nat = $(size(V.Xref, 2))")
 
-dimer = StaticDimerMethod( a_trans=0.5, a_rot=0.3, len=1e-3, maxnit=500,
-      verbose=verbose, precon=eye(2), precon_rot=true,
-      precon_prep! = (P,x) -> precond(V, x) )
-x, v, log = run!(dimer, E, dE, x0, v0)
-@test log.res_trans[end] <= dimer.tol_trans
-@test log.res_rot[end] <= dimer.tol_rot
+      dimer = StaticDimerMethod(a_trans=0.002, a_rot=0.002, len=1e-3,
+                                 maxnit=3000, verbose=locverb)
+      x, v, log = run!(dimer, E, dE, x0, v0)
+      @test log.res_trans[end] <= dimer.tol_trans
+      @test log.res_rot[end] <= dimer.tol_rot
+      println("      Dimer(I): $(length(log.res_trans)) iterations")
 
+      bbdimer = BBDimer(a0_trans=0.001, a0_rot=0.001, maxnumdE=1000, verbose=locverb,
+                        ls = StaticLineSearch())
+      xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
+      @test bblog.res_trans[end] <= bbdimer.tol_trans
+      @test bblog.res_rot[end] <= bbdimer.tol_rot
+      # @test vecnorm(xbb - x, Inf) < 1e-4
+      println("   BB-Dimer(I): $(length(bblog.res_trans)) iterations")
 
-# dimer = BBDimer( a0_trans=0.25, a0_rot=0.5, len=1e-3, maxnumdE=100,
-#       verbose=verbose, precon=eye(2), precon_rot=false,
-#       precon_prep! = (P,x) -> exp_precond(V, x),
-#       ls = StaticLineSearch() )
-# x, v, log = run!(dimer, E, dE, x0, v0)
-# @test log.res_trans[end] <= dimer.tol_trans
-# @test log.res_rot[end] <= dimer.tol_rot
+      dimer = StaticDimerMethod( a_trans=1.0, a_rot=0.3, len=1e-3, maxnit=500,
+            verbose=locverb, precon=precond(V, x0), precon_rot=true,
+            precon_prep! = (P,x) -> precond(V, x) )
+      x, v, log = run!(dimer, E, dE, x0, v0)
+      @test log.res_trans[end] <= dimer.tol_trans
+      @test log.res_rot[end] <= dimer.tol_rot
+      println("      Dimer(P): $(length(log.res_trans)) iterations")
 
-# end
+      bbdimer = BBDimer( a0_trans=0.25, a0_rot=0.5, len=1e-3, maxnumdE=100,
+            verbose=locverb, precon=precond(V, x0), precon_rot=true,
+            precon_prep! = (P,x) -> precond(V, x),
+            ls = StaticLineSearch() )
+      x, v, log = run!(bbdimer, E, dE, x0, v0)
+      @test log.res_trans[end] <= bbdimer.tol_trans
+      @test log.res_rot[end] <= bbdimer.tol_rot
+      println("   BB-Dimer(P): $(length(log.res_trans)) iterations")
+
+   end
+
+end
 
 
 
