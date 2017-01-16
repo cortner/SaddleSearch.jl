@@ -143,17 +143,14 @@ end
 # TEST SET: 2D LJ Vacancy
 # ============================================================================
 
-type LJVacancy2D
-   R::Float64
-   Xref::Matrix{Float64}
-   Ifree::Vector{Int}
-end
+"""
+This module just collects the basic Lennard-Jones implementation,
+the functions below wrap this into a test type and implement the
+boundary condition.
+"""
+module LJaux
 
-LJVacancy2D(;R::Float64 = 5.1) = LJVacancy2D(R, vacancy_refconfig(R)...)
-
-energy(V::LJVacancy2D, r) = LJenergy(dofs2pos(V,r))
-
-function vacancy_refconfig(R)
+function vacancy_refconfig(R, bc)
    A = [1.0 cos(π/3); 0.0 sin(π/3)]
    cR = ceil(Int, R / minimum(svd(A)[2]))
    t = collect(-cR:cR)
@@ -168,15 +165,89 @@ function vacancy_refconfig(R)
       Xref[:, [1,I0]] = Xref[:, [I0,1]]
       r[[1,I0]] = r[[I0,1]]
    end
-   Ifree = find(r .<= R - 2.1)   # freeze two layers of atoms
+   if bc == :free
+      Ifree = 1:size(Xref, 2)
+   elseif bc == :clamped
+      Ifree = find(r .<= R - 2.1)   # freeze two layers of atoms
+   else
+      error("unknown parameter `bc = $bc`")
+   end
    return Xref, Ifree
 end
+
+phi(r) = r^(-12) - 2 * r^(-6)
+dphi(r) = -12 * r^(-13) + 12 * r^(-7)
+ddphi(r) = 12*13 * r^(-14) - 7*12 * r^(-8)
+pphi(r) = (12*13 - 7*12) * r^(-8)
+
+function energy(X::Matrix)
+    E = 0.0
+    nX = size(X,2)
+    for i = 1:nX-1, j = i+1:nX
+        rij = norm(X[:,i] - X[:,j])
+        E += phi(rij)
+    end
+    return E
+end
+
+function gradient(X::Matrix)
+    dE = zeros(size(X))
+    nX = size(X,2)
+    for i = 1:nX-1, j = i+1:nX
+        Rij = X[:,i] - X[:,j]
+        rij = norm(Rij)
+        a = dphi(rij) * Rij / rij
+        dE[:,i] += a
+        dE[:,j] -= a
+    end
+    return dE
+end
+
+function exp_precond(X::Matrix; rcut = 2.5, α=3.0)
+   nX = size(X, 2)
+   P = zeros(2*nX, 2*nX)
+   I = zeros(Int, 2, nX)
+   I[:] = 1:2*nX
+   for i = 1:nX, j = i+1:nX
+      Ii, Ij = I[:,i], I[:,j]
+      Rij = X[:,i] - X[:,j]
+      rij = norm(Rij)
+      if 0 < rij < rcut
+         a = pphi(rij) * eye(2)
+         P[Ii, Ij] -= a
+         P[Ij, Ii] -= a
+         P[Ii, Ii] += a
+         P[Ij, Ij] += a
+      end
+   end
+   return sparse(P) + 0.001 * speye(2*nX)
+end
+
+end
+
+
+type LJVacancy2D
+   R::Float64
+   Xref::Matrix{Float64}
+   Ifree::Vector{Int}
+end
+
+LJVacancy2D(; R::Float64 = 5.1, bc=:free) =
+   LJVacancy2D(R, LJaux.vacancy_refconfig(R, bc)...)
 
 function dofs2pos{T}(V::LJVacancy2D, r::Vector{T})
    X = convert(Matrix{T}, V.Xref)
    X[:, V.Ifree] = reshape(r, 2, length(r) ÷ 2)
    return X
 end
+
+pos2dofs(V::LJVacancy2D, X::Matrix) = X[:, V.Ifree][:]
+
+energy(V::LJVacancy2D, x::Vector) =
+   LJaux.energy(V, LJaux.dofs2pos(V, x))
+
+gradient(V::LJVacancy2D, x::Vector) =
+   LJaux.pos2dofs(V, LJaux.gradient(dofs2pos(x)))
 
 function ic_dimer(V::LJVacancy2D, case=:near)
    X = copy(V.Xref)
@@ -193,32 +264,14 @@ function ic_dimer(V::LJVacancy2D, case=:near)
    return x0, v0
 end
 
-
-function exp_precond(V::LJVacancy2D, r; rcut = 2.5, α=3.0, μ=70.0)
-   X = dofs2pos(V, r)
-   nX = size(X, 2)
-   P = zeros(nX, nX)
-   for i = 1:nX, j = 1:nX
-      Rij = X[:,i] - X[:,j]
-      rij = norm(Rij)
-      if 0 < rij < rcut
-         Ii = (i-1) * 2 + [1,2]
-         Ij = (j-1) * 2 + [1,2]
-         a = μ * (exp(-α * (rij - 1.0)) - exp(-α * (rcut - 1.0)))
-         # A = a * eye(2)  # (Rij/rij) * (Rij/rij)'
-         # P[Ii, Ii] += A
-         # P[Ij, Ij] += A
-         # P[Ii, Ij] -= A
-         # P[Ij, Ii] -= A
-         P[i,j] -= a
-         P[j,i] -= a
-         P[i,i] += a
-         P[j,j] += a
-      end
-   end
-   # free = [ (V.Ifree - 1) * 2 + 1; (V.Ifree - 1) * 2 + 2 ][:]
-   P = sparse(P[V.Ifree, V.Ifree])
-   return kron(P, speye(2))
+function pos2dofs(V::LJVacancy, P::AbstractMatrix)
+   free = [V.Ifree * 2 - 1; V.Ifree * 2][:]
+   return P[free, free]
 end
+
+precond(V::LJVacancy2D, x::Vector; kwargs...) =
+   LJaux.pos2dofs(V, LJaux.exp_precond(dofs2pos(V, x), kwargs...))
+
+
 
 end
