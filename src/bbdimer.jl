@@ -93,8 +93,8 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       # translation and rotation residual, store history
       res_trans = vecnorm(dE0, Inf)
       λ = dot(v, Hv)
-      p_rot = - Hv + λ * (P * v)
-      res_rot = vecnorm(p_rot, Inf)
+      q_rot = - Hv + λ * (P * v)
+      res_rot = vecnorm(q_rot, Inf)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
          @printf("%4d | %1.2e  %1.2e  %1.2e  %1.2e  %1.2e \n",
@@ -118,7 +118,9 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       # compute the two "search" directions
       p_trans = - P \ dE0 + 2.0 * dot(v, dE0) * v
       if precon_rot
-         p_rot = P \ p_rot
+         p_rot = - (P \ Hv - λ * v)
+      else
+         p_rot = q_rot
       end
 
       # initial step-sizes guess
@@ -146,6 +148,7 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
                                     v, p_rot, γ)
       numE += numE_ls
 
+      x_old, v_old = x, v
       # translation step
       x += β * p_trans
       # rotation step

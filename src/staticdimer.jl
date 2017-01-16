@@ -62,8 +62,8 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       Hv = (dEv - dE0) / len
       # translation and rotation residual, store history
       res_trans = vecnorm(dE0, Inf)
-      p_rot = - Hv + dot(v, Hv) * (P * v)
-      res_rot = vecnorm(p_rot, Inf)
+      q_rot = - Hv + dot(v, Hv) * (P * v)
+      res_rot = vecnorm(q_rot, Inf)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
          @printf("%4d | %1.2e  %1.2e  %4.2f  \n", nit, res_trans, res_rot, dot(v, Hv))
@@ -79,7 +79,9 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       x += a_trans * p_trans
       # rotation step
       if precon_rot
-         p_rot = P \ p_rot
+         p_rot = - P \ Hv + dot(Hv, v) * v
+      else
+         p_rot = q_rot
       end
       v += a_rot * p_rot
    end
