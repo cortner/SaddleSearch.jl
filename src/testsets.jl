@@ -5,7 +5,7 @@ using Parameters
 import ForwardDiff
 
 export objective,
-   MullerPotential, DoubleWell, LJcluster, LJVacancy2D,
+   MullerPotential, DoubleWell, LJcluster, LJVacancy2D, Molecule2D,
    ic_dimer, ic_string
 
 
@@ -274,5 +274,63 @@ precond(V::LJVacancy2D, x::Vector; kwargs...) =
    # LJaux.exp_precond(dofs2pos(V, x), kwargs...)
 
 
+
+
+# ============================================================================
+# TEST SET: Molecule2D
+# ============================================================================
+#
+#  [B2]
+#      \
+#        [A] - [B1]
+
+@with_kw type Molecule2D
+   k::Float64 = 1.0
+   kab::Float64 = 25.0
+   kbb::Float64 = 5.0
+   rbb::Float64 = √3
+end
+
+function energy(V::Molecule2D, r)
+   # A is always at [0,0]
+   # B1 at [r1, 0]
+   # B2 at [r2, r3]
+   Rab1 = [r[1],0]
+   Rab2 = [r[2], r[3]]
+   rab1 = norm(Rab1)
+   rab2 = norm(Rab2)
+   rbb = norm(Rab1 - Rab2)
+
+   # AB bonds
+   E = V.kab/2 * ((rab1 - 1)^2 + (rab2 - 1)^2)
+   # AA bond
+   E += V.kbb/2 * (rbb - V.rbb)^2
+   # bond-angle
+   E += V.k/2 * (dot(Rab1/rab1, Rab2/rab2) + 0.5)^2
+
+   return E
+end
+
+"Θ = 2π/3 is the minimum, Θ = π near the saddle, Θ=4π/3 is the second minimum"
+function mol2dpath(Θ)
+   Rab1 = [1.0,0.0]
+   Rab2 = [cos(Θ) -sin(Θ); sin(Θ) cos(Θ)] * Rab1
+   return [Rab1[1], Rab2[1], Rab2[2]]
+end
+
+function ic_dimer(V::Molecule2D, case=:near)
+   if case == :near
+      r0 = mol2dpath(π-0.2)
+   elseif case ==:far
+      r0 = mol2dpath(2*π/3 + 0.2)
+   end
+   rs = mol2dpath(π)
+   v0 = (rs-r0) / norm(rs-r0)
+   return r0, v0
+end
+
+function precond(V::Molecule2D, r)
+   # kab [r1^2 + r2^2 + r3^2] + kbb [(r1-r2)^2 + r3^2] + ...
+end
 
 end
