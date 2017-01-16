@@ -247,7 +247,7 @@ energy(V::LJVacancy2D, x::Vector) =
    LJaux.energy(V, LJaux.dofs2pos(V, x))
 
 gradient(V::LJVacancy2D, x::Vector) =
-   LJaux.pos2dofs(V, LJaux.gradient(dofs2pos(x)))
+   pos2dofs(V, LJaux.gradient(dofs2pos(V, x)))
 
 function ic_dimer(V::LJVacancy2D, case=:near)
    X = copy(V.Xref)
@@ -264,13 +264,13 @@ function ic_dimer(V::LJVacancy2D, case=:near)
    return x0, v0
 end
 
-function pos2dofs(V::LJVacancy, P::AbstractMatrix)
+function pos2dofs(V::LJVacancy2D, P::AbstractMatrix)
    free = [V.Ifree * 2 - 1; V.Ifree * 2][:]
    return P[free, free]
 end
 
 precond(V::LJVacancy2D, x::Vector; kwargs...) =
-   LJaux.pos2dofs(V, LJaux.exp_precond(dofs2pos(V, x), kwargs...))
+   pos2dofs(V, LJaux.exp_precond(dofs2pos(V, x), kwargs...))
 
 
 
