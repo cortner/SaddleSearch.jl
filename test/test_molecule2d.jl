@@ -16,31 +16,82 @@ using SaddleSearch.TestSets: hessprecond, precond, hessian
 
       # println("R = $R : Nat = $(size(V.Xref, 2))")
 
-      dimer = StaticDimerMethod(a_trans=0.05, a_rot=0.04, len=1e-3,
-                                 maxnit=3000, verbose=locverb)
-      x, v, log = run!(dimer, E, dE, x0, v0)
-      @test log.res_trans[end] <= dimer.tol_trans
-      @test log.res_rot[end] <= dimer.tol_rot
-      println("      Dimer(I): $(length(log.res_trans)) iterations")
+      # dimer = StaticDimerMethod(a_trans=0.05, a_rot=0.04, len=1e-3,
+      #                            maxnit=3000, verbose=locverb)
+      # x, v, log = run!(dimer, E, dE, x0, v0)
+      # @test log.res_trans[end] <= dimer.tol_trans
+      # @test log.res_rot[end] <= dimer.tol_rot
+      # println("      Dimer(I): $(length(log.res_trans)) iterations")
 
-      bbdimer = BBDimer(a0_trans=0.01, a0_rot=0.01, maxnumdE=1000, verbose=locverb,
-                        ls = StaticLineSearch())
-      xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
-      @test bblog.res_trans[end] <= bbdimer.tol_trans
-      @test bblog.res_rot[end] <= bbdimer.tol_rot
-      @test vecnorm(xbb - x, Inf) < 1e-4
-      println("   BB-Dimer(I): $(length(bblog.res_trans)) iterations")
+      # bbdimer = BBDimer(a0_trans=0.01, a0_rot=0.01, maxnumdE=1000, verbose=locverb,
+      #                   ls = StaticLineSearch())
+      # xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
+      # @test bblog.res_trans[end] <= bbdimer.tol_trans
+      # @test bblog.res_rot[end] <= bbdimer.tol_rot
+      # @test vecnorm(xbb - x, Inf) < 1e-4
+      # println("   BB-Dimer(I): $(length(bblog.res_trans)) iterations")
 
-      @show xbb
-
-      # dimer = StaticDimerMethod( a_trans=1.0, a_rot=0.3, len=1e-3, maxnit=500,
-      #       verbose=locverb, precon=precond(V, x0), precon_rot=true,
-      #       precon_prep! = (P,x) -> precond(V, x) )
+      # dimer = StaticDimerMethod( a_trans=0.1, a_rot=0.1, len=1e-3, maxnit=100,
+      #       verbose=locverb, precon=hessprecond(V, x0), precon_rot=true,
+      #       precon_prep! = (P,x) -> hessprecond(V, x) )
       # x, v, log = run!(dimer, E, dE, x0, v0)
       # @test log.res_trans[end] <= dimer.tol_trans
       # @test log.res_rot[end] <= dimer.tol_rot
       # println("      Dimer(P): $(length(log.res_trans)) iterations")
-      #
+
+
+
+      println("cond(min)")
+      xm = TestSets.mol2dpath(2*π/3)
+      H = hessian(V, xm)
+      @show eigvals(H)
+      P = precond(V, xm)
+      @show cond(H)
+      Q = pinv(sqrtm(P))
+      @show cond(Q * H * Q)
+
+      dimer = StaticDimerMethod(a_trans=0.05, a_rot=0.04, len=1e-3,
+                                 maxnit=3000, verbose=false)
+      xs, v, log = run!(dimer, E, dE, x0, v0)
+
+      println("cond(saddle)")
+      # xs = x0
+      H = hessian(V, xs)
+      P = precond(V, xs)
+      Q = pinv(sqrtm(P))
+      @show eigvals(H)
+      @show eigvals(P)
+      @show eigvals(H, P)
+      @show cond(H)
+      @show cond(Q * H * Q)
+
+      println("cond(saddle-improved-P)")
+      D, V = eig(H, P)
+      @show D
+      Imin = find(D .== minimum(D))[1]
+      v = V[:, Imin]
+      P2 = (eye(3) - v * v') * P * (eye(3) - v * v') + D[Imin] * (v * v')
+      Q2 = pinv(sqrtm(P2))
+      @show eigvals(H, P2)
+      @show cond(Q2 * H * Q2)
+
+      println("cond(saddle-improved-P)")
+      D, V = eig(H)
+      Imin = find(D .== minimum(D))[1]
+      v = V[:, Imin]
+      P2 = (eye(3) - v * v') * P * (eye(3) - v * v') + D[Imin] * (v * v')
+      Q2 = pinv(sqrtm(P2))
+      @show eigvals(H, P2)
+      @show cond(Q2 * H * Q2)
+
+      println("cond(saddle-hessprecond)")
+      P3 = V * diagm(abs(D)) * V'
+      Q3 = pinv(sqrtm(P3))
+      @show eigvals(H, P3)
+      @show cond(Q3 * H * Q3)
+
+
+
       # bbdimer = BBDimer( a0_trans=0.25, a0_rot=0.5, len=1e-3, maxnumdE=100,
       #       verbose=locverb, precon=precond(V, x0), precon_rot=true,
       #       precon_prep! = (P,x) -> precond(V, x),

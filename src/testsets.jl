@@ -291,23 +291,28 @@ precond(V::LJVacancy2D, x::Vector; kwargs...) =
    rbb::Float64 = √3
 end
 
-function energy(V::Molecule2D, r)
+function bonds(V::Molecule2D, r)
    # A is always at [0,0]
    # B1 at [r1, 0]
    # B2 at [r2, r3]
    Rab1 = [r[1],0]
    Rab2 = [r[2], r[3]]
+   Rbb = Rab1 - Rab2
    rab1 = norm(Rab1)
    rab2 = norm(Rab2)
    rbb = norm(Rab1 - Rab2)
+   return rab1, rab2, rbb, Rab1/rab1, Rab2/rab2, Rbb/rbb
+end
 
+
+function energy(V::Molecule2D, r)
+   rab1, rab2, rbb, Sab1, Sab2, Sbb = bonds(V, r)
    # AB bonds
    E = V.kab/2 * ((rab1 - 1)^2 + (rab2 - 1)^2)
    # AA bond
    E += V.kbb/2 * (rbb - V.rbb)^2
    # bond-angle
-   E += V.k/2 * (dot(Rab1/rab1, Rab2/rab2) + 0.5)^2
-
+   E += V.k/2 * (dot(Sab1, Sab2) + 0.5)^2
    return E
 end
 
@@ -329,8 +334,35 @@ function ic_dimer(V::Molecule2D, case=:near)
    return r0, v0
 end
 
+"an FF-type preconditioner for Molecule2D"
 function precond(V::Molecule2D, r)
-   # kab [r1^2 + r2^2 + r3^2] + kbb [(r1-r2)^2 + r3^2] + ...
+   # < Pu, u> = ∑_{i=1,2}  kab (uabi ⋅ Sabi)^2 + kbb (ubb ⋅ Sbb)^2
+   #                + bond-angle terms
+   #          = kab (u[1])^2 + kab (Sab2 ⋅ u[2:3])^2 +
+   #             + kbb (Sbb ⋅ [u[2], u[3]-u[1]])^2
+   #             + bond-angle terms
+   #  [u[2], u[3]-u[1]] = [ 0 1 0; -1 0 1] u
+   #
+   # bond-angle terms: Φ = dot(Sab1, Sab2) then
+   #      ~ k  ∑_{i,j} (∂_{Rabi}Φ ⋅ u_{abi}) (∂_{Rabj} ⋅ u_{abj})
+   #      ~ k  ( ∑_i [(I-Sabi ⊗ Sabi) Sabj] ⋅ u_{abi} )^2
+
+   rab1, rab2, rbb, Sab1, Sab2, Sbb = bonds(V, r)
+   P = zeros(3,3)
+
+   # 2-body bonds
+   P[1,1] += V.kab                       # AB1
+   P[2:3,2:3] += V.kab * Sab2 * Sab2'    # AB2
+   Ubb = [0 1 0; -1 0 1]' * Sbb
+   P += V.kbb * Ubb * Ubb'               # BB
+
+   # bond-angle
+   q1 = Sab2 - dot(Sab1, Sab2) * Sab1
+   q2 = Sab1 - dot(Sab1, Sab2) * Sab2
+   q = [q1[1]; q2]
+   P += V.k * (0.9 * q * q' + 0.1 * eye(3))
+
+   return P
 end
 
 end
