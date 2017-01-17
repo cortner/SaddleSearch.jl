@@ -93,7 +93,7 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       dE0 = 0.5 * (dEp + dEm)
 
       # NEWTON TYPE RESCALING IN v DIRECTION
-      #   (assume for now that P is a full matrix
+      #   (assume for now that P is a full matrix >> TODO 
       if rescale_v
          P += ( abs(dot(Hv, v) / dot(v, P, v)) - 1.0 ) * (P*v) * (P*v)'
          v /= sqrt(dot(v, P, v))
