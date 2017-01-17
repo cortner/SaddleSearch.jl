@@ -32,6 +32,7 @@ steps with a fixed step-size.
    precon_prep! = (P, x) -> P
    verbose::Int = 2
    precon_rot::Bool = false
+   rescale_v::Bool = false
 end
 
 
@@ -39,7 +40,7 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
 
    # read all the parameters
    @unpack a_trans, a_rot, tol_trans, tol_rot, maxnit, len,
-            precon_prep!, verbose, precon_rot = method
+            precon_prep!, verbose, precon_rot, rescale_v = method
    P=method.precon
    # initialise variables
    x, v = copy(x0), copy(v0)
@@ -60,6 +61,14 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       dEv = dE(x + len * v)
       numdE += 2
       Hv = (dEv - dE0) / len
+
+      # NEWTON TYPE RESCALING IN v DIRECTION
+      #   (assume for now that P is a full matrix
+      if rescale_v
+         P += ( abs(dot(Hv, v) / dot(v, P, v)) - 1.0 ) * (P*v) * (P*v)'
+         v /= sqrt(dot(v, P, v))
+      end
+
       # translation and rotation residual, store history
       res_trans = vecnorm(dE0, Inf)
       q_rot = - Hv + dot(v, Hv) * (P * v)
