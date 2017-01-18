@@ -41,7 +41,7 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
    # read all the parameters
    @unpack a_trans, a_rot, tol_trans, tol_rot, maxnit, len,
             precon_prep!, verbose, precon_rot, rescale_v = method
-   P=method.precon
+   P0=method.precon
    # initialise variables
    x, v = copy(x0), copy(v0)
    nit = 0
@@ -54,8 +54,8 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
    end
    for nit = 0:maxnit
       # normalise v
-      P = precon_prep!(P, x)
-      v /= sqrt(dot(v, P, v))
+      P0 = precon_prep!(P0, x)
+      v /= sqrt(dot(v, P0, v))
       # evaluate gradients, and more stuff
       dE0 = dE(x)
       dEv = dE(x + len * v)
@@ -63,10 +63,15 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       Hv = (dEv - dE0) / len
 
       # NEWTON TYPE RESCALING IN v DIRECTION
-      #   (assume for now that P is a full matrix
       if rescale_v
-         P += ( abs(dot(Hv, v) / dot(v, P, v)) - 1.0 ) * (P*v) * (P*v)'
+         # OLD
+         # s = abs(dot(Hv, v))/dot(v,P0,v) - 1.0
+         # P = P0 + s * (P0*v) * (P0*v)'
+         # NEW
+         P = PreconSMW(P0, v, abs(dot(Hv, v)) - 1.0)
          v /= sqrt(dot(v, P, v))
+      else
+         P = P0
       end
 
       # translation and rotation residual, store history
@@ -84,11 +89,11 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
          return x, v, log
       end
       # translation step
-      p_trans = - P \ dE0 + 2.0 * dot(v, dE0) * v
+      p_trans = - (P \ dE0) + 2.0 * dot(v, dE0) * v
       x += a_trans * p_trans
       # rotation step
       if precon_rot
-         p_rot = - P \ Hv + dot(Hv, v) * v
+         p_rot = - (P \ Hv) + dot(Hv, v) * v
       else
          p_rot = q_rot
       end
