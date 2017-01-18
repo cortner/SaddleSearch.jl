@@ -345,7 +345,7 @@ function precond(V::Molecule2D, r)
    #
    # bond-angle terms: Φ = dot(Sab1, Sab2) then
    #      ~ k  ∑_{i,j} (∂_{Rabi}Φ ⋅ u_{abi}) (∂_{Rabj} ⋅ u_{abj})
-   #      ~ k  ( ∑_i [(I-Sabi ⊗ Sabi) Sabj] ⋅ u_{abi} )^2
+   #      ~ k  ( ∑_i [(I - Sabi ⊗ Sabi) Sabj] ⋅ u_{abi} )^2
 
    rab1, rab2, rbb, Sab1, Sab2, Sbb = bonds(V, r)
    P = zeros(3,3)

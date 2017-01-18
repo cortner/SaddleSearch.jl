@@ -12,7 +12,7 @@ using SaddleSearch.TestSets: hessprecond
 V = LJcluster()
 x0, v0 = ic_dimer(V, :near)
 E, dE = objective(V)
-dimer = SuperlinearDimer(maximum_translation=0.1, max_num_rot=1, maxnumdE=500, verbose=2)
+dimer = SuperlinearDimer(maximum_translation=0.1, max_num_rot=1, maxnumdE=500, verbose=verbose)
 x, v, res = run!(dimer, E, dE, x0, v0)
 @show res.numE[end], res.numdE[end]
 
