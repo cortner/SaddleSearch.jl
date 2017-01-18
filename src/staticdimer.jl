@@ -64,10 +64,6 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
 
       # NEWTON TYPE RESCALING IN v DIRECTION
       if rescale_v
-         # OLD
-         # s = abs(dot(Hv, v))/dot(v,P0,v) - 1.0
-         # P = P0 + s * (P0*v) * (P0*v)'
-         # NEW
          P = PreconSMW(P0, v, abs(dot(Hv, v)) - 1.0)
          v /= sqrt(dot(v, P, v))
       else

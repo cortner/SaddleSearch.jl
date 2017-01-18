@@ -62,7 +62,7 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    # read all the parameters
    @unpack a0_trans, a0_rot, tol_trans, tol_rot, maxnumdE, len,
             precon_prep!, verbose, precon_rot, rescale_v, ls = method
-   P=method.precon
+   P0=method.precon
    # initialise variables
    x, v = copy(x0), copy(v0)
    β, γ = -1.0, -1.0   # this tells the loop that they haven't been initialised
@@ -83,8 +83,8 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       @assert !any(isnan(x))
 
       # normalise v
-      P = precon_prep!(P, x)
-      v /= sqrt(dot(v, P, v))
+      P0 = precon_prep!(P0, x)
+      v /= sqrt(dot(v, P0, v))
       # evaluate gradients, and more stuff
       dEm = dE(x - len/2 * v)
       dEp = dE(x + len/2 * v)
@@ -93,10 +93,11 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       dE0 = 0.5 * (dEp + dEm)
 
       # NEWTON TYPE RESCALING IN v DIRECTION
-      #   (assume for now that P is a full matrix >> TODO 
       if rescale_v
-         P += ( abs(dot(Hv, v) / dot(v, P, v)) - 1.0 ) * (P*v) * (P*v)'
+         P = PreconSMW(P0, v, abs(dot(Hv, v)) - 1.0)
          v /= sqrt(dot(v, P, v))
+      else
+         P = P0
       end
 
       # translation and rotation residual, store history
@@ -125,7 +126,7 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       end
 
       # compute the two "search" directions
-      p_trans = - P \ dE0 + 2.0 * dot(v, dE0) * v
+      p_trans = - (P \ dE0) + 2.0 * dot(v, dE0) * v
       if precon_rot
          p_rot = - (P \ Hv - λ * v)
       else
