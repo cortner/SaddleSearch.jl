@@ -49,7 +49,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
          t ./= [sqrt(dot(t[i], P, t[i])) for i=1:length(x)]
          # evaluate gradients, and more stuff
          dE0 = [dE(x[i]) for i=1:length(x)]
-         t[1] =zeros(2); t[length(x)]=zeros(2);
+         t[1] =zeros(length(t[1])); t[length(x)]=zeros(length(t[1]));
          dE0perp = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
          numdE += 1
          # residual, store history
