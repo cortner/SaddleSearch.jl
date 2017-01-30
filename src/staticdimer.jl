@@ -46,7 +46,7 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
    x, v = copy(x0), copy(v0)
    nit = 0
    numdE, numE = 0, 0
-   log = IterationLog()
+   log = DimerLog()
    # and just start looping
    if verbose >= 2
       @printf(" nit |  |∇E|_∞    |∇R|_∞     λ   \n")

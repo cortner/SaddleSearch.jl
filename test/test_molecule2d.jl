@@ -27,33 +27,33 @@ using SaddleSearch.TestSets: hessprecond, precond, hessian
       dimer = StaticDimerMethod(a_trans=0.5/μ^2, a_rot=0.5/μ^2, len=1e-3,
                                  maxnit=3000, verbose=locverb, rescale_v = true)
       x, v, log = run!(dimer, E, dE, x0, v0)
-      @test log.res_trans[end] <= dimer.tol_trans
-      @test log.res_rot[end] <= dimer.tol_rot
-      println("      Dimer(I): $(length(log.res_trans)) iterations")
+      @test res_trans(log)[end] <= dimer.tol_trans
+      @test res_rot(log)[end] <= dimer.tol_rot
+      println("      Dimer(I): $(length(res_trans(log))) iterations")
 
       bbdimer = BBDimer(a0_trans=0.5/μ^2, a0_rot=0.5/μ^2, maxnumdE=1000, verbose=locverb,
                         ls = StaticLineSearch(), rescale_v = false)
       xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
-      @test bblog.res_trans[end] <= bbdimer.tol_trans
-      @test bblog.res_rot[end] <= bbdimer.tol_rot
+      @test res_trans(bblog)[end] <= bbdimer.tol_trans
+      @test res_rot(bblog)[end] <= bbdimer.tol_rot
       @test vecnorm(xbb - x, Inf) < 1e-4
-      println("   BB-Dimer(I): $(length(bblog.res_trans)) iterations")
+      println("   BB-Dimer(I): $(length(res_trans(bblog))) iterations")
 
       dimer = StaticDimerMethod( a_trans=0.9, a_rot=0.5, len=1e-3, maxnit=100,
             verbose=locverb, precon=P0, precon_rot=true,
             precon_prep! = (P,x) -> P, rescale_v = true )
       x, v, log = run!(dimer, E, dE, x0, v0)
-      @test log.res_trans[end] <= dimer.tol_trans
-      @test log.res_rot[end] <= dimer.tol_rot
-      println("      Dimer(P): $(length(log.res_trans)) iterations")
+      @test res_trans(log)[end] <= dimer.tol_trans
+      @test res_rot(log)[end] <= dimer.tol_rot
+      println("      Dimer(P): $(length(res_trans(log))) iterations")
 
       bbdimer = BBDimer( a0_trans=0.25, a0_rot=0.5, len=1e-3, maxnumdE=100,
             verbose=locverb, precon=P0, precon_rot=true,
             rescale_v = true, precon_prep! = (P,x) -> P,
             ls = StaticLineSearch() )
       x, v, log = run!(bbdimer, E, dE, x0, v0)
-      @test log.res_trans[end] <= bbdimer.tol_trans
-      @test log.res_rot[end] <= bbdimer.tol_rot
-      println("   BB-Dimer(P): $(length(log.res_trans)) iterations")
+      @test res_trans(log)[end] <= bbdimer.tol_trans
+      @test res_rot(log)[end] <= bbdimer.tol_rot
+      println("   BB-Dimer(P): $(length(res_trans(log))) iterations")
    end
 end
