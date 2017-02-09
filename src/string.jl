@@ -54,7 +54,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
          numdE += 1
          # residual, store history
          res = maximum([norm(dE0perp[i],Inf) for i = 1:length(x)])
-         push!(log, numE, numdE, res)
+         push!(log, numE, numdE, res, 0)
          if verbose >= 2
             @printf("%4d |   %1.2e\n", nit, res)
          end
