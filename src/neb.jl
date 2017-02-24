@@ -62,7 +62,7 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
          f_weight = 0.5*[(1 + index2[i])*Ediffmax[i] + (index2[i] - 1) * Ediffmin[i] for i=1:N-1]
          b_weight = 0.5*[(1 + index2[i])*Ediffmin[i] + (index2[i] - 1) *     Ediffmax[i] for i=1:N-1]
          dxds = [(1 - index1[i]) * f_weight[i] * (x[i+1]-x[i]) + (1 + index1[i]) * b_weight[i] * (x[i]-x[i-1]) for i=2:N-1]
-         dxds = ./= [norm(dxds[i]) for i=1:length(dxds)]
+         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
 
          # d²xds² = [(x[i+1]-x[i]) - (x[i]-x[i-1]) for i=2:N-1]
