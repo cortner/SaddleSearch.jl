@@ -67,7 +67,7 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    x, v = copy(x0), copy(v0)
    β, γ = -1.0, -1.0   # this tells the loop that they haven't been initialised
    numdE, numE = 0, 0
-   log = IterationLog()
+   log = DimerLog()
    p_trans_old = zeros(length(x0))
    p_rot_old = zeros(length(x0))
    # and just start looping

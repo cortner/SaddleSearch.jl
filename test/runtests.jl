@@ -1,5 +1,6 @@
 using SaddleSearch, SaddleSearch.TestSets
 using Base.Test
+using SaddleSearch: numE, numdE, res_trans, res_rot
 
 verbose=1
 
