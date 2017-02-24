@@ -41,6 +41,8 @@ end
 DimerLog() = IterationLog(:numE => Int, :numdE => Int,
                   :res_trans => Float64, :res_rot => Float64)
 
+PathLog() = IterationLog(:numE => Int, :numdE => Int, :maxres => Float64)
+
 Base.getindex(l::IterationLog, idx) = l.D[idx]
 
 numE(l::IterationLog) = l[:numE]
