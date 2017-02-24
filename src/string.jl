@@ -37,7 +37,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       x, t = copy(x0), copy(t0)
       nit = 0
       numdE, numE = 0, 0
-      log = IterationLog()
+      log = PathLog()
       # and just start looping
       if verbose >= 2
          @printf(" nit |  sup|∇E|_∞   \n")
@@ -53,12 +53,12 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
          dE0perp = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
          numdE += 1
          # residual, store history
-         res = maximum([norm(dE0perp[i],Inf) for i = 1:length(x)])
-         push!(log, numE, numdE, res, 0)
+         maxres = maximum([norm(dE0perp[i],Inf) for i = 1:length(x)])
+         push!(log, numE, numdE, maxres)
          if verbose >= 2
-            @printf("%4d |   %1.2e\n", nit, res)
+            @printf("%4d |   %1.2e\n", nit, maxres)
          end
-         if res <= tol_res
+         if maxres <= tol_res
             if verbose >= 1
                println("StringMethod terminates succesfully after $(nit) iterations")
             end

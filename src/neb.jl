@@ -1,5 +1,5 @@
 
-using Optim, Dierckx
+using Optim
 export NudgedElasticBandMethod
 
 """
@@ -40,7 +40,7 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
       x = copy(x0)
       nit = 0
       numdE, numE = 0, 0
-      log = IterationLog()
+      log = PathLog()
       # and just start looping
       if verbose >= 2
          @printf(" nit |  sup|∇E|_∞   \n")
@@ -53,23 +53,15 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
          E0 = [E(x[i]) for i=1:length(x)]
          numdE += 1
          numE += 1
-
-        #  ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
-        #  s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-        #  s /= s[end]; s[end] = 1.
-        #  S = spline(s, x)
-        #  dxds = [[derivative(S[i], si) for i in 1:length(S)] for si in s]
-        #  d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s]
          # evaluate the tangents
-         ΔE0 = [E0[i-1]-E0[i] for i=2:N];
+         ΔE0 = [E0[i-1]-E0[i] for i=2:N]
          index1 = [ΔE0[i]/abs(ΔE0[i]) - ΔE0[i+1]/abs(ΔE0[i+1]) for i=1:N-1]
-         index2 = [E0[i+1]-E0[i-1]/abs(E0[i+1]-E0[i-1]) for i=2:N];
-         Ediffmax = [maximum(abs(ΔE0[i+1]) - abs(ΔE0[i])) for i=1:N-1]
-         Ediffmin = [minimum(abs(ΔE0[i+1]) - abs(ΔE0[i])) for i=1:N-1]
-         l_wind = [0.5*((1 + index2[i])*Ediffmax[i] + (index2[i] - 1)*Ediffmin[i]) for i=1:N-1]
-         r_wind = [0.5*((1 + index2[i])*Ediffmin[i] + (index2[i] - 1)*Ediffmax[i]) for i=1:N-1]
-         dxds = [(1 - index1) * l_wind[i] * (x[i+1]-x[i]) +
-                  (1 + index1) * r_wind[i] * (x[i]-x[i-1]) for i=2:N-1]
+         index2 = [E0[i+1]-E0[i-1]/abs(E0[i+1]-E0[i-1]) for i=2:N]
+         Ediffmax = [maximum(abs(ΔE0[i+1]) , abs(ΔE0[i])) for i=1:N-1]
+         Ediffmin = [minimum(abs(ΔE0[i+1]) , abs(ΔE0[i])) for i=1:N-1]
+         f_weight = 0.5*[(1 + index2[i])*Ediffmax[i] + (index2[i] - 1) * Ediffmin[i] for i=1:N-1]
+         b_weight = 0.5*[(1 + index2[i])*Ediffmin[i] + (index2[i] - 1) *     Ediffmax[i] for i=1:N-1]
+         dxds = [(1 - index1[i]) * f_weight[i] * (x[i+1]-x[i]) + (1 + index1[i]) * b_weight[i] * (x[i]-x[i-1]) for i=2:N-1]
          dxds = ./= [norm(dxds[i]) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
 
@@ -77,17 +69,17 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
          # d²xds² = [[zeros(x[1])]; d²xds²; [zeros(x[1])]]
 
          # evaluate the spring force
-         Fk = k * [(abs(x[i+1]-x[i]) - abs(x[i]-x[i-1])) * dxds[i] for i=2:N-1]
+         Fk = k*N*N*[(abs(x[i+1]-x[i]) - abs(x[i]-x[i-1])) * dxds[i] for i=2:N-1]
          Fk = [[zeros(dxds[1])]; Fk; [zeros(dxds[1])] ]
          dE0⟂ = [dE0[i] - dot(dE0[i],dxds[i])*dxds[i] for i = 1:length(x)]
 
          # residual, store history
-         res = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
-         push!(log, numE, numdE, res, 0)
+         maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
+         push!(log, numE, numdE, maxres)
          if verbose >= 2
-            @printf("%4d |   %1.2e\n", nit, res)
+            @printf("%4d |   %1.2e\n", nit, maxres)
          end
-         if res <= tol_res
+         if maxres <= tol_res
             if verbose >= 1
                println("NudgedElasticBandMethod terminates succesfully after $(nit) iterations")
             end
