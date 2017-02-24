@@ -31,7 +31,7 @@ adjacent nodes. The tangents were evaluated with the upwind scheme.
 end
 
 
-function run!{T}(method::StringMethod, E, dE, x0::Vector{T})
+function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
       # read all the parameters
       @unpack alpha, k, tol_res, maxnit,
                precon_prep!, verbose, precon_cond = method
