@@ -44,6 +44,8 @@ include("superlineardimer.jl")
 
 include("string.jl")
 
+include("neb.jl")
+
 include("testsets.jl")
 
 end # module
