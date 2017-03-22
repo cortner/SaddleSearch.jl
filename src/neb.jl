@@ -52,9 +52,7 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
          # evaluate gradients, and more stuff
          N = length(x)
          dE0 = [dE(x[i]) for i=1:N]
-         E0 = [E(x[i]) for i=1:N]
          numdE += 1
-         numE += 1
          # evaluate the tangent and spring force along the path
          dxds=[]; Fk=[]
          if method.scheme == :simple
@@ -62,9 +60,16 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
             dxds = [(x[i+1]-x[i]) for i=2:N-1]
             dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
             dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-            Fk = k*N*N*[dot(x[i+1]-2*x[i] +x[i-1],dxds[i]) * dxds[i] for i=2:N-1]
+            Fk = k*N*N*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
+         elseif method.scheme == :central
+            # forward and central finite differences
+            dxds = [(x[i+1]-x[i-1])/2 for i=2:N-1]
+            dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
+            dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
+            Fk = k*N*N*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
          elseif method.scheme == :upwind
-         # upwind scheme
+            # upwind scheme
+            E0 = [E(x[i]) for i=1:N]; numE += 1
             ΔE0 = [E0[i-1]-E0[i] for i=2:N]
             index1 = [ΔE0[i]/abs(ΔE0[i]) - ΔE0[i+1]/abs(ΔE0[i+1]) for i=1:N-2]
             index2 = [E0[i+1]-E0[i-1]/abs(E0[i+1]-E0[i-1]) for i=2:N-1]
