@@ -46,14 +46,15 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    for nit = 0:maxnit
       # normalise t
       P = precon_prep!(P, x)
-      t ./= [sqrt(dot(t[i], P, t[i])) for i=1:length(x)]
+      Np = length(P)
+      t ./= [sqrt(dot(t[i], P[mod(i-Np+1,Np)+1], t[i])) for i=1:length(x)]
       # evaluate gradients, and more stuff
       dE0 = [dE(x[i]) for i=1:length(x)]
       t[1] =zeros(length(t[1])); t[length(x)]=zeros(length(t[1]))
-      dE0perp = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
+      dE0perp = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
       numdE += 1
       # residual, store history
-      maxres = maximum([norm(dE0perp[i],Inf) for i = 1:length(x)])
+      maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0perp[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, maxres)
       if verbose >= 2
          @printf("%4d |   %1.2e\n", nit, maxres)
@@ -66,7 +67,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       end
       x -= alpha * dE0perp
       # reparametrise
-      ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
+      ds = [sqrt(dot(x[i+1]-x[i], P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
       s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
       s /= s[end]; s[end] = 1.
       S = spline(s, x)
