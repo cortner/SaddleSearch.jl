@@ -46,6 +46,10 @@ include("string.jl")
 
 include("neb.jl")
 
+include("varstepstring.jl")
+
+include("preconstring.jl")
+
 include("testsets.jl")
 
 end # module

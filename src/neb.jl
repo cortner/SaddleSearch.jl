@@ -49,7 +49,7 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
    end
    for nit = 0:maxnit
       P = precon_prep!(P, x)
-      # evaluate gradients, and more stuff
+      # evaluate gradients
       N = length(x)
       dE0 = [dE(x[i]) for i=1:N]
       numdE += 1
@@ -86,7 +86,8 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
          ds = [sqrt(dot(x[i+1]-x[i], x[i+1]-x[i])) for i=1:length(x)-1]
          s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
          s /= s[end]; s[end] = 1.
-         S = spline(s, x)
+         S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
+               k = 3, bc = "error") for i=1:length(x[1])]
          dxds = [[derivative(S[i], si) for i in 1:length(S)] for si in s ]
          dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
          dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
@@ -118,7 +119,3 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
    end
    return x, log
 end
-
-spline_i(x, y, i) =  Spline1D( x, [y[j][i] for j=1:length(y)],
-                                    w = ones(length(x)), k = 3, bc = "error" )
-spline(x,y) = [spline_i(x,y,i) for i=1:length(y[1])]

@@ -47,9 +47,9 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       # normalise t
       P = precon_prep!(P, x)
       t ./= [sqrt(dot(t[i], P, t[i])) for i=1:length(x)]
-      # evaluate gradients, and more stuff
+      t[1] =zeros(t[1]); t[end]=zeros(t[1])
+      # evaluate gradients
       dE0 = [dE(x[i]) for i=1:length(x)]
-      t[1] =zeros(length(t[1])); t[length(x)]=zeros(length(t[1]))
       dE0perp = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
       numdE += 1
       # residual, store history
@@ -69,7 +69,8 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
       s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
       s /= s[end]; s[end] = 1.
-      S = spline(s, x)
+      S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
+            k = 3, bc = "error") for i=1:length(x[1])]
       x = [[S[i](s) for i in 1:length(S)] for s in linspace(0., 1.,
                                                                length(x)) ]
       t = [[derivative(S[i], s) for i in 1:length(S)] for s in
@@ -80,7 +81,3 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    end
    return x, log
 end
-
-spline_i(x, y, i) =  Spline1D( x, [y[j][i] for j=1:length(y)],
-                                    w = ones(length(x)), k = 3, bc = "error" )
-spline(x,y) = [spline_i(x,y,i) for i=1:length(y[1])]
