@@ -52,7 +52,7 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
       # evaluate gradients
       N = length(x)
       dE0 = [dE(x[i]) for i=1:N]
-      numdE += 1
+      numdE += length(x)
       # evaluate the tangent and spring force along the path
       dxds=[]; Fk=[]
       if scheme == :simple
@@ -69,7 +69,7 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
          Fk = k*N*N*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :upwind
          # upwind scheme
-         E0 = [E(x[i]) for i=1:N]; numE += 1
+         E0 = [E(x[i]) for i=1:N]; numE += length(x)
          ΔE0 = [E0[i-1]-E0[i] for i=2:N]
          index1 = [ΔE0[i]/abs(ΔE0[i]) - ΔE0[i+1]/abs(ΔE0[i+1]) for i=1:N-2]
          index2 = [E0[i+1]-E0[i-1]/abs(E0[i+1]-E0[i-1]) for i=2:N-1]

@@ -36,7 +36,7 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
    P=method.precon
    # initialise variables
    x, t = copy(x0), copy(t0)
-   param = collect(linspace(.0, 1., length(x[1])))
+   param = collect(linspace(.0, 1., length(x)))
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
@@ -60,12 +60,13 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
       # perform linesearch to find optimal step
       steps = []
       ls = Backtracking(c1 = .2, mindecfact = 1.)
-      push!(steps, linesearch!(ls, E, E0[i], dot(dE0[i],-dE0perp[i]), x[i], -dE0perp[i], copy(alpha)))
+      for i=1:length(x)
+         push!(steps, linesearch!(ls, E, E0[i], dot(dE0[i],-dE0perp[i]), x[i], -dE0perp[i], copy(alpha)))
+      end
       α = [steps[i][1] for i=1:length(steps)]
+
       for k=1:5
-         α1 = copy(α)
-         α1[1] = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
-         α = α1
+         α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
       end
       numE += sum([steps[i][2] for i=1:length(steps)])
 
@@ -77,29 +78,29 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
       end
       if maxres <= tol_res
          if verbose >= 1
-            println("StringMethod terminates succesfully after $(nit) iterations")
+            println("VarStepStringMethod terminates succesfully after $(nit) iterations")
          end
          return x, log
       end
       x -= α .* dE0perp
 
       # reparametrise
-      x, t = reparametrise!(x, t, P, param)
+      x, t = reparametrise!(method, x, t, P, param)
 
       # string refinement
       if refine_points > 0
-         refine!(param, x, t, P, refine_points)
-         x, t = reparametrise!(x, t, P, param)
+         refine!(param, x, t, refine_points)
+         x, t = reparametrise!(method, x, t, P, param)
       end
 
    end
    if verbose >= 1
-      println("StringMethod terminated unsuccesfully after $(maxnit) iterations.")
+      println("VarStepStringMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
    return x, param, log
 end
 
-function reparametrise!(x, t, P, param)
+function reparametrise!(method::VarStepStringMethod, x, t, P, param)
    ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param_temp /= param_temp[end]; param_temp[end] = 1.
@@ -116,14 +117,12 @@ function refine!(param, x, t, refine_points)
       cosine = dot(t[n-1], t[n+1]) /(norm(t[n-1]) * norm(t[n+1]))
       if ( cosine < 0 )
          n1 = n-1; n2 = n+1; k = refine_points
-         k1 = floor(s[n1] * k); k2 = floor((s[end] - s[n2-1]) * k)
+         k1 = floor(param[n1] * k); k2 = floor((param[end] - param[n2-1]) * k)
          k = k1 + k2
-         s1 = (n1 - k1 == 1) ? [.0] : collect(linspace(.0, 1., n1 - k1 )) * s[n1]
-         s2 = collect(t[n1] + linspace(.0, 1., k + 3 ) * (s[n2] - s[n1]))
-         s3 = (N - n2 - k2 + 1 == 1) ? [1.] : collect(s[n2] + linspace(.0, 1., N - n2 - k2 + 1 ) * (1 - s[n2]))
+         s1 = (n1 - k1 == 1) ? [.0] : collect(linspace(.0, 1., n1 - k1 )) * param[n1]
+         s2 = collect(param[n1] + linspace(.0, 1., k + 3 ) * (param[n2] - param[n1]))
+         s3 = (N - n2 - k2 + 1 == 1) ? [1.] : collect(param[n2] + linspace(.0, 1., N - n2 - k2 + 1 ) * (1 - param[n2]))
          param = [s1;  s2[2:end-1]; s3]
-      else
-         param = collect(linspace(.0, 1., N))
       end
    end
    return param, x, t

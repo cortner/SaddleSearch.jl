@@ -51,7 +51,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:length(x)]
       dE0perp = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
-      numdE += 1
+      numdE += length(x)
       # residual, store history
       maxres = maximum([norm(dE0perp[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, maxres)
