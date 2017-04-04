@@ -3,7 +3,7 @@ using Dierckx
 export VarStepStringMethod
 
 """
-`StringMethod`: the most basic string method variant, minimising the energy
+`VarStepStringMethod`: the most basic string method variant, minimising the energy
 normally to the string by successive steepest descent minimisations at fixed
 step-size with an intermediate redistribution of the nodes.
 
@@ -18,7 +18,6 @@ step-size with an intermediate redistribution of the nodes.
 """
 @with_kw type VarStepStringMethod
    alpha::Float64
-   ls::Backtracking(c1 = .2, mindecfact = 1.)
    refine_points::Int = 3
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
@@ -32,7 +31,7 @@ end
 
 function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
-   @unpack alpha, ls, refine_points, tol_res, maxnit,
+   @unpack alpha, refine_points, tol_res, maxnit,
             precon_prep!, verbose, precon_cond = method
    P=method.precon
    # initialise variables
@@ -60,7 +59,8 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
 
       # perform linesearch to find optimal step
       steps = []
-      push!(steps, linesearch!(ls, E, E0[i], dot(dE0[i],-dE0perp[i]), x[i], -dE0perp[i], copy(alpha))
+      ls = Backtracking(c1 = .2, mindecfact = 1.)
+      push!(steps, linesearch!(ls, E, E0[i], dot(dE0[i],-dE0perp[i]), x[i], -dE0perp[i], copy(alpha)))
       α = [steps[i][1] for i=1:length(steps)]
       for k=1:5
          α1 = copy(α)
@@ -84,7 +84,7 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
       x -= α .* dE0perp
 
       # reparametrise
-      param, x, t = reparametrise!(x, t, P, param)
+      x, t = reparametrise!(x, t, P, param)
 
       # string refinement
       if refine_points > 0
@@ -96,16 +96,16 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
    if verbose >= 1
       println("StringMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
-   return x, log
+   return x, param, log
 end
 
 function reparametrise!(x, t, P, param)
    ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param_temp /= param_temp[end]; param_temp[end] = 1.
-   S = [Spline1D(param_temp, [x[j][i] for j=1:length(param_temp)],
+   S = [Spline1D(param_temp, [x[j][i] for j=1:length(x)],
          w =  ones(length(x)), k = 3, bc = "error") for i=1:length(x[1])]
-   x = [[S[i](s) for i in 1:length(S)] for s in param ]
+   x = [[S[i](s) for i in 1:length(S)] for s in param]
    t = [[derivative(S[i], s) for i in 1:length(S)] for s in param]
    return x, t
 end
