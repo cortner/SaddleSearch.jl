@@ -50,10 +50,10 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       t[1] =zeros(t[1]); t[end]=zeros(t[1])
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:length(x)]
-      dE0perp = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
+      dE0⟂ = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
       numdE += length(x)
       # residual, store history
-      maxres = maximum([norm(dE0perp[i],Inf) for i = 1:length(x)])
+      maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, maxres)
       if verbose >= 2
          @printf("%4d |   %1.2e\n", nit, maxres)
@@ -64,7 +64,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
          end
          return x, log
       end
-      x -= alpha * dE0perp
+      x -= alpha * dE0⟂
       # reparametrise
       ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
       s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]

@@ -80,20 +80,11 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    return x, log
 end
 
-function forces{T}(x::Vector{T}, xdof::Vector{Float64}, dE, P)
+function forces{T}(x::Vector{T}, t::Vector{T}, xdof::Vector{Float64}, dE, P)
    x = set_dofs!(x, xdof)
 
    dE0 = [dE(x[i]) for i=1:length(x)]
    dE0perp = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
-
-   ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
-   param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-   param /= param[end]; param[end] = 1.
-   S = [Spline1D(param, [x[j][i] for j=1:length(param)], w = ones(length(x)),
-         k = 3, bc = "error") for i=1:length(x[1])]
-   t = [[derivative(S[i], param) for i in 1:length(S)] for s in param ]
-   t ./= [sqrt(dot(t[i], P, t[i])) for i=1:length(x)]
-   t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
    return dofs(- dE0perp)
 

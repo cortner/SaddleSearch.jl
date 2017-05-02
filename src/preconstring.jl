@@ -55,14 +55,14 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       # evaluate gradients
       E0  = [E(x[i]) for i=1:length(x)]
       dE0 = [dE(x[i]) for i=1:length(x)]
-      dE0perp = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
+      dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
       numE += length(x); numdE += length(x)
 
       # perform linesearch to find optimal step
       steps = []
       ls = Backtracking(c1 = .2, mindecfact = 1.)
       for i=1:length(x)
-         push!(steps, linesearch!(ls, E, E0[i], dot(dE0[i],-dE0perp[i]), x[i], -dE0perp[i], copy(alpha)))
+         push!(steps, linesearch!(ls, E, E0[i], dot(dE0[i],-dE0⟂[i]), x[i], -dE0⟂[i], copy(alpha)))
       end
       α = [steps[i][1] for i=1:length(steps)]
       for k=1:5
@@ -71,7 +71,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       numE += sum([steps[i][2] for i=1:length(steps)])
 
       # residual, store history
-      maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0perp[i],Inf) for i = 1:length(x)])
+      maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, maxres)
       if verbose >= 2
          @printf("%4d |   %1.2e\n", nit, maxres)
@@ -82,7 +82,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
          end
          return x, log
       end
-      x -= α .* dE0perp
+      x -= α .* dE0⟂
 
       # reparametrise
       x, t = reparametrise!(method, x, t, P, param)

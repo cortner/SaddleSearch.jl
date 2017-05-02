@@ -1,12 +1,9 @@
 
 using Optim, Dierckx
-export NudgedElasticBandMethod
+export PreconNudgedElasticBandMethod
 
 """
-`NudgedElasticBandMethod`: the basic neb method variant, minimising the
-energy normally to the string by successive steepest descent minimisations at
-fixed step-sizes and constraining nodes by a tangential force applied to
-adjacent nodes.
+`PreconNudgedElasticBandMethod`: a preconditioned neb variant
 
 ### Parameters:
 * `alpha` : step length
@@ -18,7 +15,7 @@ adjacent nodes.
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
-@with_kw type NudgedElasticBandMethod
+@with_kw type PreconNudgedElasticBandMethod
    alpha::Float64
    k::Float64
    scheme::Symbol
@@ -32,7 +29,7 @@ adjacent nodes.
 end
 
 
-function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
+function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack alpha, k, scheme, tol_res, maxnit,
             precon_prep!, verbose, precon_cond = method
@@ -49,6 +46,7 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
    end
    for nit = 0:maxnit
       P = precon_prep!(P, x)
+      Np = length(P)
       # evaluate gradients
       N = length(x)
       dE0 = [dE(x[i]) for i=1:N]
@@ -58,15 +56,15 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
       if scheme == :simple
          # forward and central finite differences
          dxds = [(x[i+1]-x[i]) for i=2:N-1]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
+         dxds ./= [sqrt(dot(dxds[i], P[mod(i-Np+1,Np)+1], dxds[i])) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
+         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P[mod(i-Np+1,Np)+1], dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :central
          # central finite differences
          dxds = [(x[i+1]-x[i-1])/2 for i=2:N-1]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
+         dxds ./= [sqrt(dot(dxds[i], P[mod(i-Np+1,Np)+1], dxds[i])) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
+         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P[mod(i-Np+1,Np)+1], dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :upwind
          # upwind scheme
          E0 = [E(x[i]) for i=1:N]; numE += length(x)
@@ -78,12 +76,12 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
          f_weight = 0.5*[(1 + index2[i])*Ediffmax[i] + (index2[i] - 1) * Ediffmin[i] for i=1:N-2]
          b_weight = 0.5*[(1 + index2[i])*Ediffmin[i] + (index2[i] - 1) *     Ediffmax[i] for i=1:N-2]
          dxds = [(1 - index1[i-1]) .* f_weight[i-1] .* (x[i+1]-x[i]) + (1 + index1[i-1]) .* b_weight[i-1] .* (x[i]-x[i-1]) for i=2:N-1]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
+         dxds ./= [sqrt(dot(dxds[i], P[mod(i-Np+1,Np)+1], dxds[i])) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
          Fk = k*[(norm(x[i+1]-x[i]) - norm(x[i]-x[i-1])) * dxds[i] for i=2:N-1]
       elseif scheme == :splines
          # spline scheme
-         ds = [sqrt(dot(x[i+1]-x[i], x[i+1]-x[i])) for i=1:length(x)-1]
+         ds = [sqrt(dot(x[i+1]-x[i], (P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
          s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
          s /= s[end]; s[end] = 1.
          S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
@@ -92,13 +90,13 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
          dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
          dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
          d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s ]
-         Fk = k*(1/(N*N))*[dot(d²xds²[i],dxds[i]) * dxds[i] for i=2:N-1]
+         Fk = k*(1/(Ν*Ν))*[dot(d²xds²[i], P[mod(i-Np+1,Np)+1], dxds[i]) * dxds[i] for i=2:N-1]
       else
          error("unknown differentiation scheme")
       end
 
       Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
-      dE0⟂ = [dE0[i] - dot(dE0[i],dxds[i])*dxds[i] for i = 1:length(x)]
+      dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
 
       # residual, store history
       maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
@@ -115,7 +113,7 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
       x -= alpha * ( dE0⟂ - Fk )
    end
    if verbose >= 1
-      println("NudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")
+      println("PreconNudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
    return x, log
 end
