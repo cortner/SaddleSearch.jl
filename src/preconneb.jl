@@ -78,7 +78,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          dxds = [(1 - index1[i-1]) .* f_weight[i-1] .* (x[i+1]-x[i]) + (1 + index1[i-1]) .* b_weight[i-1] .* (x[i]-x[i-1]) for i=2:N-1]
          dxds ./= [sqrt(dot(dxds[i], P[mod(i-Np+1,Np)+1], dxds[i])) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[(norm(x[i+1]-x[i]) - norm(x[i]-x[i-1])) * dxds[i] for i=2:N-1]
+         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P[mod(i-Np+1,Np)+1], dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :splines
          # spline scheme
          ds = [sqrt(dot(x[i+1]-x[i], (P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
@@ -90,7 +90,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
          dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
          d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s ]
-         Fk = k*(1/(Ν*Ν))*[dot(d²xds²[i], P[mod(i-Np+1,Np)+1], dxds[i]) * dxds[i] for i=2:N-1]
+         Fk = k*(1/(N*N))*[dot(d²xds²[i], P[mod(i-Np+1,Np)+1], dxds[i]) * dxds[i] for i=2:N-1]
       else
          error("unknown differentiation scheme")
       end

@@ -62,7 +62,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       steps = []
       ls = Backtracking(c1 = .2, mindecfact = 1.)
       for i=1:length(x)
-         push!(steps, linesearch!(ls, E, E0[i], dot(dE0[i],-dE0⟂[i]), x[i], -dE0⟂[i], copy(alpha)))
+         push!(steps, linesearch!(ls, E, E0[i][], dot(dE0[i],-dE0⟂[i]), x[i], -dE0⟂[i], copy(alpha)))
       end
       α = [steps[i][1] for i=1:length(steps)]
       for k=1:5
@@ -101,6 +101,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
 end
 
 function reparametrise!(method::PreconStringMethod, x, t, P, param)
+   Np = length(P)
    ds = [sqrt(dot(x[i+1]-x[i], (P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param_temp /= param_temp[end]; param_temp[end] = 1.
