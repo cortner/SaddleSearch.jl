@@ -106,7 +106,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
       end
       if maxres <= tol_res
          if verbose >= 1
-            println("NudgedElasticBandMethod terminates succesfully after $(nit) iterations")
+            println("PreconNudgedElasticBandMethod terminates succesfully after $(nit) iterations")
          end
          return x, log
       end
