@@ -99,7 +99,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
       dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
 
       # residual, store history
-      maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
+      maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, maxres)
       if verbose >= 2
          @printf("%4d |   %1.2e\n", nit, maxres)

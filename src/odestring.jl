@@ -20,6 +20,8 @@ step-size with an intermediate redistribution of the nodes.
    alpha::Float64
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
+   abstol::Float64 = 1e-2
+   restol::Float64 = 1e-3
    maxnit::Int = 1000
    precon = I
    precon_prep! = (P, x) -> P
@@ -30,7 +32,7 @@ end
 
 function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
-   @unpack alpha, tol_res, maxnit,
+   @unpack alpha, tol_res, abstol, restol, maxnit,
             precon_prep!, verbose, precon_cond = method
    P=method.precon
    # initialise variables
@@ -44,28 +46,31 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = bs23((α_,x_) -> forces(x_, x, dE, P), dofs(x), log, method; g = x_ -> reparametrise(x_, x, P), atol = 1e-4, rtol = 1e-5, tol_res = 1e-2, maxnit=maxnit )
+   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), dofs(x), log, method; g = x_ -> reparametrise(x, x_, P), atol = abstol, rtol = restol, tol_res = tol_res, maxnit=maxnit )
 
-   return x, log
+   return x, log, αout
 end
 
-function forces{T}(x::Vector{T}, xdof::Vector{Float64}, dE, P)
+function forces{T}(x::Vector{T}, xdof::Vector{Float64}, dE, P, precon_prep!)
    x = set_dofs!(x, xdof)
    P = precon_prep!(P, x)
+   Np = length(P)
 
-   ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
+   ds = [sqrt(dot(x[i+1]-x[i], P[mod(i-Np+1,Np)+1], x[i+1]-x[i])) for i=1:length(x)-1]
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
-   S = [Spline1D(param, [x[j][i] for j=1:length(s)], w = ones(length(x)),
+   S = [Spline1D(param, [x[j][i] for j=1:length(x)], w = ones(length(x)),
          k = 3, bc = "error") for i=1:length(x[1])]
    t= [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-   t ./= [sqrt(dot(t[i], P, t[i])) for i=1:length(x)]
+   t ./= [sqrt(dot(t[i], P[mod(i-Np+1,Np)+1], t[i])) for i=1:length(x)]
    t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
    dE0 = [dE(x[i]) for i=1:length(x)]
-   dE0perp = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
+   dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
 
-   return dofs(- dE0perp)
+   maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
+
+   return dofs(- dE0⟂), maxres
 
 end
 
@@ -78,7 +83,7 @@ function dofs{T}(x::Vector{T})
 end
 
 function set_dofs!{T}(x::Vector{T}, xdof::Vector{Float64})
-   Nimg = length(x); Ndof = length(x) ÷ Nimg
+   Nimg = length(x); Ndof = length(xdof) ÷ Nimg
    X = reshape(xdof, Ndof, Nimg)
    x = [ X[:, n] for n = 1:Nimg ]
    return x
@@ -86,7 +91,8 @@ end
 
 function reparametrise{T}(x::Vector{T}, xdof::Vector{Float64}, P)
    x = set_dofs!(x, xdof)
-   ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
+   Np = length(P)
+   ds = [sqrt(dot(x[i+1]-x[i], (P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
    s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    s /= s[end]; s[end] = 1.
    S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
