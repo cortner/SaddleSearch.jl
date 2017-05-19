@@ -46,7 +46,7 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), dofs(x), log, method; g = x_ -> reparametrise(x, x_, P), atol = abstol, rtol = restol, tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), dofs(x), log, method; g = x_ -> reparametrise(x, x_, P, precon_prep!), atol = abstol, rtol = restol, tol_res = tol_res, maxnit=maxnit )
 
    return x, log, αout
 end
@@ -89,9 +89,11 @@ function set_dofs!{T}(x::Vector{T}, xdof::Vector{Float64})
    return x
 end
 
-function reparametrise{T}(x::Vector{T}, xdof::Vector{Float64}, P)
+function reparametrise{T}(x::Vector{T}, xdof::Vector{Float64}, P, precon_prep!)
    x = set_dofs!(x, xdof)
+   P = precon_prep!(P, x)
    Np = length(P)
+
    ds = [sqrt(dot(x[i+1]-x[i], (P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
    s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    s /= s[end]; s[end] = 1.
