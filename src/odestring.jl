@@ -3,12 +3,12 @@ using Dierckx
 export ODEStringMethod
 
 """
-`ODEStringMethod`: the most basic string method variant, minimising the energy
-normally to the string by successive steepest descent minimisations at fixed
-step-size with an intermediate redistribution of the nodes.
+`ODEStringMethod`: string variant utilising adaptive time step ode solvers.
 
 ### Parameters:
 * `alpha` : step length
+* 'abstol' : absolute errors tolerance
+* 'reltol' : relative errors tolerance
 * `tol_res` : residual tolerance
 * `maxnit` : maximum number of iterations
 * `precon` : preconditioner
@@ -18,10 +18,10 @@ step-size with an intermediate redistribution of the nodes.
 """
 @with_kw type ODEStringMethod
    alpha::Float64
+   abstol::Float64 = 1e-2
+   reltol::Float64 = 1e-3
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
-   abstol::Float64 = 1e-2
-   restol::Float64 = 1e-3
    maxnit::Int = 1000
    precon = I
    precon_prep! = (P, x) -> P
@@ -32,7 +32,7 @@ end
 
 function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
-   @unpack alpha, tol_res, abstol, restol, maxnit,
+   @unpack alpha, abstol, reltol, tol_res, maxnit,
             precon_prep!, verbose, precon_cond = method
    P=method.precon
    # initialise variables
@@ -46,13 +46,13 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), dofs(x), log, method; g = x_ -> reparametrise(x, x_, P, precon_prep!), atol = abstol, rtol = restol, tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), ref(x), log, method; g = x_ -> reparametrise(x, x_, P, precon_prep!), atol = abstol, rtol = reltol, tol_res = tol_res, maxnit=maxnit )
 
    return x, log, αout
 end
 
-function forces{T}(x::Vector{T}, xdof::Vector{Float64}, dE, P, precon_prep!)
-   x = set_dofs!(x, xdof)
+function forces{T}(x::Vector{T}, xref::Vector{Float64}, dE, P, precon_prep!)
+   x = set_ref!(x, xref)
    P = precon_prep!(P, x)
    Np = length(P)
 
@@ -70,11 +70,11 @@ function forces{T}(x::Vector{T}, xdof::Vector{Float64}, dE, P, precon_prep!)
 
    maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
 
-   return dofs(- dE0⟂), maxres
+   return ref(- dE0⟂), maxres
 
 end
 
-function dofs{T}(x::Vector{T})
+function ref{T}(x::Vector{T})
    Nimg = length(x)
    Ndim = length(x[1])
    X = zeros(Ndim, Nimg)
@@ -82,15 +82,15 @@ function dofs{T}(x::Vector{T})
    return X[:]
 end
 
-function set_dofs!{T}(x::Vector{T}, xdof::Vector{Float64})
-   Nimg = length(x); Ndof = length(xdof) ÷ Nimg
-   X = reshape(xdof, Ndof, Nimg)
+function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})
+   Nimg = length(x); Nref = length(xref) ÷ Nimg
+   X = reshape(xref, Nref, Nimg)
    x = [ X[:, n] for n = 1:Nimg ]
    return x
 end
 
-function reparametrise{T}(x::Vector{T}, xdof::Vector{Float64}, P, precon_prep!)
-   x = set_dofs!(x, xdof)
+function reparametrise{T}(x::Vector{T}, xref::Vector{Float64}, P, precon_prep!)
+   x = set_ref!(x, xref)
    P = precon_prep!(P, x)
    Np = length(P)
 
@@ -101,5 +101,5 @@ function reparametrise{T}(x::Vector{T}, xdof::Vector{Float64}, P, precon_prep!)
         k = 3, bc = "error") for i=1:length(x[1])]
    x = [ [S[i](s) for i in 1:length(S)] for s in linspace(0., 1., length(x)) ]
 
-   return dofs(x)
+   return ref(x)
 end
