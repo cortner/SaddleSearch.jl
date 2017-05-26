@@ -66,12 +66,11 @@ function forces{T}(x::Vector{T}, xref::Vector{Float64}, dE, P, precon_prep!)
    t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
    dE0 = [dE(x[i]) for i=1:length(x)]
-   PdE0 = [P[mod(i-Np+1,Np)+1] \ dE0[i] for i = 1:length(x)]
    dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
 
    maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
 
-   return ref(- PdE0), maxres
+   return ref(- dE0⟂), maxres
 
 end
 
