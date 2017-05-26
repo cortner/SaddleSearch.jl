@@ -7,11 +7,11 @@ verbose=1
 runtest(t) = include("test_$(t).jl")
 
 tests = [
-   "staticvsbb",
-   "lsdimer",
-   "superlinear",
+   # "staticvsbb",
+   # "lsdimer",
+   # "superlinear",
    "vacancy",
-   "molecule2d",
+   # "molecule2d",
 ]
 
 println("Starting `SaddleSearch` tests")
