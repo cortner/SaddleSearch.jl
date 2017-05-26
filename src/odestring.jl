@@ -17,8 +17,7 @@ export ODEStringMethod
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type ODEStringMethod
-   alpha::Float64
-   abstol::Float64 = 1e-2
+   abstol::Float64 = 1e-6
    reltol::Float64 = 1e-3
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
@@ -32,7 +31,7 @@ end
 
 function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
-   @unpack alpha, abstol, reltol, tol_res, maxnit,
+   @unpack abstol, reltol, tol_res, maxnit,
             precon_prep!, verbose, precon_cond = method
    P=method.precon
    # initialise variables
@@ -46,8 +45,9 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), ref(x), log, method; g = x_ -> reparametrise(x, x_, P, precon_prep!), atol = abstol, rtol = reltol, tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), ref(x), length(x), log, method; g = x_ -> reparametrise(x, x_, P, precon_prep!), atol = abstol, rtol = reltol, tol_res = tol_res, maxnit=maxnit )
 
+   x = set_ref!(x, xout[end])
    return x, log, αout
 end
 
@@ -66,11 +66,12 @@ function forces{T}(x::Vector{T}, xref::Vector{Float64}, dE, P, precon_prep!)
    t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
    dE0 = [dE(x[i]) for i=1:length(x)]
+   PdE0 = [P[mod(i-Np+1,Np)+1] \ dE0[i] for i = 1:length(x)]
    dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
 
    maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
 
-   return ref(- dE0⟂), maxres
+   return ref(- PdE0), maxres
 
 end
 

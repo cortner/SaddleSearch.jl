@@ -1,4 +1,4 @@
-function bs23(f, x0::Vector{Float64}, log::IterationLog, method; g=x->x, atol=1e-6, rtol=1e-3, tol_res=1e-4, maxnit=100 )
+function bs23(f, x0::Vector{Float64}, N::Int, log::IterationLog, method; g=x->x, atol=1e-6, rtol=1e-3, tol_res=1e-4, maxnit=100 )
    @unpack verbose = method
 
    t0 = 0
@@ -17,7 +17,7 @@ function bs23(f, x0::Vector{Float64}, log::IterationLog, method; g=x->x, atol=1e
    s1, _ = f(t, x)
    r = norm(s1./max(abs(x),threshold),Inf) + realmin(Float64)
    h = 0.8*rtol^(1/3)/r
-   numdE += length(x)
+   numdE += N
 
    for nit = 0:maxnit
       hmin = 16*eps(Float64)*abs(t)
@@ -29,7 +29,7 @@ function bs23(f, x0::Vector{Float64}, log::IterationLog, method; g=x->x, atol=1e
       tnew = t + h
       xnew = x + h * (2*s1 + 3*s2 + 4*s3)./9
       s4, _ = f(tnew, xnew)
-      numdE += length(x)*3
+      numdE += N*3
 
       # error estimation
       e = h*(-5*s1 + 6*s2 + 8*s3 - 9*s4)./72
@@ -42,7 +42,7 @@ function bs23(f, x0::Vector{Float64}, log::IterationLog, method; g=x->x, atol=1e
          push!(tout, t)
          push!(xout, x)
          s1, maxres = f(t,x) # Reuse final function value to start new step.
-         numdE += length(x)
+         numdE += N
 
          push!(log, numE, numdE, maxres)
 
