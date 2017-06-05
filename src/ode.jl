@@ -1,8 +1,13 @@
+@with_kw type bs23
+   atol::Float64 = 1e-6
+   rtol::Float64 = 1e-3
+   adapt_rtol::Bool = false
+end
 
-
-function bs23(f, x0::Vector{Float64}, N::Int, log::IterationLog, method;
-                g=x->x, atol=1e-6, rtol=1e-3, tol_res=1e-4, maxnit=100,
-                adapt_rtol = false )
+function odesolve(solver::bs23, f, x0::Vector{Float64}, N::Int,
+                  log::IterationLog, method;
+                  g=x->x, tol_res=1e-4, maxnit=100 )
+   @unpack atol, rtol, adapt_rtol = solver
    @unpack verbose = method
 
    t0 = 0
@@ -81,12 +86,18 @@ function bs23(f, x0::Vector{Float64}, N::Int, log::IterationLog, method;
 end
 
 
+@with_kw type ode12
+   atol::Float64 = 1e-6
+   rtol::Float64 = 1e-3
+   adapt_rtol::Bool = true
+end
 
 
+function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
+                  log::IterationLog, method;
+                  g=x->x, tol_res=1e-4, maxnit=100 )
 
-function ode12(f, x0::Vector{Float64}, N::Int, log::IterationLog, method;
-                g=x->x, atol=1e-6, rtol=1e-3, tol_res=1e-4, maxnit=100,
-                adapt_rtol = true )
+   @unpack atol, rtol, adapt_rtol = solver
    @unpack verbose = method
 
    t0 = 0

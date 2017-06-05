@@ -17,8 +17,9 @@ export ODEStringMethod
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type ODEStringMethod
-   abstol::Float64 = 1e-6
-   reltol::Float64 = 1e-3
+   solver = ode12(1e-6, 1e-3, true)
+   # abstol::Float64 = 1e-6
+   # reltol::Float64 = 1e-3
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
    maxnit::Int = 1000
@@ -31,7 +32,7 @@ end
 
 function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
-   @unpack abstol, reltol, tol_res, maxnit,
+   @unpack solver, tol_res, maxnit,
             precon_prep!, verbose, precon_cond = method
    P=method.precon
    # initialise variables
@@ -45,7 +46,7 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), ref(x), length(x), log, method; g = x_ -> reparametrise(x, x_, P, precon_prep!), atol = abstol, rtol = reltol, tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_) -> forces(x, x_, dE, P, precon_prep!), ref(x), length(x), log, method; g = x_ -> reparametrise(x, x_, P, precon_prep!), tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
