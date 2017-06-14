@@ -52,6 +52,8 @@ include("preconstring.jl")
 
 include("testsets.jl")
 
+include("odestring.jl")
+
 include("ode.jl")
 
 end # module
