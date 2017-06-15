@@ -1,10 +1,10 @@
-@with_kw type bs23
+@with_kw type ode23
    atol::Float64 = 1e-6
    rtol::Float64 = 1e-3
    adapt_rtol::Bool = false
 end
 
-function odesolve(solver::bs23, f, x0::Vector{Float64}, N::Int,
+function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
                   log::IterationLog, method;
                   g=x->x, tol_res=1e-4, maxnit=100 )
    @unpack atol, rtol, adapt_rtol = solver
@@ -40,7 +40,7 @@ function odesolve(solver::bs23, f, x0::Vector{Float64}, N::Int,
       s3, _ = f(t+h*0.75, x+h*0.75*s2)
       tnew = t + h
       xnew = x + h * (2*s1 + 3*s2 + 4*s3)./9
-      s4, _ = f(tnew, xnew)
+      s4, maxres = f(tnew, xnew)
       numdE += N*3
 
       # error estimation
@@ -53,8 +53,7 @@ function odesolve(solver::bs23, f, x0::Vector{Float64}, N::Int,
          x = g(x)
          push!(tout, t)
          push!(xout, x)
-         s1, maxres = f(t,x) # Reuse final function value to start new step.
-         numdE += N
+         s1 = s4 # Reuse final function value to start new step.
 
          # atol = min(atol0 * norm(s1), atol0)
          if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
@@ -126,7 +125,7 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
 
       abs(h) < hmin ? h = hmin: h = h
 
-      s2, _ = f(t+h, x+h*s1)
+      s2, maxres = f(t+h, x+h*s1)
       tnew = t + h
       xnew = x + h * s1
 
@@ -143,7 +142,7 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
          push!(tout, t)
          push!(xout, x)
          s1 = s2
-         maxres = vecnorm(s1, Inf)
+         # maxres = vecnorm(s1, Inf)
 
          if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
 
