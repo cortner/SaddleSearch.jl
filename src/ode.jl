@@ -26,7 +26,7 @@ function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
 
    # computation of the initial step
    s1, _ = f(t, x)
-   if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
+   if adapt_rtol; rtol = min(rtol0 * norm(s1, Inf), rtol0); end
    r = norm(s1./max(abs(x),threshold),Inf) + realmin(Float64)
    h = 0.8*rtol^(1/3)/r
    numdE += N
@@ -56,7 +56,7 @@ function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
          s1 = s4 # Reuse final function value to start new step.
 
          # atol = min(atol0 * norm(s1), atol0)
-         if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
+         if adapt_rtol; rtol = min(rtol0 * norm(s1, Inf), rtol0); end
 
          push!(log, numE, numdE, maxres)
 
@@ -144,7 +144,7 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
          s1 = s2
          # maxres = vecnorm(s1, Inf)
 
-         if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
+         if adapt_rtol; rtol = min(rtol0 * norm(s1, Inf), rtol0); end
 
          push!(log, numE, numdE, maxres)
 
