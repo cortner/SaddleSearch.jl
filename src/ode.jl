@@ -263,12 +263,21 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
             end
             return tout, xout, log
          end
+
+         # Compute a new step size.
+         h = max(0.25 * h, min(4*h, h_err, h_ls))
+         if verbose >= 3
+            println("     accept: new h = $h")
+         end
+      else
+         h = min(0.25 * h, h_err, h_ls)
+         if verbose >= 3
+            println("     reject: new h = $h")
+         end
       end
 
-      # Compute a new step size.
-      h = max(0.25 * h, min(4*h, h_err, h_ls))
       if abs(h) <= hmin
-         warn("Step size $h too small at t = $t.");
+         error("Step size $h too small at t = $t.");
       end
    end
 
