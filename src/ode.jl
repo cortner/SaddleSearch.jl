@@ -268,6 +268,8 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
          h = max(0.25 * h, min(2*h, h_err, h_ls))
          if verbose >= 3
             println("     accept: new h = $h, |F| = $(Rn)")
+            println("               hls = $(h_ls)")
+            println("              herr = $(h_err)")
          end
       else
          h = max(0.1 * h, min(0.25 * h, h_err, h_ls))
