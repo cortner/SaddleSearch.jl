@@ -175,10 +175,10 @@ end
 
 
 @with_kw type ODE12r
-   atol::Float64 = 1e-6
-   rtol::Float64 = 1e-3
+   atol::Float64 = 1.0
+   rtol::Float64 = 1.0
    C1::Float64 = 1e-2      # contraction parameter (Armijo-like)
-   C2::Float64 = 1.1       # growth parameter
+   C2::Float64 = Inf       # residual growth control (Inf means there is no control)
    hmin::Float64 = 1e-10   # minimal allowed step size
    maxF::Float64 = 1e3     # terminate if |Fn| > maxF * |F0|
 end
@@ -187,7 +187,7 @@ end
 
 function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
                   log::IterationLog, method;
-                  g=identity, tol_res=1e-4, maxnit=100 )
+                  g=x->x, tol_res=1e-4, maxnit=100 )
 
    @unpack atol, rtol, C1, C2, hmin = solver
    @unpack verbose = method
@@ -197,7 +197,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    threshold = atol/rtol
 
    t = t0
-   x = x0[:]
+   x = copy(x0)
 
    tout = []
    xout = []
@@ -205,59 +205,59 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    numdE, numE = 0, 0
 
    # computation of the initial step
-   s1, _ = f(t, x)
-   r = norm(s1./max(abs(x),threshold),Inf) + realmin(Float64)
+   x = g(x)
+   Fn, _ = f(t, x)
+   Rn = norm(Fn, Inf)
+   r = norm(Fn ./ max(abs.(x), threshold), Inf) + realmin(Float64)
    h = 0.5 * rtol^(1/2) / r
+   h = max(h, hmin)
    numdE += N
 
    for nit = 0:maxnit
 
-      abs(h) < hmin ? h = hmin: h = h
-
-      s2, maxres = f(t+h, x+h*s1)
       tnew = t + h
-      xnew = x + h * s1
+      xnew = g(x + h * Fn)   # the redistribution is better done here I think
+                             # that way it implicitly becomes part of `f`
+                             # but it seems to make the evolution slower; need more testing!
+      Fnew, _ = f(tnew, xnew)
+      Rnew = norm(Fnew, Inf)
 
       numdE += N
 
       # error estimation
-      e = 0.5 * h * (s2 - s1)
-      err = norm(e./max(max(abs(x),abs(xnew)),threshold),Inf) + realmin(Float64)
+      e = 0.5 * h * (Fnew - Fn)
+      err = norm(e ./ max(max(abs(x), abs(xnew)), threshold), Inf) + realmin(Float64)
 
-      r1 = norm(s1, Inf)
-      r2 = norm(s2, Inf)
-      if (   ( r2 <= r1 * (1 - C1 * h) )         # contraction
-          || ( r2 <= r1 * C2 && err <= rtol ) )  # moderate growth + error control
+      if (   ( Rnew <= Rn * (1 - C1 * h) )         # contraction
+          || ( Rnew <= Rn * C2 && err <= rtol ) )  # moderate growth + error control
          accept = true
       else
          accept = false
+         conditions = (Rnew <= Rn * (1 - C1 * h), Rnew <= Rn * C2, err <= rtol )
       end
 
       # whether we accept or reject this step, we now need a good guess for
       # the next step-size, from a line-search-like construction
-      y = s1 - s2
-      h_ls = h * dot(s1, y) / (norm(y)^2 + 1e-10)
+      y = Fn - Fnew
+      h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
       if h_ls < hmin
          h_ls = Inf
       end
       # or from the error estimate
-      h_err = h * 0.5*sqrt(rtol/err)
+      h_err = h * 0.5 * sqrt(rtol/err)
 
       if accept
-         t = tnew
-         x = xnew
-         x = g(x)
+         t, x, Fn, Rn = tnew, xnew, Fnew, Rnew
          push!(tout, t)
          push!(xout, x)
-         s1 = s2
-         # maxres = vecnorm(s1, Inf)
+         push!(log, numE, numdE, Rn)
 
-         push!(log, numE, numdE, maxres)
+         # keeping x = g(x) here technically constitutes a bug
 
          if verbose >= 2
-            @printf("%4d |   %1.2e\n", nit, maxres)
+            @printf("%4d |   %1.2e\n", nit, Rn)
          end
-         if maxres <= tol_res
+         if Rn <= tol_res
             if verbose >= 1
                println("$(typeof(method)) terminates succesfully after $(nit) iterations")
             end
@@ -265,19 +265,23 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
          end
 
          # Compute a new step size.
-         h = max(0.25 * h, min(4*h, h_err, h_ls))
+         h = max(0.25 * h, min(2*h, h_err, h_ls))
          if verbose >= 3
-            println("     accept: new h = $h")
+            println("     accept: new h = $h, |F| = $(Rn)")
          end
       else
-         h = min(0.25 * h, h_err, h_ls)
+         h = max(0.1 * h, min(0.25 * h, h_err, h_ls))
          if verbose >= 3
             println("     reject: new h = $h")
+            println("              |Fnew| = $(Rnew)")
+            println("              |Fold| = $(Rn)")
+            println("       |Fnew|/|Fold| = $(Rnew/Rn)")
          end
       end
 
       if abs(h) <= hmin
-         error("Step size $h too small at t = $t.");
+         warn("Step size $h too small at t = $t.");
+         return tout, xout, log
       end
    end
 
