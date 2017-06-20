@@ -50,10 +50,12 @@ include("varstepstring.jl")
 
 include("preconstring.jl")
 
-include("testsets.jl")
+include("ode.jl")
 
 include("odestring.jl")
 
-include("ode.jl")
+include("odeneb.jl")
+
+include("testsets.jl")
 
 end # module
