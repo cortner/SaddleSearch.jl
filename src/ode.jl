@@ -175,12 +175,13 @@ end
 
 
 @with_kw type ODE12r
-   atol::Float64 = 1.0
-   rtol::Float64 = 1.0
-   C1::Float64 = 1e-2      # contraction parameter (Armijo-like)
-   C2::Float64 = Inf       # residual growth control (Inf means there is no control)
+   atol::Float64 = 1e-1    # ode solver parameter
+   rtol::Float64 = 1e-1    # ode solver parameter
+   C1::Float64 = 1e-2      # sufficientcontraction parameter
+   C2::Float64 = 2.0       # residual growth control (Inf means there is no control)
    hmin::Float64 = 1e-10   # minimal allowed step size
    maxF::Float64 = 1e3     # terminate if |Fn| > maxF * |F0|
+   extrapolate::Int = 3    # extrapolation style (3 seems the most robust)
 end
 
 
@@ -189,7 +190,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
                   log::IterationLog, method;
                   g=x->x, tol_res=1e-4, maxnit=100 )
 
-   @unpack atol, rtol, C1, C2, hmin = solver
+   @unpack atol, rtol, C1, C2, hmin, extrapolate = solver
    @unpack verbose = method
 
    t0 = 0
@@ -206,12 +207,13 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
 
    # computation of the initial step
    x = g(x)
-   Fn, _ = f(t, x)
-   Rn = norm(Fn, Inf)
+   Fn, Rn = f(t, x)
    r = norm(Fn ./ max(abs.(x), threshold), Inf) + realmin(Float64)
    h = 0.5 * rtol^(1/2) / r
    h = max(h, hmin)
    numdE += N
+   push!(log, numE, numdE, Rn)
+   @printf("%4d |   %1.2e\n", 0, Rn)
 
    for nit = 0:maxnit
 
@@ -219,8 +221,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
       xnew = g(x + h * Fn)   # the redistribution is better done here I think
                              # that way it implicitly becomes part of `f`
                              # but it seems to make the evolution slower; need more testing!
-      Fnew, _ = f(tnew, xnew)
-      Rnew = norm(Fnew, Inf)
+      Fnew, Rnew = f(tnew, xnew)
 
       numdE += N
 
@@ -239,8 +240,16 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
       # whether we accept or reject this step, we now need a good guess for
       # the next step-size, from a line-search-like construction
       y = Fn - Fnew
-      h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
-      if h_ls < hmin
+      if extrapolate == 1       # F(xn + h Fn) ⋅ Fn ~ 0
+         h_ls = h * norm(Fn)^2 / dot(Fn, y)
+      elseif extrapolate == 2   # F(xn + h Fn) ⋅ F{n+1} ~ 0
+         h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
+      elseif extrapolate == 3   # min | F(xn +h Fn) |
+         h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
+      else
+         error("invalid `extrapolate` parameter")
+      end
+      if isnan(h_ls) || (h_ls < hmin)
          h_ls = Inf
       end
       # or from the error estimate
@@ -265,7 +274,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
          end
 
          # Compute a new step size.
-         h = max(0.25 * h, min(2*h, h_err, h_ls))
+         h = max(0.25 * h, min(4*h, h_err, h_ls))
          if verbose >= 3
             println("     accept: new h = $h, |F| = $(Rn)")
             println("               hls = $(h_ls)")
@@ -290,5 +299,14 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    if verbose >= 1
       println("$(typeof(method)) terminated unsuccesfully after $(maxnit) iterations.")
    end
+
+   # println("DEBUG")
+   # Fold, _ = f(t, x)
+   # println("  |Fold| = ", norm(Fold, Inf))
+   # for h in (1e-1, 1e-2, 1e-3, 1e-4)
+   #    Fnew, _ = f(t, x + h * Fold)
+   #    println("   |Fnew(h)| = ", norm(Fnew, Inf))
+   # end
+
    return tout, xout, log
 end
