@@ -17,7 +17,7 @@ export ODENudgedElasticbandMethod
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
-@with_kw type ODEStringMethod
+@with_kw type ODENudgedElasticBandMethod
    solver = ode12(1e-6, 1e-3, true)
    k::Float64
    # ------ shared parameters ------
@@ -30,13 +30,13 @@ export ODENudgedElasticbandMethod
 end
 
 
-function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T}, t0::Vector{T})
+function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack solver, k, tol_res, maxnit,
             precon_prep!, verbose, precon_cond = method
    P=method.precon
    # initialise variables
-   x, t = copy(x0), copy(t0)
+   x = copy(x0)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
@@ -46,13 +46,16 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T}, t0::V
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = bs23((α_,x_) -> forces(x, x_, dE, P, precon_prep!), ref(x), log, method; atol = abstol, rtol = restol, tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_) -> forces(x, x_, k, dE, P, precon_prep!), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
 
+   x = set_ref!(x, xout[end])
    return x, log, αout
 end
 
-function forces{T}(x::Vector{T}, xref::Vector{Float64}, dE, P, precon_prep!)
+function forces{T}(x::Vector{T}, xref::Vector{Float64},
+                     k::Float64, dE, P, precon_prep!)
    x = set_ref!(x, xref)
+   N = length(x)
    P = precon_prep!(P, x)
    Np = length(P)
 
