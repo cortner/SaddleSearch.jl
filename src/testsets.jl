@@ -137,6 +137,7 @@ function ic_string(V::LJcluster)
    return V.ρ_min * r1, V.ρ_min * r2
 end
 
+precond(V::LJcluster, r) = LJaux.exp_precond(reshape(r, 2, length(r) ÷ 2))
 
 
 # ============================================================================

@@ -34,7 +34,10 @@ import Base: *, \, size
 
 include("linesearch.jl")
 
-include("staticdimer.jl")
+include("ode.jl")
+
+
+include("dimer.jl")
 
 include("bbdimer.jl")
 
@@ -50,7 +53,6 @@ include("varstepstring.jl")
 
 include("preconstring.jl")
 
-include("ode.jl")
 
 include("odestring.jl")
 

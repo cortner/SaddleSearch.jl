@@ -10,8 +10,10 @@ tests = [
    # "staticvsbb",
    # "lsdimer",
    # "superlinear",
-   "vacancy",
+   # "vacancy",
    # "molecule2d",
+   # "odedimer",
+   "nsoli",
 ]
 
 println("Starting `SaddleSearch` tests")

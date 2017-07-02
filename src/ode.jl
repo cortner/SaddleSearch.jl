@@ -187,13 +187,12 @@ end
 
 
 function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
-                  log::IterationLog, method;
-                  g=x->x, tol_res=1e-4, maxnit=100 )
+                  log::IterationLog;
+                  g=x->x, tol_res=1e-4, maxnit=100, verbose = 0 )
 
    @unpack atol, rtol, C1, C2, hmin, extrapolate = solver
-   @unpack verbose = method
 
-   t0 = 0
+   t0 = 0.0
 
    threshold = atol/rtol
 
@@ -244,7 +243,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
          h_ls = h * norm(Fn)^2 / dot(Fn, y)
       elseif extrapolate == 2   # F(xn + h Fn) ⋅ F{n+1} ~ 0
          h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
-      elseif extrapolate == 3   # min | F(xn +h Fn) |
+      elseif extrapolate == 3   # min | F(xn + h Fn) |
          h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
       else
          error("invalid `extrapolate` parameter")
@@ -297,7 +296,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    end
 
    if verbose >= 1
-      println("$(typeof(method)) terminated unsuccesfully after $(maxnit) iterations.")
+      println("$(typeof(solver)) terminated unsuccesfully after $(maxnit) iterations.")
    end
 
    # println("DEBUG")
