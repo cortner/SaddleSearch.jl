@@ -36,7 +36,6 @@ include("linesearch.jl")
 
 include("ode.jl")
 
-
 include("dimer.jl")
 
 include("bbdimer.jl")
