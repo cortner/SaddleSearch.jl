@@ -29,6 +29,14 @@ dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500, v
 x, v, res = run!(dimer, E, dE, x0, v0)
 println("   num_dE = ", numdE(res)[end])
 
+println("Superlinear Dimer, LJcluster, P(EXP)")
+dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500, verbose=verbose,
+            translation_method = translation_method,
+            precon = precond(V, x0),
+            precon_prep! = (P, x) -> precond(V, x))
+x, v, res = run!(dimer, E, dE, x0, v0)
+println("   num_dE = ", numdE(res)[end])
+
 println("Superlinear Dimer, Vacancy")
 V = LJVacancy2D()
 x0, v0 = ic_dimer(V, :near)
@@ -37,6 +45,16 @@ dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500, v
             translation_method = translation_method)
 x, v, res = run!(dimer, E, dE, x0, v0)
 println("   num_dE = ", numdE(res)[end])
+
+
+println("Superlinear Dimer, Vacancy, P(EXP)")
+dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500, verbose=verbose,
+            translation_method = translation_method,
+            precon = precond(V, x0),
+            precon_prep! = (P, x) -> precond(V, x))
+x, v, res = run!(dimer, E, dE, x0, v0)
+println("   num_dE = ", numdE(res)[end])
+
 
 
 println("NSOLI, Müller")
