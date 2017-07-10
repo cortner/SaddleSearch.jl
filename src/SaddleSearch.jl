@@ -10,7 +10,7 @@ include("iterlog.jl")
 
 Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
 Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
-
+Base.norm(P, x) = sqrt(dot(x, P*x))
 
 
 """
@@ -32,6 +32,8 @@ import Base: *, \, size
 (*)(A::PreconSMW, x::AbstractVector) = A.P * x + (A.s * dot(A.Pv, x)) * A.Pv
 (\)(A::PreconSMW, f::AbstractVector) = (A.P \ f) - ((A.smw * dot(A.v, f)) * A.v)
 
+# Dimer / GAD type methods
+
 include("linesearch.jl")
 
 include("ode.jl")
@@ -43,6 +45,10 @@ include("bbdimer.jl")
 include("rotoptimdimer.jl")
 
 include("superlineardimer.jl")
+
+# include("newtonkrylov.jl")
+
+# Sting and NEB-type methods
 
 include("string.jl")
 
@@ -58,5 +64,8 @@ include("odestring.jl")
 include("odeneb.jl")
 
 include("testsets.jl")
+
+
+
 
 end # module

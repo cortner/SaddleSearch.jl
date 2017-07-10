@@ -256,6 +256,8 @@ function ic_dimer(V::LJVacancy2D, case=:near)
       X[:, 1] *= 0.6
    elseif case == :far
       X[:, 1] *= 0.9
+   elseif case == :min
+      nothing 
    else
       error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
    end
