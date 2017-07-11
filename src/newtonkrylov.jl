@@ -136,16 +136,16 @@ function dcg_index1(f0, f, xc, errtol, kmax;
       if E == D
          res = norm( AxV * g - b )
       end
-      if debug; @show res/norm(b); end
+      if debug; @show abs(λ - λ_old), res/norm(b); end
       # check for termination
-      if res < errtol && abs(λ - λ_old) < eigatol + eigrtol * abs(λ)
+      if res < errtol && (λ < 0 || bs(λ - λ_old) < eigatol + eigrtol * abs(λ))
          return x, λ, v, numf
       end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    end
    # if we are here it means that kmax is reached, i.e. we terminate with
    # warning or error
-   warn("`dcg_index1` did not converge within kmax = $(kmax) iterations")
+   # warn("`dcg_index1` did not converge within kmax = $(kmax) iterations")
    return x, λ, v, numf
 end
 
@@ -165,20 +165,20 @@ end
 
 
 function run!{T}(method::NK, E, dE, x0::Vector{T},
-                  v0::Vector{T} = rand(T, length(x0))
+                  v0::Vector{T} = rand(T, length(x0)))
    # get parameters
    @unpack tol, maxnumdE, len, verbose, krylovinit = method
    precon = x -> method.precon_prep!(method.precon, x)
 
 
    # initialise some more parameters; TODO: move these into NK?
+   d = length(x0)
    eta = etamax = 0.9
    gamma = 0.9
-   kmax = 40
+   kmax = min(40, d)
 
 
    # evaluate the initial residual
-   d = length(x0)
    x = copy(x0)
    v = copy(v0)
    f0 = dE(x)
@@ -204,18 +204,20 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          v1 = v
       end
       p, λ, v, inner_numdE = dcg_index1(f0, dE, x, eta * norm(f0), kmax;
-                                        P = P, b = - f0, v1 = v1)
+                                        P = P, b = - f0, v1 = v1, debug = true)
       numdE += inner_numdE
 
       # for now try without linesearch
-      α = 1.0
+      α = min(1.0, 2.0 / res)
 
       # update
       x += α * p
-      f0 = f(x)
+      f0 = dE(x)
       res = norm(f0, Inf)
       fnrm = norm(P, f0)
       rat = fnrm/fnrmo
+
+      @show λ, res
 
       if res <= tol
          return x, numdE
