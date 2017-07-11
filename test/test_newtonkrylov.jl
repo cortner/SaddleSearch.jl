@@ -1,3 +1,12 @@
+using SaddleSearch, SaddleSearch.TestSets
+using Base.Test
+using SaddleSearch: numE, numdE, res_trans, res_rot
+
+using SaddleSearch.TestSets: hessprecond, precond
+using CTKSolvers
+using SaddleSearch: ODE12r, odesolve, IterationLog
+
+
 @testset "newtonkrylov" begin
 
 println("Testing `dcg1_index1`")
@@ -48,5 +57,13 @@ end
 end  # @testset "dcg1_index1"
 
 
-
 end  # @testset "newtonkrylov"
+
+
+
+V = MullerPotential()
+x0, v0 = ic_dimer(V, :near)
+E, dE = objective(V)
+x, numdE = run!(NK(), E, dE, x0, v0)
+println("   num_dE = ", numdE)
+# println("   |x - xs| = ", norm(x - x1, Inf))

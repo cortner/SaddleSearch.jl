@@ -1,6 +1,6 @@
 using CTKSolvers: dirder
 
-export dcg_index1
+export dcg_index1, NK
 
 function pushcol(V::Matrix, v::Vector)
    rows, cols = size(V)
@@ -66,7 +66,7 @@ see also `CTKSolvers.dirder`
 """
 function dcg_index1(f0, f, xc, errtol, kmax;
                     P = I, b = - f0, v1 = P \ b,
-                    eigatol = 1e-1, eigrtol = 0.01,
+                    eigatol = 1e-1, eigrtol = 1e-1,
                     debug = false )
    # allocate arrays
    d = length(f0)
@@ -150,25 +150,93 @@ function dcg_index1(f0, f, xc, errtol, kmax;
 end
 
 
-# """
-# Newton-Krylov based saddle search method
-# """
-# @with_kw type type NK
-#    tol::Float64 = 1e-5
-#    maxnumdE::Int = 1000
-#    len::Float64 = 1e-7
-#    precon = I
-#    precon_prep! = (P, x) -> P
-#    verbose::Int = 2
-#    krylovinit::Symbol = :res  # allow res, rand, rot
-# end
-#
-#
-# function run!{T}(method::NK, E, dE, x0::Vector{T},
-#                   v0::Vector{T} = rand(T, length(x0))
-#
-# end
+"""
+Newton-Krylov based saddle search method
+"""
+@with_kw type NK
+   tol::Float64 = 1e-5
+   maxnumdE::Int = 1000
+   len::Float64 = 1e-7
+   precon = I
+   precon_prep! = (P, x) -> P
+   verbose::Int = 2
+   krylovinit::Symbol = :res  # allow res, rand, rot
+end
 
+
+function run!{T}(method::NK, E, dE, x0::Vector{T},
+                  v0::Vector{T} = rand(T, length(x0))
+   # get parameters
+   @unpack tol, maxnumdE, len, verbose, krylovinit = method
+   precon = x -> method.precon_prep!(method.precon, x)
+
+
+   # initialise some more parameters; TODO: move these into NK?
+   eta = etamax = 0.9
+   gamma = 0.9
+   kmax = 40
+
+
+   # evaluate the initial residual
+   d = length(x0)
+   x = copy(x0)
+   v = copy(v0)
+   f0 = dE(x)
+   numdE = 1
+   res = norm(f0, Inf)
+
+   P = precon(x)
+   fnrm = norm(P, f0)
+   fnrmo = 1.0
+   itc = 0
+
+   while res > tol && numdE < maxnumdE
+      rat = fnrm / fnrmo   # TODO: is this unused?
+      fnrmo = fnrm         # TODO: probably move this to where fnrm is updated!
+      itc += 1
+
+      # compute the (modified) Newton direction
+      if krylovinit == :res
+         v1 = - P \ f0
+      elseif krylovinit == :rand
+         v1 = P \ rand(d)
+      elseif krylovinit == :rot
+         v1 = v
+      end
+      p, λ, v, inner_numdE = dcg_index1(f0, dE, x, eta * norm(f0), kmax;
+                                        P = P, b = - f0, v1 = v1)
+      numdE += inner_numdE
+
+      # for now try without linesearch
+      α = 1.0
+
+      # update
+      x += α * p
+      f0 = f(x)
+      res = norm(f0, Inf)
+      fnrm = norm(P, f0)
+      rat = fnrm/fnrmo
+
+      if res <= tol
+         return x, numdE
+      end
+
+      # Adjust eta as per Eisenstat-Walker.   # TODO: make this a flag!
+      # TODO: check also the we are in the index-1 regime
+      etaold = eta
+      etanew = gamma * rat^2
+      if gamma * etaold^2 > 0.1
+         etanew = max(etanew, gamma * etaold^2)
+      end
+      eta = min(etanew, etamax)
+      eta = max(eta, 0.5 * tol / fnrm)
+      # ---------------------------------------------------------
+
+   end
+
+   warn("NK did not converge within the maximum number of dE evaluations")
+   return x, numdE
+end
 
 
 
