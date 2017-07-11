@@ -19,8 +19,8 @@ tests = [
    # "superlinear",
    # "vacancy",
    # "molecule2d",
-   "nsoli",
-   # "newtonkrylov",
+   # "nsoli",
+   "newtonkrylov",
 ]
 
 println("Starting `SaddleSearch` tests")

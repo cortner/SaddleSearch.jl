@@ -46,7 +46,7 @@ include("rotoptimdimer.jl")
 
 include("superlineardimer.jl")
 
-# include("newtonkrylov.jl")
+include("newtonkrylov.jl")
 
 # Sting and NEB-type methods
 
