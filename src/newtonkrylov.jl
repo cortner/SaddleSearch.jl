@@ -1,4 +1,4 @@
-using CTKSolvers: dirder
+using CTKSolvers: dirder, parab3p
 
 export dcg_index1, NK
 
@@ -75,6 +75,7 @@ function dcg_index1(f0, f, xc, errtol, kmax;
    α = Float64[]
    β = Float64[]
    numf = 0
+   isnewton = false    # whether the direction is a newton direction
    # initialise
      V = pushcol(  V, v1 / norm(P, v1))            # store v₁
    # dAv = dirder(xc, V[:,1], f, f0)
@@ -133,20 +134,21 @@ function dcg_index1(f0, f, xc, errtol, kmax;
       λ, λ_old = D[1], λ
       # if E == D then A' = A hence we can do better to estimate the residual
       if debug; @show j, λ; end
-      if E == D
+      isnewton = E == D
+      if isnewton
          res = norm( AxV * g - b )
       end
       if debug; @show abs(λ - λ_old), res/norm(b); end
       # check for termination
       if res < errtol && (λ < 0 || bs(λ - λ_old) < eigatol + eigrtol * abs(λ))
-         return x, λ, v, numf
+         return x, λ, v, numf, isnewton
       end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
    end
    # if we are here it means that kmax is reached, i.e. we terminate with
    # warning or error
    # warn("`dcg_index1` did not converge within kmax = $(kmax) iterations")
-   return x, λ, v, numf
+   return x, λ, v, numf, isnewton
 end
 
 
@@ -176,6 +178,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
    eta = etamax = 0.9
    gamma = 0.9
    kmax = min(40, d)
+   Carmijo = 1e-4
 
 
    # evaluate the initial residual
@@ -203,18 +206,53 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
       elseif krylovinit == :rot
          v1 = v
       end
-      p, λ, v, inner_numdE = dcg_index1(f0, dE, x, eta * norm(f0), kmax;
-                                        P = P, b = - f0, v1 = v1, debug = true)
+      p, λ, v, inner_numdE, isnewton =
+            dcg_index1(f0, dE, x, eta * norm(f0), kmax;
+                       P = P, b = - f0, v1 = v1, debug = true)
       numdE += inner_numdE
 
-      # for now try without linesearch
-      α = min(1.0, 2.0 / res)
+      # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
+      if isnewton
+         iarm = 0
+         α = αt = 1.0
+         xt = x + αt * p
+         ft = dE(xt)
+         nf0 = norm(f0)
+         nft = norm(ft)
 
-      # update
-      x += α * p
-      f0 = dE(x)
+         αm = 1.0  # these have no meaning; just allocations
+         nfm = 0.0
+
+         while nft > (1 - Carmijo * αt) * nf0
+            if iarm == 0
+               α *= 0.5
+            else
+               α = parab3p( αt, αm, nf0^2, nft^2, nfm^2; sigma0 = 0.1, sigma1 = 0.5 )
+            end
+            αt, αm, nfm = α, αt, nft
+            if αt < 1e-8
+               error(" Armijo failure, step-size too small")
+            end
+
+            xt = x + αt * p
+            ft = dE(xt)
+            nft = norm(ft)
+            iarm += 1
+            numdE += 1
+         end
+      else
+         # dumb heuristic if the current step is not a newton step
+         αt = min(1.0, 2.0 / res)
+         xt = x + αt * p
+         ft = dE(xt)
+         nft = norm(ft)
+      end
+      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+      # update current configuration
+      x, f0, fnrm = xt, ft, nft
       res = norm(f0, Inf)
-      fnrm = norm(P, f0)
+      fnrm = norm(P, f0)     # should be the dual norm!
       rat = fnrm/fnrmo
 
       @show λ, res
@@ -223,8 +261,10 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          return x, numdE
       end
 
+      # ---------------------------------------------------------
       # Adjust eta as per Eisenstat-Walker.   # TODO: make this a flag!
-      # TODO: check also the we are in the index-1 regime
+      # TODO: check also the we are in the index-1 regime (what do we do if
+      # not? probably reset eta?)
       etaold = eta
       etanew = gamma * rat^2
       if gamma * etaold^2 > 0.1
