@@ -60,10 +60,21 @@ end  # @testset "dcg1_index1"
 end  # @testset "newtonkrylov"
 
 
+for init in (:near, :far)
+   println("NK Dimer, Muller, $(init)")
+   V = MullerPotential()
+   x0, v0 = ic_dimer(V, init)
+   E, dE = objective(V)
+   x, ndE = run!(NK(), E, dE, x0, v0)
+   println("   num_dE = ", ndE)
 
-V = MullerPotential()
-x0, v0 = ic_dimer(V, :near)
-E, dE = objective(V)
-x, numdE = run!(NK(), E, dE, x0, v0)
-println("   num_dE = ", numdE)
-# println("   |x - xs| = ", norm(x - x1, Inf))
+   println("Superlinear Dimer, Müller, $(init)")
+   # MullerPotential with good IC
+   V = MullerPotential()
+   x0, v0 = ic_dimer(V, init)
+   E, dE = objective(V)
+   dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500, verbose=verbose)
+   x1, v, res = run!(dimer, E, dE, x0, v0)
+   println("   num_dE = ", numdE(res)[end])
+   println(" |x - x1| = $(norm(x-x1, Inf))")
+end

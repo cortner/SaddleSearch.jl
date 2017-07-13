@@ -217,6 +217,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          α = αt = 1.0
          xt = x + αt * p
          ft = dE(xt)
+         numdE += 1
          nf0 = norm(f0)
          nft = norm(ft)
 
@@ -245,10 +246,11 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          αt = min(1.0, 2.0 / res)
          xt = x + αt * p
          ft = dE(xt)
+         numdE += 1
          nft = norm(ft)
       end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
+      @show αt
       # update current configuration
       x, f0, fnrm = xt, ft, nft
       res = norm(f0, Inf)
