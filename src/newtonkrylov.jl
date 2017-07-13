@@ -172,7 +172,6 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
    @unpack tol, maxnumdE, len, verbose, krylovinit = method
    precon = x -> method.precon_prep!(method.precon, x)
 
-
    # initialise some more parameters; TODO: move these into NK?
    d = length(x0)
    eta = etamax = 0.9
@@ -180,7 +179,6 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
    kmax = min(40, d)
    Carmijo = 1e-4
    α_old = 1.0
-
 
    # evaluate the initial residual
    x = copy(x0)
@@ -219,8 +217,8 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          xt = x + αt * p
          ft = dE(xt)
          numdE += 1
-         nf0 = norm(f0)
-         nft = norm(ft)
+         nf0 = norm(P, f0)
+         nft = norm(P, ft)
 
          αm = 1.0  # these have no meaning; just allocations
          nfm = 0.0
@@ -238,9 +236,9 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
 
             xt = x + αt * p
             ft = dE(xt)
-            nft = norm(ft)
-            iarm += 1
             numdE += 1
+            nft = norm(P, ft)
+            iarm += 1
          end
          α_old = αt
       else
@@ -255,18 +253,18 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          # find a root: g(t) = (1-t) f0⋅p + t ft ⋅ p = 0 => t = f0⋅p / (f0-ft)⋅p
          #    if (f0-ft)⋅p is very small, then simply use xt as the next step.
          #    if it is large enough, then take just one iteration to get a root
-         if abs(dot(f0 - ft, p)) > 1e-4   #  TODO: make this a parameter
-            t = dot(f0, p) / dot(f0 - ft, p)
+         if abs(dot(f0 - ft, P, p)) > 1e-4   #  TODO: make this a parameter
+            t = dot(f0, P, p) / dot(f0 - ft, P, p)
             t = max(t, 0.1)    # don't make too small a step
             t = min(t, 4 * t)  # don't make too large a step
             αt, αm, nfm, fm = α, αt, nft, ft
             xt = x + αt * p
             ft = dE(xt)
             numdE += 1
-            nft = norm(ft)
+            nft = norm(P, ft)
             # if the line-search step is worse than the initial trial, then
             # we revert
-            if abs(dot(ft, p)) > abs(dot(fm, p))
+            if abs(dot(ft, P, p)) > abs(dot(fm, P, p))
                αt, xt, nft, ft = αm, x + αm * p, nfm, fm
             end
          end
@@ -274,8 +272,9 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
       if verbose > 3; @show αt; end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-      # update current configuration
+      # update current configuration and preconditioner
       x, f0, fnrm = xt, ft, nft
+      P = precon(x)
       res = norm(f0, Inf)
       fnrm = norm(P, f0)     # should be the dual norm!
       rat = fnrm/fnrmo
