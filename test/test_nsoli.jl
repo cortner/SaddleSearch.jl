@@ -47,7 +47,9 @@ dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500, v
             translation_method = translation_method)
 x3, v, res = run!(dimer, E, dE, x0, v0)
 println("   num_dE = ", numdE(res)[end])
-
+H = TestSets.hessian(V, x3)
+println("   min-eig = ", minimum(eigvals(H)))
+println("   |dE| = ", norm(dE(x3), Inf))
 
 println("Superlinear Dimer, Vacancy, P(EXP)")
 dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500, verbose=verbose,
@@ -92,6 +94,9 @@ println("   num_dE = ", it_hist[:, 2][end])
 println("   |x - xs| = ", norm(x - x3, Inf))
 
 println("NSOLI, LJVacancy2D, P(EXP)")
-x, it_hist, ierr, x_hist = nsoli(x0, x->precond(V,x) \ dE(x))
+x, it_hist, ierr, x_hist = nsoli(x0, x->precond(V,x) \ dE(x), atol=1e-7, rtol=0.0)
 println("   num_dE = ", it_hist[:, 2][end])
 println("   |x - xs| = ", norm(x - x3, Inf))
+H = TestSets.hessian(V, x)
+println("   min-eig = ", minimum(eigvals(H)))
+println("   |dE| = ", norm(dE(x), Inf))
