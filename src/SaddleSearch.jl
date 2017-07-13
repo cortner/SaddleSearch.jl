@@ -42,11 +42,9 @@ include("dimer.jl")
 
 include("bbdimer.jl")
 
-include("rotoptimdimer.jl")
-
 include("superlineardimer.jl")
 
-include("newtonkrylov.jl")
+include("newtonkrylovdimer.jl")
 
 # Sting and NEB-type methods
 

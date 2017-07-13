@@ -1,6 +1,6 @@
 
 
-export StaticDimerMethod, DimerMethod
+export StaticDimerMethod
 
 # TODO: change maxnit to maxn_dE
 
