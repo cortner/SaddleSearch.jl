@@ -161,13 +161,13 @@ Newton-Krylov based saddle search method
    len::Float64 = 1e-7
    precon = I
    precon_prep! = (P, x) -> P
-   verbose::Int = 2
+   verbose::Int = 1
    krylovinit::Symbol = :res  # allow res, rand, rot
 end
 
 
 function run!{T}(method::NK, E, dE, x0::Vector{T},
-                  v0::Vector{T} = rand(T, length(x0)))
+                  v0::Vector{T} = rand(T, length(x0)) )
    # get parameters
    @unpack tol, maxnumdE, len, verbose, krylovinit = method
    precon = x -> method.precon_prep!(method.precon, x)
@@ -179,6 +179,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
    gamma = 0.9
    kmax = min(40, d)
    Carmijo = 1e-4
+   α_old = 1.0
 
 
    # evaluate the initial residual
@@ -208,7 +209,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
       end
       p, λ, v, inner_numdE, isnewton =
             dcg_index1(f0, dE, x, eta * norm(f0), kmax;
-                       P = P, b = - f0, v1 = v1, debug = true)
+                       P = P, b = - f0, v1 = v1, debug = (verbose >= 3))
       numdE += inner_numdE
 
       # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
@@ -231,7 +232,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
                α = parab3p( αt, αm, nf0^2, nft^2, nfm^2; sigma0 = 0.1, sigma1 = 0.5 )
             end
             αt, αm, nfm = α, αt, nft
-            if αt < 1e-8
+            if αt < 1e-8   # TODO: make this a parameter
                error(" Armijo failure, step-size too small")
             end
 
@@ -241,23 +242,45 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
             iarm += 1
             numdE += 1
          end
+         α_old = αt
       else
-         # dumb heuristic if the current step is not a newton step
-         αt = min(1.0, 2.0 / res)
+         # if we are here, then p is not a newton direction (i.e. an e-val was
+         # flipped) in this case, we do something very crude:
+         #   take same step as before, then do one line-search step
+         #   and pick the better of the two.
+         αt = 0.66 * α_old  # probably can do better by re-using information from dcg_...
          xt = x + αt * p
          ft = dE(xt)
          numdE += 1
-         nft = norm(ft)
+         # find a root: g(t) = (1-t) f0⋅p + t ft ⋅ p = 0 => t = f0⋅p / (f0-ft)⋅p
+         #    if (f0-ft)⋅p is very small, then simply use xt as the next step.
+         #    if it is large enough, then take just one iteration to get a root
+         if abs(dot(f0 - ft, p)) > 1e-4   #  TODO: make this a parameter
+            t = dot(f0, p) / dot(f0 - ft, p)
+            t = max(t, 0.1)    # don't make too small a step
+            t = min(t, 4 * t)  # don't make too large a step
+            αt, αm, nfm, fm = α, αt, nft, ft
+            xt = x + αt * p
+            ft = dE(xt)
+            numdE += 1
+            nft = norm(ft)
+            # if the line-search step is worse than the initial trial, then
+            # we revert
+            if abs(dot(ft, p)) > abs(dot(fm, p))
+               αt, xt, nft, ft = αm, x + αm * p, nfm, fm
+            end
+         end
       end
+      if verbose > 3; @show αt; end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      @show αt
+
       # update current configuration
       x, f0, fnrm = xt, ft, nft
       res = norm(f0, Inf)
       fnrm = norm(P, f0)     # should be the dual norm!
       rat = fnrm/fnrmo
 
-      @show λ, res
+      if verbose > 3; @show λ, res; end
 
       if res <= tol
          return x, numdE
@@ -278,7 +301,9 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
 
    end
 
-   warn("NK did not converge within the maximum number of dE evaluations")
+   if verbose > 1
+      warn("NK did not converge within the maximum number of dE evaluations")
+   end
    return x, numdE
 end
 
