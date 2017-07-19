@@ -72,7 +72,7 @@ for init in (:near, :far)
       xe = copy(x)
    else
       println("  |x - xe| = ", norm(x - xe, Inf))
-      @test norm(x - xe, Inf) < 1e-10
+      @test norm(x - xe, Inf) < 1e-8
    end
 
    println("Superlinear Dimer, Müller, $(init)")

@@ -3,4 +3,4 @@ Parameters
 ForwardDiff
 Optim
 CTKSolvers
-ProgressBar
+ProgressMeter

@@ -11,7 +11,7 @@ include("iterlog.jl")
 Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
 Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
 Base.norm(P, x) = sqrt(dot(x, P*x))
-
+dualnorm(P, f) = sqrt(dot(f, P \ f))
 
 """
 An abstract linear operator representing `P + s * (Pv) ⊗ (Pv)`

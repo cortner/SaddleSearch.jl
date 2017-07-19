@@ -140,7 +140,7 @@ function dcg_index1(f0, f, xc, errtol, kmax;
       end
       if debug; @show abs(λ - λ_old), res/norm(b); end
       # check for termination
-      if res < errtol && (λ < 0 || bs(λ - λ_old) < eigatol + eigrtol * abs(λ))
+      if res < errtol && (λ < 0 || abs(λ - λ_old) < eigatol + eigrtol * abs(λ))
          return x, λ, v, numf, isnewton
       end
       # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -178,7 +178,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
    gamma = 0.9
    kmax = min(40, d)
    Carmijo = 1e-4
-   α_old = 1.0
+   α_old = α = 1.0
 
    # evaluate the initial residual
    x = copy(x0)
@@ -188,7 +188,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
    res = norm(f0, Inf)
 
    P = precon(x)
-   fnrm = norm(P, f0)
+   fnrm = dualnorm(P, f0)
    fnrmo = 1.0
    itc = 0
 
@@ -217,8 +217,8 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          xt = x + αt * p
          ft = dE(xt)
          numdE += 1
-         nf0 = norm(P, f0)
-         nft = norm(P, ft)
+         nf0 = dualnorm(P, f0)
+         nft = dualnorm(P, ft)
 
          αm = 1.0  # these have no meaning; just allocations
          nfm = 0.0
@@ -237,7 +237,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
             xt = x + αt * p
             ft = dE(xt)
             numdE += 1
-            nft = norm(P, ft)
+            nft = dualnorm(P, ft)
             iarm += 1
          end
          α_old = αt
@@ -249,6 +249,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
          αt = 0.66 * α_old  # probably can do better by re-using information from dcg_...
          xt = x + αt * p
          ft = dE(xt)
+         nft = dualnorm(P, ft)
          numdE += 1
          # find a root: g(t) = (1-t) f0⋅p + t ft ⋅ p = 0 => t = f0⋅p / (f0-ft)⋅p
          #    if (f0-ft)⋅p is very small, then simply use xt as the next step.
@@ -257,11 +258,11 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
             t = dot(f0, P, p) / dot(f0 - ft, P, p)
             t = max(t, 0.1)    # don't make too small a step
             t = min(t, 4 * t)  # don't make too large a step
-            αt, αm, nfm, fm = α, αt, nft, ft
+            αt, αm, nfm, fm = (t*αt), αt, nft, ft
             xt = x + αt * p
             ft = dE(xt)
             numdE += 1
-            nft = norm(P, ft)
+            nft = dualnorm(P, ft)
             # if the line-search step is worse than the initial trial, then
             # we revert
             if abs(dot(ft, P, p)) > abs(dot(fm, P, p))
@@ -276,7 +277,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
       x, f0, fnrm = xt, ft, nft
       P = precon(x)
       res = norm(f0, Inf)
-      fnrm = norm(P, f0)     # should be the dual norm!
+      fnrm = dualnorm(P, f0)     # should be the dual norm!
       rat = fnrm/fnrmo
 
       if verbose > 3; @show λ, res; end
