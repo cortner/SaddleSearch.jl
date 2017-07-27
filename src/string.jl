@@ -28,7 +28,7 @@ step-size with an intermediate redistribution of the nodes.
 end
 
 
-function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
+function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T}, preview::Function)
    # read all the parameters
    @unpack alpha, tol_res, maxnit,
             precon_prep!, verbose, precon_cond = method
@@ -43,6 +43,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf(" nit |  sup|∇E|_∞   \n")
       @printf("-----|-----------------\n")
    end
+   p=[]
    for nit = 0:maxnit
       # normalise t
       P = precon_prep!(P, x)
@@ -57,6 +58,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       push!(log, numE, numdE, maxres)
       if verbose >= 2
          @printf("%4d |   %1.2e\n", nit, maxres)
+         push!(p,preview(x))
       end
       if maxres <= tol_res
          if verbose >= 1
@@ -78,7 +80,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    if verbose >= 1
       println("StringMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
-   return x, log
+   return x, log, p
 end
 
 function run2!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
