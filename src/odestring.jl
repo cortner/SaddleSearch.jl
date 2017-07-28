@@ -18,23 +18,38 @@ export ODEStringMethod
 """
 @with_kw type ODEStringMethod
    solver = ode12(1e-6, 1e-3, true)
-   # abstol::Float64 = 1e-6
-   # reltol::Float64 = 1e-3
+   precon_scheme = coordTransform()
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
    maxnit::Int = 1000
-   precon = I
-   precon_prep! = (P, x) -> P
+   # precon = I
+   # precon_prep! = (P, x) -> P
    verbose::Int = 2
-   precon_cond::Bool = false
+   # precon_cond::Bool = false
 end
 
 
+@with_kw type coordTransform
+   precon = I
+   precon_prep! = (P, x) -> P
+   precon_cond::Bool = false
+   tangent_norm = (P, t) -> norm(P, t)
+   force_eval = (P, ∇E, t) -> P \ ∇E - dot(∇E,t)*t
+   maxres = (P, force) ->  maximum([norm(P(i)*force[i],Inf) for i = 1:length(force)])
+end
+
+@with_kw type forcePrecon
+   precon = I
+   precon_prep! = (P, x) -> P
+   precon_cond::Bool = false
+   tangent_norm = (P, t) -> norm(t)
+   force_eval = (P, ∇E, t) -> P \ (∇E - dot(∇E,t)*t)
+   maxres = (P, force) -> vecnorm(cat(force...,2)', Inf)
+end
+
 function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
-   @unpack solver, tol_res, maxnit,
-            precon_prep!, verbose, precon_cond = method
-   P=method.precon
+   @unpack solver, precon_scheme, tol_res, maxnit, verbose = method
    # initialise variables
    x, t = copy(x0), copy(t0)
    nit = 0
@@ -46,16 +61,48 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_) -> forces(x, x_, dE, P, precon_prep!), ref(x), length(x), log, method; g = x_ -> reparametrise(x, x_, P, precon_prep!), tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, dE), ref(x), length(x), log, method; g = x_ -> reparametrise(x, x_, precon_scheme), tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
 end
 
-function forces{T}(x::Vector{T}, xref::Vector{Float64}, dE, P, precon_prep!)
+function forces{T}(precon_scheme::coordTransform, x::Vector{T}, xref::Vector{Float64}, dE)
+   @unpack precon_prep!, precon_cond = precon_scheme
+   P=precon_scheme.precon
+
+   P = precon_prep!(P, x)
+   Np = length(P); #P = i -> precon[mod(i-Np+1,Np)+1]
+
    x = set_ref!(x, xref)
+
+   ds = [norm(P[mod(i-Np+1,Np)+1], x[i+1]-x[i]) for i=1:length(x)-1]
+   param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
+   param /= param[end]; param[end] = 1.
+   S = [Spline1D(param, [x[j][i] for j=1:length(x)], w = ones(length(x)),
+         k = 3, bc = "error") for i=1:length(x[1])]
+   t= [[derivative(S[i], s) for i in 1:length(S)] for s in param]
+   # t ./= [tangent_norm(P(i), t[i]) for i=1:length(x)]
+   t ./= [sqrt(dot(t[i], P[mod(i-Np+1,Np)+1], t[i])) for i=1:length(x)]
+   t[1] =zeros(t[1]); t[end]=zeros(t[1])
+
+   dE0 = [dE(x[i]) for i=1:length(x)]
+   # F = [force_eval(P(i), dE0[i], t[i]) for i=1:length(x)]
+   dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
+
+   maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
+
+   return ref(- dE0⟂), maxres
+end
+
+function forces{T}(precon_scheme::forcePrecon, x::Vector{T}, xref::Vector{Float64}, dE)
+   @unpack precon_prep!, precon_cond = precon_scheme
+   P=precon_scheme.precon
+
    P = precon_prep!(P, x)
    Np = length(P)
+
+   x = set_ref!(x, xref)
 
    ds = [sqrt(dot(x[i+1]-x[i], P[mod(i-Np+1,Np)+1], x[i+1]-x[i])) for i=1:length(x)-1]
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
@@ -63,16 +110,17 @@ function forces{T}(x::Vector{T}, xref::Vector{Float64}, dE, P, precon_prep!)
    S = [Spline1D(param, [x[j][i] for j=1:length(x)], w = ones(length(x)),
          k = 3, bc = "error") for i=1:length(x[1])]
    t= [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-   t ./= [sqrt(dot(t[i], P[mod(i-Np+1,Np)+1], t[i])) for i=1:length(x)]
+   t ./= [norm(t[i]) for i=1:length(x)]
    t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
    dE0 = [dE(x[i]) for i=1:length(x)]
-   dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
+   dE0⟂ = [(dE0[i] - dot(dE0[i],t[i])*t[i]) for i = 1:length(x)]
+   F = [P[mod(i-Np+1,Np)+1] \ dE0⟂[i] for i = 1:length(x)]
 
-   maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
+   maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
+   # maxres = vecnorm(cat(dE0⟂...,2)',Inf)
 
-   return ref(- dE0⟂), maxres
-
+   return ref(- F), maxres
 end
 
 function ref{T}(x::Vector{T})
@@ -90,10 +138,14 @@ function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})
    return x
 end
 
-function reparametrise{T}(x::Vector{T}, xref::Vector{Float64}, P, precon_prep!)
-   x = set_ref!(x, xref)
+function reparametrise{T}(x::Vector{T}, xref::Vector{Float64}, precon_scheme)
+   @unpack precon_prep!, precon_cond = precon_scheme
+   P=precon_scheme.precon
+
    P = precon_prep!(P, x)
    Np = length(P)
+
+   x = set_ref!(x, xref)
 
    ds = [sqrt(dot(x[i+1]-x[i], (P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
    s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
