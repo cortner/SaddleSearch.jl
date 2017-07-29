@@ -53,12 +53,16 @@ see also `CTKSolvers.dirder`
 * xc : current point
 * errtol : ????
 * kmax : maximum number of lanzcos iterations
-* v1 : initial iterate (default: ∇E(xc))
 
 ## KW parameters
 
-* P : preconditioner ( needs to define `*` and `\` )
-* reorth : `true` to re-orthogonalise
+* V0 : initial subspace (default: [∇E(xc)])
+* P : preconditioner (default: I;  needs to define `*` and `\` )
+* b : right-hand side (default: - f0)
+* eigatol, eigrtol: tolerance on the first eigenvalue
+* debug: show debug information (true/false)
+* h : finite-difference parameter 
+<!-- * reorth : `true` to re-orthogonalise -->
 
 ## Returns
 
@@ -67,7 +71,8 @@ see also `CTKSolvers.dirder`
 * v : associated approximate eigenvector
 """
 function dcg_index1(f0, f, xc, errtol, kmax;
-                    P = I, b = - f0, v1 = P \ b,
+                    P = I, b = - f0,
+                    V0 = reshape(P \ b, length(b), 1),
                     eigatol = 1e-1, eigrtol = 1e-1,
                     debug = false, h = 1e-7 )
    # allocate arrays
