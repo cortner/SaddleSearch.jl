@@ -34,8 +34,9 @@ end
    precon_prep! = (P, x) -> P
    precon_cond::Bool = false
    tangent_norm = (P, t) -> norm(P, t)
-   force_eval = (P, ∇E, t) -> P \ ∇E - dot(∇E,t)*t
-   maxres = (P, force) ->  maximum([norm(P(i)*force[i],Inf) for i = 1:length(force)])
+   gradDescent⟂ = (P, ∇E, t) -> zeros(length(t))
+   force_eval = (P, ∇E, ∇E⟂, t) -> P \ ∇E - dot(∇E,t)*t
+   maxres = (P, ∇E⟂, force) ->  maximum([norm(P(i)*force[i],Inf) for i = 1:length(force)])
 end
 
 @with_kw type forcePrecon
@@ -43,8 +44,10 @@ end
    precon_prep! = (P, x) -> P
    precon_cond::Bool = false
    tangent_norm = (P, t) -> norm(t)
-   force_eval = (P, ∇E, t) -> P \ (∇E - dot(∇E,t)*t)
-   maxres = (P, force) -> vecnorm(cat(force...,2)', Inf)
+   gradDescent⟂ = (P, ∇E, t) -> [∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)]
+   force_eval = (P, ∇E, ∇E⟂, t) -> P \ ∇E⟂
+   maxres = (P, ∇E⟂, force) -> vecnorm(cat(2,∇E⟂...)',Inf)
+   # maximum([norm(∇E⟂[i],Inf) for i = 1:length(force)])
 end
 
 function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
@@ -67,60 +70,33 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    return x, log, αout
 end
 
-function forces{T}(precon_scheme::coordTransform, x::Vector{T}, xref::Vector{Float64}, dE)
-   @unpack precon_prep!, precon_cond = precon_scheme
-   P=precon_scheme.precon
-
-   P = precon_prep!(P, x)
-   Np = length(P); #P = i -> precon[mod(i-Np+1,Np)+1]
+function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
+   @unpack precon, precon_prep!, precon_cond, tangent_norm, gradDescent⟂, force_eval, maxres = precon_scheme
 
    x = set_ref!(x, xref)
 
-   ds = [norm(P[mod(i-Np+1,Np)+1], x[i+1]-x[i]) for i=1:length(x)-1]
+   precon = precon_prep!(precon, x)
+
+   Np = length(precon); P = i -> precon[mod(i-Np+1,Np)+1]
+
+   ds = [norm(P(i), x[i+1]-x[i]) for i=1:length(x)-1]
+
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
    S = [Spline1D(param, [x[j][i] for j=1:length(x)], w = ones(length(x)),
          k = 3, bc = "error") for i=1:length(x[1])]
    t= [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-   # t ./= [tangent_norm(P(i), t[i]) for i=1:length(x)]
-   t ./= [sqrt(dot(t[i], P[mod(i-Np+1,Np)+1], t[i])) for i=1:length(x)]
+   t ./= [tangent_norm(P(i), t[i]) for i=1:length(x)]
+
    t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
    dE0 = [dE(x[i]) for i=1:length(x)]
-   # F = [force_eval(P(i), dE0[i], t[i]) for i=1:length(x)]
-   dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
+   dE0⟂ = gradDescent⟂(P, dE0, t)
+   F = [force_eval(P(i), dE0[i], dE0⟂[i], t[i]) for i=1:length(x)]
 
-   maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
+   res = maxres(P, dE0⟂, F)
 
-   return ref(- dE0⟂), maxres
-end
-
-function forces{T}(precon_scheme::forcePrecon, x::Vector{T}, xref::Vector{Float64}, dE)
-   @unpack precon_prep!, precon_cond = precon_scheme
-   P=precon_scheme.precon
-
-   P = precon_prep!(P, x)
-   Np = length(P)
-
-   x = set_ref!(x, xref)
-
-   ds = [sqrt(dot(x[i+1]-x[i], P[mod(i-Np+1,Np)+1], x[i+1]-x[i])) for i=1:length(x)-1]
-   param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-   param /= param[end]; param[end] = 1.
-   S = [Spline1D(param, [x[j][i] for j=1:length(x)], w = ones(length(x)),
-         k = 3, bc = "error") for i=1:length(x[1])]
-   t= [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-   t ./= [norm(t[i]) for i=1:length(x)]
-   t[1] =zeros(t[1]); t[end]=zeros(t[1])
-
-   dE0 = [dE(x[i]) for i=1:length(x)]
-   dE0⟂ = [(dE0[i] - dot(dE0[i],t[i])*t[i]) for i = 1:length(x)]
-   F = [P[mod(i-Np+1,Np)+1] \ dE0⟂[i] for i = 1:length(x)]
-
-   maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
-   # maxres = vecnorm(cat(dE0⟂...,2)',Inf)
-
-   return ref(- F), maxres
+   return ref(- F), res
 end
 
 function ref{T}(x::Vector{T})
