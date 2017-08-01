@@ -1,9 +1,9 @@
 
 using Dierckx
-export ODEStringMethod
+export ODEVarStepStringMethod
 
 """
-`ODEStringMethod`: string variant utilising adaptive time step ode solvers.
+`ODEVarStepStringMethod`: string variant utilising adaptive time step ode solvers.
 
 ### Parameters:
 * `alpha` : step length
@@ -16,7 +16,7 @@ export ODEStringMethod
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
-@with_kw type ODEStringMethod
+@with_kw type ODEVarStepStringMethod
    solver = ode12(1e-6, 1e-3, true)
    precon_scheme = coordTransform()
    # ------ shared parameters ------
@@ -27,26 +27,6 @@ export ODEStringMethod
    verbose::Int = 2
    # precon_cond::Bool = false
 end
-
-# @with_kw type coordTransform
-#    precon = I
-#    precon_prep! = (P, x) -> P
-#    precon_cond::Bool = false
-#    tangent_norm = (P, t) -> norm(P, t)
-#    gradDescent⟂ = (P, ∇E, t) -> zeros(length(t))
-#    force_eval = (P, ∇E, ∇E⟂, t) -> P \ ∇E - dot(∇E,t)*t
-#    maxres = (P, ∇E⟂, force) ->  maximum([norm(P(i)*force[i],Inf) for i = 1:length(force)])
-# end
-#
-# @with_kw type forcePrecon
-#    precon = I
-#    precon_prep! = (P, x) -> P
-#    precon_cond::Bool = false
-#    tangent_norm = (P, t) -> norm(t)
-#    gradDescent⟂ = (P, ∇E, t) -> [∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)]
-#    force_eval = (P, ∇E, ∇E⟂, t) -> P \ ∇E⟂
-#    maxres = (P, ∇E⟂, force) -> vecnorm(cat(2,∇E⟂...)',Inf)
-# end
 
 function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
@@ -68,10 +48,8 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    return x, log, αout
 end
 
-function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
+function forces{T}(precon_scheme, x::Vector{T}, dE)
    @unpack precon, precon_prep!, precon_cond, tangent_norm, gradDescent⟂, force_eval, maxres = precon_scheme
-
-   x = set_ref!(x, xref)
 
    precon = precon_prep!(precon, x)
 
@@ -94,16 +72,15 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
 
    res = maxres(P, dE0⟂, F)
 
-   return ref(- F), res
+   return - F, res
 end
 
 function ref{T}(x::Vector{T})
-   # Nimg = length(x)
-   # Ndim = length(x[1])
-   # X = zeros(Ndim, Nimg)
-   # [X[:,n] = x[n] for n=1:Nimg]
-   # return X[:]
-   return cat(1, x...)
+   Nimg = length(x)
+   Ndim = length(x[1])
+   X = zeros(Ndim, Nimg)
+   [X[:,n] = x[n] for n=1:Nimg]
+   return X[:]
 end
 
 function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})

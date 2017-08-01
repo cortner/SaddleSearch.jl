@@ -149,6 +149,7 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
          push!(log, numE, numdE, maxres)
 
          if verbose >= 2
+            @show(nit)
             @printf("%4d |   %1.2e\n", nit, maxres)
          end
          if maxres <= tol_res
@@ -206,6 +207,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
 
    # computation of the initial step
    x = g(x)
+   # push(xout, x) TODO: chck if this is the correct place to move this
    Fn, Rn = f(t, x)
    r = norm(Fn ./ max(abs.(x), threshold), Inf) + realmin(Float64)
    h = 0.5 * rtol^(1/2) / r
@@ -309,3 +311,93 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
 
    return tout, xout, log
 end
+
+# function odesolve(solver::ode12var, f, x0::Vector{T},
+#                   log::IterationLog, method;
+#                   g=x->x, tol_res=1e-4, maxnit=100 )
+#
+#    @unpack atol, rtol, adapt_rtol = solver
+#    @unpack verbose = method
+#
+#    t0 = 0
+#    atol0 = atol
+#    rtol0 = rtol
+#
+#    threshold = atol/rtol
+#
+#    t = t0
+#    x = x0[:]
+#
+#    tout = []
+#    xout = []
+#
+#    numdE, numE = 0, 0
+#
+#    # computation of the initial step
+#    s1, _ = f(t, x)
+#    if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
+#    r = [norm(s1[i]./max(abs(x[i]),threshold),Inf) + realmin(Float64) for i=1:length(x)]
+#    h = [0.5 * rtol^(1/2) / r[i] for i=1:length(r)]
+#    numdE += N
+#
+#    for nit = 0:maxnit
+#       x = g(x)
+#       push!(tout, t)
+#       push!(xout, x)
+#
+#       xtemp = copy(x)
+#       while any(xtemp != x)
+#
+#
+#       hmin = 16*eps(Float64)*abs(t)
+#
+#       [abs(hi) < hmin ? hi = hmin: hi = hi for hi in h]
+#
+#       s2, maxres = f(t+h, x+h*s1)
+#       tnew = t + h
+#       xnew = x + h .* s1
+#
+#       numdE += N
+#
+#       # error estimation
+#       e = 0.5 * h .* (s2 - s1)
+#       err = [norm(ei./max(max(abs(x),abs(xnew)),threshold),Inf) + realmin(Float64) for ei in e]
+#
+#       xtemp = copy(x)
+#       for i=1:length(x)
+#          if err[i] <= rtol
+#             t[i] = tnew[i]
+#             x[i] = xnew[i]
+#             # x = g(x)
+#             # push!(tout, t)
+#             # push!(xout, x)
+#             s1 = s2
+#             # maxres = vecnorm(s1, Inf)
+#
+#             if adapt_rtol; rtol[i] = min(rtol0 * norm(s1[i], Inf), rtol0); end
+#
+#             push!(log, numE, numdE, maxres)
+#
+#             if verbose >= 2
+#                @printf("%4d |   %1.2e\n", nit, maxres)
+#             end
+#             if maxres <= tol_res
+#                if verbose >= 1
+#                   println("$(typeof(method)) terminates succesfully after $(nit) iterations")
+#                end
+#                return tout, xout, log
+#             end
+#          end
+#
+#       # Compute a new step size.
+#       h = h * min(5, 0.5*sqrt(rtol/err) )
+#       if abs(h) <= hmin
+#          warn("Step size $h too small at t = $t.");
+#       end
+#    end
+#
+#    if verbose >= 1
+#       println("$(typeof(method)) terminated unsuccesfully after $(maxnit) iterations.")
+#    end
+#    return tout, xout, log
+# end
