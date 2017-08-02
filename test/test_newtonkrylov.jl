@@ -104,57 +104,56 @@ for init in (:near, :far)
 end
 
 end # @testset "NK Muller"
-#
-#
-# @testset "NK Vacancy" begin
-#
-# V = LJVacancy2D(bc = :clamped)
-# x0, v0 = ic_dimer(V, :near)
-# E, dE = objective(V)
-#
-# println("Superlinear Dimer, Vacancy")
-# dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500,
-#                         verbose=1)
-# x1, v, res = run!(dimer, E, dE, x0, v0)
-# # H1 = TestSets.hessian(V, x1)
-# println("   num_dE = ", numdE(res)[end])
-# # println("   |dE| = ", norm(dE(x1), Inf))
-# # println("   min-eig = ", sort(eigvals(H1))[1:2])
-# @test norm(dE(x1), Inf) < 1e-5
-#
-# println("NK, Vacancy")
-# x2, ndE = run!(NK(), E, dE, x0, v0)
-# # H2 = TestSets.hessian(V, x2)
-# println("   num_dE = ", ndE)
-# @test norm(dE(x2), Inf) < 1e-5
-# @test norm(x1 - x2, Inf) < 1e-6
-# # println("   |dE| = ", norm(dE(x2), Inf))
-# # println("   |x_sl - x_nk| = ", norm(x1 - x2, Inf))
-# # println("   min-eig = ", sort(eigvals(H2))[1:2])
-#
-# println("Superlinear Dimer, Vacancy, P(EXP)")
-# dimer = SuperlinearDimer( maximum_translation=0.2, max_num_rot=1, maxnumdE=500,
-#                           verbose=1,
-#                           precon = precond(V, x0),
-#                           precon_prep! = (P, x) -> precond(V, x) )
-# x3, v, res = run!(dimer, E, dE, x0, v0)
-# # H3 = TestSets.hessian(V, x3)
-# println("   num_dE = ", numdE(res)[end])
-# println("   |dE| = ", norm(dE(x3), Inf))
-# println("   |x_slP - x_sl| = ", norm(x1 - x3, Inf))
-# println("      >>> this converged to a minimum (cf commented-out hessian test")
-# # println("   min-eig = ", sort(eigvals(H3))[1:2])
-#
-# println("NK, Vacancy, P(EXP)")
-# nk = NK(precon = precond(V, x0), precon_prep! = (P, x) -> precond(V, x) )
-# x4, ndE = run!(nk, E, dE, x0, v0)
-# println("   num_dE = ", ndE)
-# @test norm(dE(x4), Inf) < 1e-5
-# @test norm(x1 - x4, Inf) < 1e-6
-# # println("   |dE| = ", norm(dE(x2), Inf))
-# # println("   |x_sl - x_nkP| = ", norm(x1 - x4, Inf))
-#
-# end  # @testset "NK Vacancy"
+
+@testset "NK Vacancy" begin
+
+V = LJVacancy2D(bc = :clamped)
+x0, v0 = ic_dimer(V, :near)
+E, dE = objective(V)
+
+println("Superlinear Dimer, Vacancy")
+dimer = SuperlinearDimer(maximum_translation=0.2, max_num_rot=1, maxnumdE=500,
+                        verbose=1)
+x1, v, res = run!(dimer, E, dE, x0, v0)
+# H1 = TestSets.hessian(V, x1)
+println("   num_dE = ", numdE(res)[end])
+# println("   |dE| = ", norm(dE(x1), Inf))
+# println("   min-eig = ", sort(eigvals(H1))[1:2])
+@test norm(dE(x1), Inf) < 1e-5
+
+println("NK, Vacancy")
+x2, ndE = run!(NK(), E, dE, x0, v0)
+# H2 = TestSets.hessian(V, x2)
+println("   num_dE = ", ndE)
+@test norm(dE(x2), Inf) < 1e-5
+@test norm(x1 - x2, Inf) < 1e-6
+# println("   |dE| = ", norm(dE(x2), Inf))
+# println("   |x_sl - x_nk| = ", norm(x1 - x2, Inf))
+# println("   min-eig = ", sort(eigvals(H2))[1:2])
+
+println("Superlinear Dimer, Vacancy, P(EXP)")
+dimer = SuperlinearDimer( maximum_translation=0.2, max_num_rot=1, maxnumdE=500,
+                          verbose=1,
+                          precon = precond(V, x0),
+                          precon_prep! = (P, x) -> precond(V, x) )
+x3, v, res = run!(dimer, E, dE, x0, v0)
+# H3 = TestSets.hessian(V, x3)
+println("   num_dE = ", numdE(res)[end])
+println("   |dE| = ", norm(dE(x3), Inf))
+println("   |x_slP - x_sl| = ", norm(x1 - x3, Inf))
+println("      >>> this converged to a minimum (cf commented-out hessian test")
+# println("   min-eig = ", sort(eigvals(H3))[1:2])
+
+println("NK, Vacancy, P(EXP)")
+nk = NK(precon = precond(V, x0), precon_prep! = (P, x) -> precond(V, x) )
+x4, ndE = run!(nk, E, dE, x0, v0)
+println("   num_dE = ", ndE)
+@test norm(dE(x4), Inf) < 1e-5
+@test norm(x1 - x4, Inf) < 1e-6
+# println("   |dE| = ", norm(dE(x2), Inf))
+# println("   |x_sl - x_nkP| = ", norm(x1 - x4, Inf))
+
+end  # @testset "NK Vacancy"
 
 
 

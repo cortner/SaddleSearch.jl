@@ -35,7 +35,10 @@ function orthogonalise(w, V::Matrix, P)
    # make w orthogonal to all columns of V
    for i = 1:size(V,2)
       w -= dot(w, P, V[:,i]) * V[:,i]
+      w /= norm(P, w)
    end
+   # TODO: create a test that the w we get is really orthogonal,
+   #       and if not then re-orthogonalise
    return w
 end
 
@@ -262,7 +265,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
       fnrmo = fnrm         # TODO: probably move this to where fnrm is updated!
       itc += 1
 
-      if debug; @show dot(f0, v); end 
+      if debug; @show dot(f0, v); end
       # compute the (modified) Newton direction
       if krylovinit == :res
          V0 = reshape(- P \ f0, d, 1)
@@ -276,7 +279,7 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
                          P = P, b = - f0, V0 = V0, debug = (verbose >= 3),
                          h = len, eigatol = eigatol, eigrtol = eigrtol)
       numdE += inner_numdE
-      @show isnewton
+      if debug; @show isnewton; end 
 
       # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
       if isnewton
