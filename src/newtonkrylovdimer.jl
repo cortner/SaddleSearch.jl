@@ -2,6 +2,11 @@ using CTKSolvers: parab3p
 
 export NK, blocklanczos
 
+
+"""
+`pushcol(V::Matrix, v::Vector) -> V`:
+append the vector `v` as a column to `V`
+"""
 function pushcol(V::Matrix, v::Vector)
    rows, cols = size(V)
    V = V[:]
@@ -9,7 +14,12 @@ function pushcol(V::Matrix, v::Vector)
    return reshape(V, rows, cols+1)
 end
 
-function sorted_eig(A::SymTridiagonal)
+
+"""
+`sorted_eig(A::Union{SymTridiagonal, Symmetric})`:
+diagonalise A, and return sorted eigenvalues and analogously sorted eigenvectors
+"""
+function sorted_eig(A::Union{SymTridiagonal, Symmetric})
    D, Q = eig(A)
    I = sortperm(D)
    return D[I], Q[:, I]
@@ -17,7 +27,10 @@ end
 
 nkdualnorm(P, f) = norm(f)
 
-
+"""
+`orthogonalise(w, V::Matrix, P)`:
+Assuming V is P-orthogonal, P-orthogonalise w to V and return
+"""
 function orthogonalise(w, V::Matrix, P)
    # make w orthogonal to all columns of V
    for i = 1:size(V,2)
@@ -26,6 +39,10 @@ function orthogonalise(w, V::Matrix, P)
    return w
 end
 
+"""
+`basic_dirder(f, f0, xc, v, h)`:
+a basic directional derivative operator to mimic the ∇²E(x) * v action
+"""
 function basic_dirder(f, f0, xc, v, h)
    nv = norm(v, Inf)
    h = h / nv
@@ -33,6 +50,17 @@ function basic_dirder(f, f0, xc, v, h)
 end
 
 ctk_dirder(f, f0, xc, v, h) =  CTKSolvers.dirder(xc, v, f, f0, h = h)
+
+"""
+`appendkrylov(V, AxV, Y, v, Hmul, P)`:
+appends [V v], [AxV A*v], [Y P \ A*v]
+"""
+function appendkrylov(V, AxV, Y, v, Hmul, P)
+   V   = pushcol(V,   v)
+   AxV = pushcol(AxV, Hmul(v))
+   Y   = pushcol(Y,   P \ AxV[:, end])
+   return V, AxV, Y
+end
 
 
 # TODO: generalise dcg_index1 to allow arbitrary transformations of the
@@ -95,94 +123,90 @@ function blocklanczos( f0, f, xc, errtol, kmax;
                      eigatol = 1e-1, eigrtol = 1e-1,
                      debug = false, h = 1e-7,
                      dirder = basic_dirder,
+                     Hmul = z -> dirder(f, f0, xc, z, h),
                      ORTHTOL = 1e-12 )
-   # allocate arrays
+
+   # initialise some variables
    d = length(f0)      # problem dimension
-   V = copy(V0)        # store the Krylov basis
-   p = size(V, 2)      # block size
-   AxV = zeros(d, 0)   # store A vⱼ   (as opposed to w̃ = P \ A vⱼ which are free)
+   @assert kmax <= d
    numf = 0            # count f evaluations
    isnewton = false    # remember whether the output is a newton direction
 
-   # initialise and orthogonalise
-   V[:, j] /= norm(P, V[:,1])
-   for j = 2:p
-      vj = orthogonalise(V[:,j], @view V[:,1:j-1], P)
-      V[:,j] = vj / norm(P, vj)
-   end
+   # allocate Krylov subspace and more
+   V = zeros(d,0)      # store the Krylov basis
+   AxV = zeros(d, 0)   # store A vⱼ
+   Y = zeros(d, 0)     # store P \ A vⱼ
 
-   # compute the first set of A x V
-   for j = 1:size(V,2)
-      AxV = pushcol(AxV, dirder(f, f0, xc, V[:,j], h))   # (f, f0, xc, v, h)
-      numf += 1
-   end
-
-   # start the Block-Lanczos loop
-   j = 1
-   while j < kmax
-      y = P \ AxV[:, j]             # RUHE Step 1: y = P \ (A * vⱼ)
-      y1 = orthogonalise(y, V, P)   # RUHE Step 2: orthonormalise y with V -> y' ≡ y1
-      nrmy1 = norm(P, y1)
-      if nrmy1 > ORTHTOL            # RUHE Step 3: add vector or reduce block-size
-         v = y1 / nrmy1
-         V   = pushcol(V,   v)
-         AxV = pushcol(AvX, dirder(f, f0, xc, v, h))
-         # TODO: set t_{j+p,j} = normy1
+   # initialise Krylov subspace
+   for j = 1:size(V0, 2)
+      vj = orthogonalise(V0[:,j], V, P)
+      nrmvj = norm(P, vj)
+      if nrmvj > ORTHTOL
+         V, AxV, Y = appendkrylov(V, AxV, Y, vj/nrmvj, Hmul, P)
       else
-         # the new vector is (essentially) contained in the existing sub-space
-         # we therefore do not add it and reduce the block-size
-         p -= 1
-         if p == 0
-            # TODO:
-            error("I don't know yet how to deal with p = 0")
-         end
+         warn("a column of V0 is linearly dependent on the rest so I am skipping it")
       end
+   end
 
-      # at this stage we have
-      #   * a Krylov subspace V  (P-orthogonal)
-      #   * the product A x v
+   # prepare for the Block-Lanczos loop
+   j = 1
+   x = zeros(d)
+   vmin = zeros(d)
+   λ = minimum(eigvals(Symmetric(V'*AxV)))
+
+   # start the block-lanczos loop; when we have kmax v-vectors we stop
+   while size(V, 2) <= kmax
+
+      # We have V, AxV and Y = P \ AxV  available, so we can immediately solve
+      # the projected linear system and eigenvalue problem
+      #
       # there is probably an elegant way to assemble the projected
       # linear system, but for now we just do it brute-force:
       #    A vj = P V T V' P vj
       #    yj = P \ A qj = V T  V' P vj
       #    V' P Y = V' P V T V' P V = T
       n = size(V, 2)
-      T = [ dot(V[:,i], P, Y[:, j]) for i = 1:n, j = 1:n ]   # T = V' * P * Y
+      T = Symmetric(V' * AxV)       # T = V' * P * Y = V' * AV
+      #  TODO: could replace above with with [dot(V[:,a], P, Y[:,b] for a=1:n, b=1:n]
 
-      # we now make the index-1 transformation
+      # make the index-1 transformation
       D, Q = sorted_eig(T)
-      E = zeros(length(D))
-      E[1] = - abs(D[1])
-      E[2:end] = abs(D[2:end])
-      v = V * Q[:,1]    # smallest (unstable) eigenmode
+      E = [ - abs(D[1]); abs(D[2:end]) ]
+      vmin, vmin_old = V * Q[:,1], vmin    # smallest (hopefully unstable) eigenmode
       # residual estimate for the old x    >>> TODO: should we switch to P^{-1}-norm?
       res = norm( P * (V * (Q * (E .* (Q' * (V' * (P * x)))))) - b )
       # new x and λ (remember the old)
       g = Q * (E .\ (Q' * (V' * b)))
       x, x_old = V * g, x
       λ, λ_old = D[1], λ
-      # if E == D then A' = A hence we can do better to estimate the residual
+      # if E == D then A' = A hence we can estimate the *actual* and *current* residual
       if debug; @show j, λ; end
-      isnewton = E == D
-      if isnewton
+      if (isnewton = (E == D))
          res = norm( AxV * g - b )    # TODO: should we switch to P^{-1}-norm?
       end
       if debug; @show abs(λ - λ_old), res/norm(b); end
       # check for termination
       if res < errtol && (λ < 0 || abs(λ - λ_old) < eigatol + eigrtol * abs(λ))
-         return x, λ, v, numf, isnewton
+         return x, λ, vmin, numf, isnewton
       end
 
-
-
+      # add the next Krylov vector
+      w = orthogonalise(Y[:, j], V, P)
+      nrmw = norm(P, w)
+      if nrmw > ORTHTOL
+         V, AxV, Y = appendkrylov(V, AxV, Y, w/nrmw, Hmul, P)
+      end
+      j += 1
+      if j > size(V,2)   # if we have no new vector left, then we are in trouble!
+         # TODO: deal with this somehow, probably by adding a random vector!
+         error("I don't know yet how to deal with the case p = 0")
+      end
    end
    # if we are here it means that kmax is reached, i.e. we terminate with
    # warning or error >>> TODO: return to how to best handle this?!
    # warn("`dcg_index1` did not converge within kmax = $(kmax) iterations")
-   return x, λ, v, numf, isnewton
+   return x, λ, vmin, numf, isnewton
 end
-
-
 
 
 
