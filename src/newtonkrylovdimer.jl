@@ -143,6 +143,7 @@ function blocklanczos( f0, f, xc, errtol, kmax;
       nrmvj = norm(P, vj)
       if nrmvj > ORTHTOL
          V, AxV, Y = appendkrylov(V, AxV, Y, vj/nrmvj, Hmul, P)
+         numf += 1
       else
          warn("a column of V0 is linearly dependent on the rest so I am skipping it")
       end
@@ -195,6 +196,7 @@ function blocklanczos( f0, f, xc, errtol, kmax;
       nrmw = norm(P, w)
       if nrmw > ORTHTOL
          V, AxV, Y = appendkrylov(V, AxV, Y, w/nrmw, Hmul, P)
+         numf += 1
       end
       j += 1
       if j > size(V,2)   # if we have no new vector left, then we are in trouble!
@@ -260,19 +262,19 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
       fnrmo = fnrm         # TODO: probably move this to where fnrm is updated!
       itc += 1
 
-      @show dot(f0, v)
+      if debug; @show dot(f0, v); end 
       # compute the (modified) Newton direction
       if krylovinit == :res
-         v1 = - P \ f0
+         V0 = reshape(- P \ f0, d, 1)
       elseif krylovinit == :rand
-         v1 = P \ rand(d)
+         V0 = reshape(P \ rand(d), d, 1)
       elseif krylovinit == :rot
-         v1 = v
+         V0 = reshape(v, d, 1)
       end
       p, λ, v, inner_numdE, isnewton =
-            dcg_index1(f0, dE, x, eta * norm(f0), kmax;
-                       P = P, b = - f0, v1 = v1, debug = (verbose >= 3),
-                       h = len, eigatol = eigatol, eigrtol = eigrtol)
+            blocklanczos(f0, dE, x, eta * norm(f0), kmax;
+                         P = P, b = - f0, V0 = V0, debug = (verbose >= 3),
+                         h = len, eigatol = eigatol, eigrtol = eigrtol)
       numdE += inner_numdE
       @show isnewton
 
