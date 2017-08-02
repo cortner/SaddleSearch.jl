@@ -340,59 +340,74 @@ end
 #    h = [0.5 * rtol^(1/2) / r[i] for i=1:length(r)]
 #    numdE += N
 #
-#    for nit = 0:maxnit
+#    nit = 0
+#    while nit <= maxnit
 #       x = g(x)
-#       push!(tout, t)
-#       push!(xout, x)
+#
+#       hmin = 16*eps(Float64).*abs(t)
 #
 #       xtemp = copy(x)
-#       while any(xtemp != x)
+#       ttemp = copy(t)
 #
+#       while any(xtemp != x) || nit <= maxnit
+#          unchanged =  find(x->x==0, sum( cat(2,xtemp - x...), 1 ) )
+#          [abs(h[i]) < hmin ? h[i] = hmin: h[i] = h[i] for i in unchanged]
 #
-#       hmin = 16*eps(Float64)*abs(t)
+#          s2, maxres = f(t+h, x+h*s1)
+#          tnew = t + h
+#          xnew = x + h .* s1
 #
-#       [abs(hi) < hmin ? hi = hmin: hi = hi for hi in h]
+#          numdE += N
 #
-#       s2, maxres = f(t+h, x+h*s1)
-#       tnew = t + h
-#       xnew = x + h .* s1
+#          # error estimation
+#          e = 0.5 * h .* (s2 - s1)
+#          err = [norm(ei./max(max(abs(x),abs(xnew)),threshold),Inf) + realmin(Float64) for ei in e]
 #
-#       numdE += N
-#
-#       # error estimation
-#       e = 0.5 * h .* (s2 - s1)
-#       err = [norm(ei./max(max(abs(x),abs(xnew)),threshold),Inf) + realmin(Float64) for ei in e]
-#
-#       xtemp = copy(x)
-#       for i=1:length(x)
-#          if err[i] <= rtol
-#             t[i] = tnew[i]
-#             x[i] = xnew[i]
-#             # x = g(x)
-#             # push!(tout, t)
-#             # push!(xout, x)
-#             s1 = s2
-#             # maxres = vecnorm(s1, Inf)
-#
-#             if adapt_rtol; rtol[i] = min(rtol0 * norm(s1[i], Inf), rtol0); end
-#
-#             push!(log, numE, numdE, maxres)
-#
-#             if verbose >= 2
-#                @printf("%4d |   %1.2e\n", nit, maxres)
-#             end
-#             if maxres <= tol_res
-#                if verbose >= 1
-#                   println("$(typeof(method)) terminates succesfully after $(nit) iterations")
-#                end
-#                return tout, xout, log
+#          for i in unchanged
+#             if err[i] <= rtol
+#                ttemp[i] = tnew[i]
+#                xtemp[i] = xnew[i]
 #             end
 #          end
 #
+#          # Compute a new step sizes.
+#          unchanged =  find(x->x==0, sum( cat(2,xtemp - x...), 1 ) )
+#          [h[i] = h[i] * min(5, 0.5*sqrt(rtol[i]/err[i]) ) for i in unchanged]
+#          for i in unchanged
+#             if abs(h[i]) <= hmin[i]
+#                warn("Step size $h[i] too small at t = $t[i] and node = $i.");
+#             end
+#          end
+#
+#          nit += 1
+#       end
+#       t = ttemp
+#       x = xtemp
+#       push!(tout, t)
+#       push!(xout, x)
+#       s1 = s2
+#       # maxres = vecnorm(s1, Inf)
+#
+#       if adapt_rtol; [rtol[i] = min(rtol0 * norm(s1[i], Inf), rtol0) for i=1:length(rtol)]; end
+#
+#       push!(log, numE, numdE, maxres)
+#
+#       if verbose >= 2
+#          @printf("%4d |   %1.2e\n", nit, maxres)
+#       end
+#       if maxres <= tol_res
+#          if verbose >= 1
+#             println("$(typeof(method)) terminates succesfully after $(nit) iterations")
+#          end
+#          return tout, xout, log
+#       end
+#
 #       # Compute a new step size.
-#       h = h * min(5, 0.5*sqrt(rtol/err) )
-#       if abs(h) <= hmin
-#          warn("Step size $h too small at t = $t.");
+#       h = h .* min(5, 0.5*sqrt(rtol/err) )
+#       for i=1:length(h)
+#          if abs(h[i]) <= hmin[i]
+#             warn("Step size $h[i] too small at t = $t[i] and node = $i.");
+#          end
 #       end
 #    end
 #
