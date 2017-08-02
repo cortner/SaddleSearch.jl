@@ -1,6 +1,6 @@
-using CTKSolvers: dirder, parab3p
+using CTKSolvers: parab3p
 
-export dcg_index1, NK
+export NK, blocklanczos
 
 function pushcol(V::Matrix, v::Vector)
    rows, cols = size(V)
@@ -18,12 +18,29 @@ end
 nkdualnorm(P, f) = norm(f)
 
 
+function orthogonalise(w, V::Matrix, P)
+   # make w orthogonal to all columns of V
+   for i = 1:size(V,2)
+      w -= dot(w, P, V[:,i]) * V[:,i]
+   end
+   return w
+end
+
+function basic_dirder(f, f0, xc, v, h)
+   nv = norm(v, Inf)
+   h = h / nv
+   return (f(xc + h * v) - f0) / h
+end
+
+ctk_dirder(f, f0, xc, v, h) =  CTKSolvers.dirder(xc, v, f, f0, h = h)
+
+
 # TODO: generalise dcg_index1 to allow arbitrary transformations of the
 #       spectrum, and probably also arbitrary right-hand sides
 # TODO: look into  re-orthogonalising
 
 """
-dcg_index1(f0, f, xc, errtol, kmax, v1=copy(f0); P = I, reorth = true)
+blocklanczos(f0, f, xc, errtol, kmax, v1=copy(f0); P = I, reorth = true)
    -> x, λ, v
 
 An iterative solver for
@@ -35,7 +52,7 @@ This code is inspired by [insert REF] and by
    http://www4.ncsu.edu/~ctk/newton/SOLVERS/nsoli.m
 (see also [CTKSolvers.jl](https://github.com/cortner/CTKSolvers.jl))
 
-`dcg_index1` first uses a (possibly preconditioned) lanzcos method to compute
+`blocklanczos` first uses a (possibly preconditioned) lanczos method to compute
 a reasonable approximation to H in the form H = P V T V' P. Then it diagonalises
 T = Q D Q, replaces D with D' as above. This gives an approximation H̃' to H'.
 After each iteration of the lanzcos method we check whether
@@ -44,7 +61,7 @@ is a solution of sufficiently high accuracy.
 
 In the lanzcos iterations the matrix vector product H * u
 is replaced with the finite-difference operation (∇E(xc + h u) - ∇E(xc))/h;
-see also `CTKSolvers.dirder`
+see also `basic_dirder` and `CTKSolvers.dirder`
 
 ## Required Parameters
 
@@ -61,7 +78,9 @@ see also `CTKSolvers.dirder`
 * b : right-hand side (default: - f0)
 * eigatol, eigrtol: tolerance on the first eigenvalue
 * debug: show debug information (true/false)
-* h : finite-difference parameter 
+* h : finite-difference parameter
+* dirder : function to compute the directional derivative; see
+         `basic_dirder` for format
 <!-- * reorth : `true` to re-orthogonalise -->
 
 ## Returns
@@ -70,72 +89,73 @@ see also `CTKSolvers.dirder`
 * λ : smallest ritz value
 * v : associated approximate eigenvector
 """
-function dcg_index1(f0, f, xc, errtol, kmax;
-                    P = I, b = - f0,
-                    V0 = reshape(P \ b, length(b), 1),
-                    eigatol = 1e-1, eigrtol = 1e-1,
-                    debug = false, h = 1e-7 )
+function blocklanczos( f0, f, xc, errtol, kmax;
+                     P = I, b = - f0,
+                     V0 = reshape(P \ b, length(b), 1),
+                     eigatol = 1e-1, eigrtol = 1e-1,
+                     debug = false, h = 1e-7,
+                     dirder = basic_dirder,
+                     ORTHTOL = 1e-12 )
    # allocate arrays
-   d = length(f0)
-   V = zeros(d, 0)     # store the Krylov basis
-   AxV = zeros(d, 0)   # store A vⱼ   (as opposed to w̃ = P \ A vⱼ)
-   α = Float64[]
-   β = Float64[]
-   numf = 0
-   isnewton = false    # whether the direction is a newton direction
-   # initialise
-   V = pushcol(  V, v1 / norm(P, v1))            # store v₁
-   # dAv = dirder(xc, V[:,1], f, f0, h = h)
-   nV1 = norm(V[:,1], Inf)
-   dAv = (f(xc + h/nV1 * V[:,1]) - f0) / h * nV1
-   AxV = pushcol(AxV, dAv)  # A * v₁
-   numf += 1
-   w̃ = P \ AxV[:,1]                   # w̃ = P \ (A * v₁)
-   push!(α, dot(w̃, P, V[:,1]))        # α₁ = <w̃, v₁>_P = <Av₁, v₁>  (TODO)
-   push!(β, 0.0)                      # so the indices match Wikipedia (discard later)
-   w = w̃ - α[1] * V[:,1]
-   # start lanczos loop
-   λ = α[1]                           # initial guess for lowest e-val
-   x = zeros(d)                       # trivial initial guess for the solution
-   v = zeros(d)                       # trivial guess for minimal e-vec
-   for j = 2:kmax
-      push!(β, norm(P, w))            # βⱼ = |w|_P
-      if β[j] > 1e-7
-         V = pushcol(V, w / β[j])        # vⱼ = w / βⱼ = w / |w|_P
-         # make V[:,j] orthogonal to all the previous Vs
-         for i = 1:j-1
-            V[:,j] -= dot(V[:,j], P, V[:,i]) * V[:,i]
-            if norm(P, V[:,j]) < 1e-7
-              error("new lanzcos vector in range of previous space")
-            end
-            V[:,j] /= norm(P, V[:,j])
-         end
+   d = length(f0)      # problem dimension
+   V = copy(V0)        # store the Krylov basis
+   p = size(V, 2)      # block size
+   AxV = zeros(d, 0)   # store A vⱼ   (as opposed to w̃ = P \ A vⱼ which are free)
+   numf = 0            # count f evaluations
+   isnewton = false    # remember whether the output is a newton direction
+
+   # initialise and orthogonalise
+   V[:, j] /= norm(P, V[:,1])
+   for j = 2:p
+      vj = orthogonalise(V[:,j], @view V[:,1:j-1], P)
+      V[:,j] = vj / norm(P, vj)
+   end
+
+   # compute the first set of A x V
+   for j = 1:size(V,2)
+      AxV = pushcol(AxV, dirder(f, f0, xc, V[:,j], h))   # (f, f0, xc, v, h)
+      numf += 1
+   end
+
+   # start the Block-Lanczos loop
+   j = 1
+   while j < kmax
+      y = P \ AxV[:, j]             # RUHE Step 1: y = P \ (A * vⱼ)
+      y1 = orthogonalise(y, V, P)   # RUHE Step 2: orthonormalise y with V -> y' ≡ y1
+      nrmy1 = norm(P, y1)
+      if nrmy1 > ORTHTOL            # RUHE Step 3: add vector or reduce block-size
+         v = y1 / nrmy1
+         V   = pushcol(V,   v)
+         AxV = pushcol(AvX, dirder(f, f0, xc, v, h))
+         # TODO: set t_{j+p,j} = normy1
       else
-         # probably terminate
-         error("need to treat this special case!")
+         # the new vector is (essentially) contained in the existing sub-space
+         # we therefore do not add it and reduce the block-size
+         p -= 1
+         if p == 0
+            # TODO:
+            error("I don't know yet how to deal with p = 0")
+         end
       end
 
-      # dAv = dirder(xc, V[:,j], f, f0, h = h)
-      nVj = norm(V[:,j], Inf)
-      dAv = (f(xc + h/nVj * V[:,j]) - f0) / h * nVj
-      AxV = pushcol(AxV, dAv)    # A * vⱼ
-      numf += 1
-      w̃ = P \ AxV[:,j]                            # w̃ = P \ (A * vⱼ)
-      push!(α, dot(w̃, P, V[:,j]))                 # αⱼ = <w̃, vⱼ>_P = < Avⱼ, vⱼ>  (TODO)
-      w = w̃ - α[j] * V[:,j] - β[j] * V[:, j-1]
+      # at this stage we have
+      #   * a Krylov subspace V  (P-orthogonal)
+      #   * the product A x v
+      # there is probably an elegant way to assemble the projected
+      # linear system, but for now we just do it brute-force:
+      #    A vj = P V T V' P vj
+      #    yj = P \ A qj = V T  V' P vj
+      #    V' P Y = V' P V T V' P V = T
+      n = size(V, 2)
+      T = [ dot(V[:,i], P, Y[:, j]) for i = 1:n, j = 1:n ]   # T = V' * P * Y
 
-      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-      # at this point, we can form V T' V' and solve for x
-      T = SymTridiagonal(α, β[2:end])
+      # we now make the index-1 transformation
       D, Q = sorted_eig(T)
       E = zeros(length(D))
       E[1] = - abs(D[1])
       E[2:end] = abs(D[2:end])
-      v = V * Q[:,1]
-      # we now have  A'    ~ P * V * Q *  D  * Q' * V' * P
-      #         and (A')⁻¹ ~     V * Q * D⁻¹ * Q' * V'
-      # (because V * P * V' = I_jxj)
-      # residual estimate for the old x
+      v = V * Q[:,1]    # smallest (unstable) eigenmode
+      # residual estimate for the old x    >>> TODO: should we switch to P^{-1}-norm?
       res = norm( P * (V * (Q * (E .* (Q' * (V' * (P * x)))))) - b )
       # new x and λ (remember the old)
       g = Q * (E .\ (Q' * (V' * b)))
@@ -145,20 +165,25 @@ function dcg_index1(f0, f, xc, errtol, kmax;
       if debug; @show j, λ; end
       isnewton = E == D
       if isnewton
-         res = norm( AxV * g - b )
+         res = norm( AxV * g - b )    # TODO: should we switch to P^{-1}-norm?
       end
       if debug; @show abs(λ - λ_old), res/norm(b); end
       # check for termination
       if res < errtol && (λ < 0 || abs(λ - λ_old) < eigatol + eigrtol * abs(λ))
          return x, λ, v, numf, isnewton
       end
-      # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+
+
    end
    # if we are here it means that kmax is reached, i.e. we terminate with
-   # warning or error
+   # warning or error >>> TODO: return to how to best handle this?!
    # warn("`dcg_index1` did not converge within kmax = $(kmax) iterations")
    return x, λ, v, numf, isnewton
 end
+
+
+
 
 
 """
@@ -171,7 +196,7 @@ Newton-Krylov based saddle search method
    precon = I
    precon_prep! = (P, x) -> P
    verbose::Int = 1
-   krylovinit::Symbol = :res  # allow res, rand, rot
+   krylovinit::Symbol = :res  # allow res, rand, rot, resrot
    maxstep::Float64 = Inf
    eigatol::Float64 = 1e-1
    eigrtol::Float64 = 1e-1
