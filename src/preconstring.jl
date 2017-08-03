@@ -17,27 +17,27 @@ step-size with an intermediate redistribution of the nodes.
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type PreconStringMethod
+   precon_scheme = coordTransform()
    alpha::Float64
    refine_points::Int
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
    maxnit::Int = 1000
-   precon = I
-   precon_prep! = (P, x) -> P
+   # precon = I
+   # precon_prep! = (P, x) -> P
    verbose::Int = 2
-   precon_cond::Bool = false
+   # precon_cond::Bool = false
 end
-
 
 function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
-   @unpack alpha, refine_points, tol_res, maxnit,
-            precon_prep!, verbose, precon_cond = method
-   P=method.precon
+   @unpack precon_scheme, alpha, refine_points, tol_res, maxnit,
+            verbose = method
+   @unpack precon, precon_prep!, precon_cond, tangent_norm, gradDescent⟂, force_eval, maxres = precon_scheme
    # initialise variables
    x, t = copy(x0), copy(t0)
    param = collect(linspace(.0, 1., length(x)))
-   Np = length(P)
+   Np = length(precon); P = i -> precon[mod(i-Np+1,Np)+1]
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
@@ -48,21 +48,22 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    end
    for nit = 0:maxnit
       # normalise t
-      P = precon_prep!(P, x)
-      t ./= [sqrt(dot(t[i], P[mod(i-Np+1,Np)+1], t[i])) for i=1:length(x)]
+      precon = precon_prep!(precon, x)
+      P = i -> precon[mod(i-Np+1,Np)+1]
+      t ./= [tangent_norm(P(i), t[i]) for i=1:length(x)]
       t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
       # evaluate gradients
-      E0  = [E(x[i]) for i=1:length(x)]
-      dE0 = [dE(x[i]) for i=1:length(x)]
-      dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
+      dE0  = [dE(x[i]) for i=1:length(x)]
+      dE0⟂ = gradDescent⟂(P, dE0, t)
+      F = [force_eval(P(i), dE0[i], dE0⟂[i], t[i]) for i=1:length(x)]
       numE += length(x); numdE += length(x)
 
       # perform linesearch to find optimal step
       # steps = []
       # ls = Backtracking(c1 = .2, mindecfact = 1.)
       # for i=1:length(x)
-      #    push!(steps, linesearch!(ls, E, E0[i][], dot(dE0[i],-dE0⟂[i]), x[i], -dE0⟂[i], copy(alpha)))
+      #    push!(steps, linesearch!(ls, E, E0[i][], dot(dE0[i],-F[i]), x[i], -F[i], copy(alpha)))
       # end
       # α = [steps[i][1] for i=1:length(steps)]
       # for k=1:5
@@ -71,18 +72,18 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       # numE += sum([steps[i][2] for i=1:length(steps)])
 
       # residual, store history
-      maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
-      push!(log, numE, numdE, maxres)
+      res = maxres(P, dE0⟂, F)
+      push!(log, numE, numdE, res)
       if verbose >= 2
-         @printf("%4d |   %1.2e\n", nit, maxres)
+         @printf("%4d |   %1.2e\n", nit, res)
       end
-      if maxres <= tol_res
+      if res <= tol_res
          if verbose >= 1
             println("PreconStringMethod terminates succesfully after $(nit) iterations")
          end
          return x, log
       end
-      x -= alpha .* dE0⟂
+      x -= alpha .* F
 
       # reparametrise
       x, t = reparametrise!(method, x, t, P, param)
@@ -101,8 +102,8 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
 end
 
 function reparametrise!(method::PreconStringMethod, x, t, P, param)
-   Np = length(P)
-   ds = [sqrt(dot(x[i+1]-x[i], (P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
+   # Np = length(P)
+   ds = [sqrt(dot(x[i+1]-x[i], (P(i)+P(i))/2, x[i+1]-x[i])) for i=1:length(x)-1]
    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param_temp /= param_temp[end]; param_temp[end] = 1.
    S = [Spline1D(param_temp, [x[j][i] for j=1:length(x)],

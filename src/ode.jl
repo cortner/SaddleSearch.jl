@@ -188,10 +188,11 @@ end
 
 
 function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
-                  log::IterationLog;
-                  g=x->x, tol_res=1e-4, maxnit=100, verbose = 0 )
+                  log::IterationLog, method;
+                  g=x->x, tol_res=1e-4, maxnit=100 )
 
    @unpack atol, rtol, C1, C2, hmin, extrapolate = solver
+   @unpack verbose = method
 
    t0 = 0.0
 
@@ -338,6 +339,7 @@ end
 #    if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
 #    r = [norm(s1[i]./max(abs(x[i]),threshold),Inf) + realmin(Float64) for i=1:length(x)]
 #    h = [0.5 * rtol^(1/2) / r[i] for i=1:length(r)]
+#    rtol = [rtol for xi in x]
 #    numdE += N
 #
 #    nit = 0
@@ -349,11 +351,11 @@ end
 #       xtemp = copy(x)
 #       ttemp = copy(t)
 #
+#       unchanged =  find(x->x==0, sum( cat(2,xtemp - x...), 1 ) )
 #       while any(xtemp != x) || nit <= maxnit
-#          unchanged =  find(x->x==0, sum( cat(2,xtemp - x...), 1 ) )
 #          [abs(h[i]) < hmin ? h[i] = hmin: h[i] = h[i] for i in unchanged]
 #
-#          s2, maxres = f(t+h, x+h*s1)
+#          s2, maxres = f(t+h, x+h.*s1)
 #          tnew = t + h
 #          xnew = x + h .* s1
 #
@@ -403,7 +405,7 @@ end
 #       end
 #
 #       # Compute a new step size.
-#       h = h .* min(5, 0.5*sqrt(rtol/err) )
+#       h = h .* min(5, 0.5*sqrt(rtol./err) )
 #       for i=1:length(h)
 #          if abs(h[i]) <= hmin[i]
 #             warn("Step size $h[i] too small at t = $t[i] and node = $i.");
