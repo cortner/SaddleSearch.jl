@@ -121,13 +121,17 @@ see also `basic_dirder` and `CTKSolvers.dirder`
 * v : associated approximate eigenvector
 """
 function blocklanczos( f0, f, xc, errtol, kmax;
-                     P = I, b = - f0,
-                     V0 = reshape(P \ b, length(b), 1),
+                     P = I, b = - f0, V0 = P \ b,
                      eigatol = 1e-1, eigrtol = 1e-1,
                      debug = false, h = 1e-7,
                      dirder = basic_dirder,
                      Hmul = z -> dirder(f, f0, xc, z, h),
                      ORTHTOL = 1e-12 )
+
+   if isa(V0, Vector)
+      V0 = reshape(V0, length(V0), 1)
+   end
+   p = size(V0,2)
 
    # initialise some variables
    d = length(f0)      # problem dimension
@@ -157,6 +161,7 @@ function blocklanczos( f0, f, xc, errtol, kmax;
    x = zeros(d)
    vmin = zeros(d)
    λ = minimum(eigvals(Symmetric(V'*AxV)))
+   λ_old = Float64[]
 
    # start the block-lanczos loop; when we have kmax v-vectors we stop
    while size(V, 2) <= kmax
@@ -182,18 +187,21 @@ function blocklanczos( f0, f, xc, errtol, kmax;
       # new x and λ (remember the old)
       g = Q * (E .\ (Q' * (V' * b)))
       x, x_old = V * g, x
-      λ, λ_old = D[1], λ
+      push!(λ_old, λ)
+      λ = D[1]
       # if E == D then A' = A hence we can estimate the *actual* and *current* residual
-      if debug; @show j, λ; end
       if (isnewton = (E == D))
          res = norm( AxV * g - b )    # TODO: should we switch to P^{-1}-norm?
       end
-      if debug; @show abs(λ - λ_old), res/norm(b); end
       # check for termination
-      if res < errtol && (λ < 0 || abs(λ - λ_old) < eigatol + eigrtol * abs(λ))
+      err_λ = maxabs(λ - λ_old[max(1,length(λ)-p+1):end])
+      if res < errtol && (λ < 0 || err_λ < eigatol + eigrtol * abs(λ))
          return x, λ, vmin, numf, isnewton
       end
 
+      if debug
+         @printf("    %d   %.2f   %.2e    %.2e \n", j, λ, err_λ, res/norm(b))
+      end
       # add the next Krylov vector
       w = orthogonalise(Y[:, j], V, P)
       nrmw = norm(P, w)
@@ -225,7 +233,7 @@ Newton-Krylov based saddle search method
    precon = I
    precon_prep! = (P, x) -> P
    verbose::Int = 1
-   krylovinit::Symbol = :res  # allow res, rand, rot, resrot
+   krylovinit::Symbol = :resrot  # allow res, rand, rot, resrot
    maxstep::Float64 = Inf
    eigatol::Float64 = 1e-1
    eigrtol::Float64 = 1e-1
@@ -268,18 +276,22 @@ function run!{T}(method::NK, E, dE, x0::Vector{T},
       if debug; @show dot(f0, v); end
       # compute the (modified) Newton direction
       if krylovinit == :res
-         V0 = reshape(- P \ f0, d, 1)
+         V0 = - P \ f0
       elseif krylovinit == :rand
-         V0 = reshape(P \ rand(d), d, 1)
+         V0 = P \ rand(d)
       elseif krylovinit == :rot
-         V0 = reshape(v, d, 1)
+         V0 = v
+      elseif krylovinit == :resrot
+         V0 = [ P \ f0 v ]
+      else
+         error("unknown parameter `krylovinit = $(krylovinit)`")
       end
       p, λ, v, inner_numdE, isnewton =
             blocklanczos(f0, dE, x, eta * norm(f0), kmax;
                          P = P, b = - f0, V0 = V0, debug = (verbose >= 3),
                          h = len, eigatol = eigatol, eigrtol = eigrtol)
       numdE += inner_numdE
-      if debug; @show isnewton; end 
+      if debug; @show isnewton; end
 
       # ~~~~~~~~~~~~~~~~~~ LINESEARCH ~~~~~~~~~~~~~~~~~~~~~~
       if isnewton
