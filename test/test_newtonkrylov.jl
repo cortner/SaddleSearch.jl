@@ -9,9 +9,10 @@ using SaddleSearch: ODE12r, odesolve, IterationLog
 
 @testset "newtonkrylov" begin
 
-@testset "dcg1_index1" begin
-println("Testing `dcg1_index1`")
+@testset "blocklanczos" begin
+println("Testing `blocklanczos`")
 
+# create A = -Δ , B = diag(V)   with V positive
 d = 30
 x = linspace(-1,1,d)
 A = d^2 * SymTridiagonal(2*ones(d), -ones(d-1))
@@ -26,35 +27,48 @@ H = A - μ * B
 b = ones(d) + 0.1 * sin.(x)
 
 # define a linear function
-f = x -> H * x
-x, λ, v, _ = dcg_index1(zeros(d), f, zeros(d), 1e-6, d; b = b, debug = false)
-@test norm(H * x - b) < 1e-10
-@test norm(H * v - λ * v, Inf) < 1e-10
-@test abs(λ - σ[1]) < 1e-10
+fl = x -> H * x
 
-# now try the same with a quadratic nonlinearity mixed in
+# then try the same with a quadratic nonlinearity mixed in
 #   (hessian remains the same!)
 q = x -> [ [x[i]*x[i+1] for i = 1:d-1]; x[end] * x[1] ]
-f = x -> H * x + q(x)
-x, λ, v, _ = dcg_index1(zeros(d), f, zeros(d), 1e-6, d; b = b, debug = false)
-@test norm(H * x - b) < 1e-6
-@test norm(H * v - λ * v, Inf) < 1e-7
-@test abs(λ - σ[1]) < 1e-7
+fq = x -> H * x + q(x)
+
+# testing unpreconditioned lanczos
+for (f, V0, msg) in [ (fl, reshape(b, d, 1), "Linear - Basic Lanczos"),
+                      (fl, [b rand(d)], "Linear - Block Lanczos"),
+                      (fq, reshape(b, d, 1), "Nonlinear - Basic Lanczos"),
+                      (fq, [b rand(d)], "Nonlinear - Block Lanczos")
+                     ]
+   println("Testing: ", msg)
+   x, λ, v, _ = blocklanczos(zeros(d), f, zeros(d), 1e-6, d;
+                              b = b, V0 = V0, debug = false)
+   @test norm(H * x - b) < 1e-6
+   @test norm(H * v - λ * v, Inf) < 1e-7
+   @test abs(λ - σ[1]) < 1e-7
+end
 
 # next we add some preconditioning
 P = 0.9 * sparse(A) + μ/2 * speye(d)
 λP = minimum(eigvals(full(H), full(P)))
-x, λ, v, numf = dcg_index1(zeros(d), f, zeros(d), 1e-6, d; P = P, b = b, debug = false)
-# TODO: test that it took just 9 iterations!
-@test numf == 9
-@test norm(H * x - b) < 1e-6
-@test norm(H * v - λ * P * v, Inf) < 1e-7
-@test abs(λ - λP) < 1e-7
-if numf != 9
-   warn("numf was 9 in original tests; now it is $numf")
+srand(12345)
+vrand = rand(d)
+
+for (V0, msg, numfo) in [ (reshape(P\b, d, 1), "Preconditioned Lanczos", 9),
+                           ([P\b P\vrand], "Preconditioned Block-Lanczos", 14) ]
+   println("Testing: ", msg)
+   x, λ, v, numf = blocklanczos(zeros(d), fq, zeros(d), 1e-6, d;
+                                P = P, b = b, debug = false, V0=V0)
+   @test numf == numfo
+   @test norm(H * x - b) < 1e-6
+   @test norm(H * v - λ * P * v, Inf) < 1e-6
+   @test abs(λ - λP) < 1e-7
+   if numf != numfo
+      warn("numf was $numfo in original tests; now it is $numf")
+   end
 end
 
-end  # @testset "dcg1_index1"
+end  # @testset "blocklanczos"
 
 
 @testset "NK Muller" begin
@@ -72,7 +86,7 @@ for init in (:near, :far)
       xe = copy(x)
    else
       println("  |x - xe| = ", norm(x - xe, Inf))
-      @test norm(x - xe, Inf) < 1e-10
+      @test norm(x - xe, Inf) < 1e-8
    end
 
    println("Superlinear Dimer, Müller, $(init)")
@@ -90,7 +104,6 @@ for init in (:near, :far)
 end
 
 end # @testset "NK Muller"
-
 
 @testset "NK Vacancy" begin
 

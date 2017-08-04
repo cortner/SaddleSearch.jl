@@ -14,12 +14,11 @@ verbose=1
 runtest(t) = include("test_$(t).jl")
 
 tests = [
-   # "staticvsbb",
-   # "lsdimer",
-   # "superlinear",
-   # "vacancy",
-   # "molecule2d",
-   # "nsoli",
+   "staticvsbb",
+   "lsdimer",
+   "superlinear",
+   "vacancy",
+   "molecule2d",
    "newtonkrylov",
 ]
 
