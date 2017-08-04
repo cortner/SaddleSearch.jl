@@ -35,8 +35,12 @@ function orthogonalise(w, V::Matrix, P)
    # make w orthogonal to all columns of V
    for i = 1:size(V,2)
       w -= dot(w, P, V[:,i]) * V[:,i]
-      w /= norm(P, w)
+      # w /= norm(P, w)
    end
+   if norm(P, w) < 1e-10
+      warn("||w|| is very small after orthogonalisation")
+   end
+   w /= norm(P,w)
    # TODO: create a test that the w we get is really orthogonal,
    #       and if not then re-orthogonalise
    return w
@@ -66,9 +70,9 @@ function appendkrylov(V, AxV, Y, v, Hmul, P)
 end
 
 
-# TODO: generalise dcg_index1 to allow arbitrary transformations of the
+# TODO: generalise blocklanczos to allow arbitrary transformations of the
 #       spectrum, and probably also arbitrary right-hand sides
-# TODO: look into  re-orthogonalising
+# TODO: look into re-orthogonalising
 
 """
 blocklanczos(f0, f, xc, errtol, kmax, v1=copy(f0); P = I, reorth = true)

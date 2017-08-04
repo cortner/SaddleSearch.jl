@@ -1,12 +1,11 @@
 # This Example requires
 #   * JuLIP.jl,
-#   * MaterialsScienceTools.jl
 #   * atomistica
+#   * CTKSolvers.jl
+#
 
 using JuLIP, JuLIP.Potentials, SaddleSearch, Optim
-using MaterialsScienceTools
 using CTKSolvers
-SI = MaterialsScienceTools.Silicon
 
 
 using PyCall
@@ -60,50 +59,50 @@ function check_saddle(x0)
 end
 
 # NewtonKrylov - I
-nkI = NK(len = 1e-4, verbose=3, maxnumdE = 500, maxstep = 0.2,
+nkI = NK(len = 1e-4, verbose=1, maxnumdE = 500, maxstep = 0.2,
          krylovinit = :resrot )
 x1, gcalls = run!(nkI, Estab, dEstab, x0, v0)
 println("  NK(I): gcalls =  ", gcalls, "     | res = $(norm(dE(x1)))")
-# println("         σ[1:6] = ", check_saddle(x1)[1:6])
+L <= 4 && println("         σ[1:6] = ", check_saddle(x1)[1:6])
 
 # Superlinear - I
 sld = SuperlinearDimer( maximum_translation=0.2, max_num_rot=1, maxnumdE=500,
                           verbose=1 )
 x3, v, res = run!(sld, E, dE, x0, v0)
 println("  SLD(I): gcalls = ", SaddleSearch.numdE(res)[end], "    | res = $(norm(dE(x3), Inf))")
-# println("          σ[1:6] = ", check_saddle(x3)[1:6])
+L <= 4 && println("          σ[1:6] = ", check_saddle(x3)[1:6])
 println("          |x_nk - x_sld| = ", norm(x1 - x3, Inf))
 
-# # NewtonKrylov - P
-# nkP = NK(len = 1e-4, verbose=1, maxnumdE = 500, maxstep = 1.1,
-#          krylovinit = :resrot,
-#          precon = JuLIP.Preconditioners.Exp(at),
-#          precon_prep! = (P, x) -> JuLIP.update!(P, at, x).amg.A)
-# x1P, gcalls = run!(nkP, E, dE, x0, v0)
-# println("  NK(EXP): gcalls =  ", gcalls, "     | res = $(norm(dE(x1P)))")
-# println("           σ[1:6] = ", check_saddle(x1P)[1:6])
-# println("           |x_nk - x_nkP| = ", norm(x1 - x1P, Inf))
+# NewtonKrylov - P
+nkP = NK(len = 1e-4, verbose=1, maxnumdE = 500, maxstep = 0.2,
+         krylovinit = :res,
+         precon = JuLIP.Preconditioners.Exp(at),
+         precon_prep! = (P, x) -> JuLIP.update!(P, at, x).amg.A)
+x1P, gcalls = run!(nkP, Estab, dEstab, x0, v0)
+println("  NK(EXP): gcalls =  ", gcalls, "     | res = $(norm(dE(x1P)))")
+L <= 4 && println("           σ[1:6] = ", check_saddle(x1P)[1:6])
+println("           |x_nk - x_nkP| = ", norm(x1 - x1P, Inf))
 
 # NewtonKrylov - FF
-nkFF = NK(len = 1e-4, verbose=1, maxnumdE = 500, maxstep = 1.1,
+nkFF = NK(len = 1e-4, verbose=1, maxnumdE = 500, maxstep = 0.2,
          krylovinit = :resrot,
          precon = JuLIP.Preconditioners.FF(at, sw()),
          precon_prep! = (P, x) -> JuLIP.update!(P, at, x).amg.A)
 x1FF, gcalls = run!(nkFF, Estab, dEstab, x0, v0)
 println("  NK(FF): gcalls =  ", gcalls, "     | res = $(norm(dE(x1FF)))")
-# println("          σ[1:6] = ", check_saddle(x1FF)[1:6])
+L <= 4 && println("          σ[1:6] = ", check_saddle(x1FF)[1:6])
 println("          |x_nk - x_nkFF| = ", norm(x1 - x1FF, Inf))
 
 
 # # Superlinear - P
 # sldP = SuperlinearDimer( maximum_translation=0.2, max_num_rot=1, maxnumdE=500,
 #                           verbose=1,
-#                         precon = precond(V, x0),
-#                         precon_prep! = (P, x) -> precond(V, x) )
-# x3P, v, res = run!(sldP, E, dE, x0, v0)
+#                           precon = JuLIP.Preconditioners.Exp(at),
+#                           precon_prep! = (P, x) -> JuLIP.update!(P, at, x) )
+# x3P, v, res = run!(sldP, Estab, dEstab, x0, v0)
 # println("  SLD: gcalls = ", SaddleSearch.numdE(res)[end], "    | res = $(norm(dE(x3P), Inf))")
-# println("      σ[1:6] = ", check_saddle(x3P)[1:6])
-# println("      |x_nk - x_sldP| = ", norm(x1 - x3P, Inf))
+# L <= 4 && println("       σ[1:6] = ", check_saddle(x3P)[1:6])
+# println("       |x_nk - x_sldP| = ", norm(x1 - x3P, Inf))
 
 
 
