@@ -49,7 +49,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    for nit = 0:maxnit
       # normalise t
       precon = precon_prep!(precon, x)
-      P = i -> precon[mod(i-Np+1,Np)+1]
+      P = i -> precon[mod(i-1,Np)+1] #mod(i-1,N)+1
       t ./= [tangent_norm(P(i), t[i]) for i=1:length(x)]
       t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
@@ -86,12 +86,12 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       x -= alpha .* F
 
       # reparametrise
-      x, t = reparametrise!(method, x, t, P, param)
+      x, t = reparametrise!(method, x, t, param, precon_scheme)
 
       # string refinement
       if refine_points > 0
          refine!(param, x, t, refine_points)
-         x, t = reparametrise!(method, x, t, P, param)
+         x, t = reparametrise!(method, x, t, param, precon_scheme)
       end
 
    end
@@ -101,9 +101,13 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    return x, log
 end
 
-function reparametrise!(method::PreconStringMethod, x, t, P, param)
-   # Np = length(P)
-   ds = [sqrt(dot(x[i+1]-x[i], (P(i)+P(i))/2, x[i+1]-x[i])) for i=1:length(x)-1]
+function reparametrise!(method::PreconStringMethod, x, t, param, precon_scheme)
+   @unpack precon, precon_prep!, precon_cond = precon_scheme
+
+   precon = precon_prep!(precon, x)
+   Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
+
+   ds = [sqrt(dot(x[i+1]-x[i], (P(i)+P(i+1))/2, x[i+1]-x[i])) for i=1:length(x)-1]
    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param_temp /= param_temp[end]; param_temp[end] = 1.
    S = [Spline1D(param_temp, [x[j][i] for j=1:length(x)],

@@ -42,7 +42,7 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, dE), ref(x), length(x), log, method; g = x_ -> reparametrise(x, x_, precon_scheme), tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, dE), ref(x), length(x), log, method; g = x_ -> reparametrise(method, x, x_, precon_scheme), tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
@@ -54,8 +54,7 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
    x = set_ref!(x, xref)
 
    precon = precon_prep!(precon, x)
-
-   Np = length(precon); P = i -> precon[mod(i-Np+1,Np)+1]
+   Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
 
    ds = [norm(P(i), x[i+1]-x[i]) for i=1:length(x)-1]
 
@@ -88,16 +87,15 @@ function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})
    return x
 end
 
-function reparametrise{T}(x::Vector{T}, xref::Vector{Float64}, precon_scheme)
-   @unpack precon_prep!, precon_cond = precon_scheme
-   P=precon_scheme.precon
+function reparametrise{T}(method::ODEStringMethod, x::Vector{T}, xref::Vector{Float64}, precon_scheme)
+   @unpack precon, precon_prep!, precon_cond = precon_scheme
 
-   P = precon_prep!(P, x)
-   Np = length(P)
+   precon = precon_prep!(precon, x)
+   Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
 
    x = set_ref!(x, xref)
 
-   ds = [sqrt(dot(x[i+1]-x[i], (P[mod(i-Np+1,Np)+1]+P[mod(i-1-Np+1,Np)+1])/2, x[i+1]-x[i])) for i=1:length(x)-1]
+   ds = [sqrt(dot(x[i+1]-x[i], (P(i)+P(i+1))/2, x[i+1]-x[i])) for i=1:length(x)-1]
    s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    s /= s[end]; s[end] = 1.
    S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
