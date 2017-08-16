@@ -1,11 +1,11 @@
 # This Example requires
 #   * JuLIP.jl,
 #   * atomistica
-#   * CTKSolvers.jl
+#   * Isaac.jl
 #
 
 using JuLIP, JuLIP.Potentials, SaddleSearch, Optim
-using CTKSolvers
+using Isaac
 
 
 using PyCall

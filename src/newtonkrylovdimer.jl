@@ -1,4 +1,4 @@
-using CTKSolvers: parab3p
+using Isaac: parab3p
 
 export NK, blocklanczos
 
@@ -56,7 +56,7 @@ function basic_dirder(f, f0, xc, v, h)
    return (f(xc + h * v) - f0) / h
 end
 
-ctk_dirder(f, f0, xc, v, h) =  CTKSolvers.dirder(xc, v, f, f0, h = h)
+ctk_dirder(f, f0, xc, v, h) =  Isaac.dirder(xc, v, f, f0, h = h)
 
 """
 `appendkrylov(V, AxV, Y, v, Hmul, P)`:
@@ -85,7 +85,7 @@ where -- if H = ∇^2 E(x) = Q D Q'
 
 This code is inspired by [insert REF] and by
    http://www4.ncsu.edu/~ctk/newton/SOLVERS/nsoli.m
-(see also [CTKSolvers.jl](https://github.com/cortner/CTKSolvers.jl))
+(see also [Isaac.jl](https://github.com/cortner/Isaac.jl))
 
 `blocklanczos` first uses a (possibly preconditioned) lanczos method to compute
 a reasonable approximation to H in the form H = P V T V' P. Then it diagonalises
@@ -96,7 +96,7 @@ is a solution of sufficiently high accuracy.
 
 In the lanzcos iterations the matrix vector product H * u
 is replaced with the finite-difference operation (∇E(xc + h u) - ∇E(xc))/h;
-see also `basic_dirder` and `CTKSolvers.dirder`
+see also `basic_dirder` and `ctk_dirder`
 
 ## Required Parameters
 

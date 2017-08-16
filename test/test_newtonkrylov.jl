@@ -3,7 +3,7 @@ using Base.Test
 using SaddleSearch: numE, numdE, res_trans, res_rot
 
 using SaddleSearch.TestSets: hessprecond, precond
-using CTKSolvers
+using Isaac
 using SaddleSearch: ODE12r, odesolve, IterationLog
 
 

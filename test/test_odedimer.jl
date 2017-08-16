@@ -1,5 +1,5 @@
 using SaddleSearch.TestSets: hessprecond
-using CTKSolvers
+using Isaac
 using SaddleSearch: ODE12r, odesolve, IterationLog
 
 verbose = 1
