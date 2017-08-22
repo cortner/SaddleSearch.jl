@@ -3,18 +3,14 @@ using Dierckx
 export PreconStringMethod
 
 """
-`StringMethod`: the most basic string method variant, minimising the energy
-normally to the string by successive steepest descent minimisations at fixed
-step-size with an intermediate redistribution of the nodes.
+`PreconStringMethod`: a preconditioning variant of the string method.
 
 ### Parameters:
+* 'precon_scheme' : preconditioning method
 * `alpha` : step length
 * `tol_res` : residual tolerance
 * `maxnit` : maximum number of iterations
-* `precon` : preconditioner
-* `precon_prep!` : update function for preconditioner
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
-* `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type PreconStringMethod
    precon_scheme = coordTransform()
@@ -49,14 +45,15 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    for nit = 0:maxnit
       # normalise t
       precon = precon_prep!(precon, x)
-      P = i -> precon[mod(i-1,Np)+1] #mod(i-1,N)+1
+      P = i -> precon[mod(i-1,Np)+1]
       t ./= [tangent_norm(P(i), t[i]) for i=1:length(x)]
       t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
       # evaluate gradients
-      dE0  = [dE(x[i]) for i=1:length(x)]
+      dE0 = [dE(x[i]) for i=1:length(x)]
       dE0⟂ = gradDescent⟂(P, dE0, t)
       F = [force_eval(P(i), dE0[i], dE0⟂[i], t[i]) for i=1:length(x)]
+      Fref = force_eval(P, dE0ref, t)
       numE += length(x); numdE += length(x)
 
       # perform linesearch to find optimal step
