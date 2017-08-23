@@ -51,9 +51,10 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
 
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:length(x)]
+
+      # evaluate force term
       dE0⟂ = gradDescent⟂(P, dE0, t)
-      F = [force_eval(P(i), dE0[i], dE0⟂[i], t[i]) for i=1:length(x)]
-      Fref = force_eval(P, dE0ref, t)
+      F = force_eval(P, dE0, dE0⟂, t)
       numE += length(x); numdE += length(x)
 
       # perform linesearch to find optimal step
@@ -104,7 +105,7 @@ function reparametrise!(method::PreconStringMethod, x, t, param, precon_scheme)
    precon = precon_prep!(precon, x)
    Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
 
-   ds = [sqrt(dot(x[i+1]-x[i], (P(i)+P(i+1))/2, x[i+1]-x[i])) for i=1:length(x)-1]
+   ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param_temp /= param_temp[end]; param_temp[end] = 1.
    S = [Spline1D(param_temp, [x[j][i] for j=1:length(x)],

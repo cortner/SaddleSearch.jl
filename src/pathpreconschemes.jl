@@ -39,10 +39,10 @@ end
 
 @with_kw type refForcePrecon
    precon = I
-   precon_prep! = (P,x) -> P
+   precon_prep! = (P, x) -> P
    precon_cond::Bool = false
    tangent_norm = (P, t) -> norm(t)
    gradDescent⟂ = (P, ∇E, t) -> cat(1, [∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)]...)
-   force_eval = (P, ∇E, ∇E⟂, t) -> P \ ∇E⟂
+   force_eval = (P, ∇E, ∇E⟂, t) -> [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)]
    maxres = (P, ∇E⟂, force) -> vecnorm(∇E⟂, Inf)
 end
