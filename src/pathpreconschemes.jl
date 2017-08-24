@@ -43,6 +43,6 @@ end
    precon_cond::Bool = false
    tangent_norm = (P, t) -> norm(t)
    gradDescent⟂ = (P, ∇E, t) -> cat(1, [∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)]...)
-   force_eval = (P, ∇E, ∇E⟂, t) -> [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)]
+   force_eval = (P, ∇E, ∇E⟂, t) -> [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)-length(t)+1]
    maxres = (P, ∇E⟂, force) -> vecnorm(∇E⟂, Inf)
 end
