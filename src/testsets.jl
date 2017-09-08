@@ -62,6 +62,13 @@ function ic_dimer(V::MullerPotential, case=:near)
    error("unknown initial condition")
 end
 
+function ic_path(V::MullerPotential, case=:near)
+   if case == :near
+      return [-0.5; 1.5],  [0.7; .0]
+   elseif case == :far
+      return [-1.0; 0.5], [0.7; .5]
+   end
+end
 
 # ============================================================================
 # TEST SET: DoubleWell
@@ -90,6 +97,18 @@ function ic_dimer(V::DoubleWell, case=:near)
    error("unknown initial condition")
 end
 
+function ic_path(V::DoubleWell, case=:nothing)
+   d = size(V.A,1)-1
+
+   if case == :near
+      x0 = [1.0; 0.2/sqrt(d) * ones(d)]
+      return x0, - x0
+   elseif case ==:far
+      x0 = [0.8; 0.4/sqrt(d) * ones(d)]
+      return x0, - x0
+   end
+   error("unknown initial condition")
+end
 # ============================================================================
 # TEST SET: Lennard-Jones Cluster
 # ============================================================================
@@ -139,7 +158,7 @@ function ic_dimer(V::LJcluster, case=:near)
 end
 
 
-function ic_string(V::LJcluster)
+function ic_path(V::LJcluster)
    R = lj_refconfig()
    r1 = [R[5]; R[4]; R[3]; R[2]; R[7]; R[6]; R[1]]
    r2 = [R[5]; R[3]; R[1]; R[2]; R[7]; R[6]; R[4]]
@@ -278,6 +297,20 @@ function ic_dimer(V::LJVacancy2D, case=:near)
    v0 = zeros(length(x0))
    v0[1:2] = - x0[1:2] / norm(x0[1:2])
    return x0, v0
+end
+
+function ic_path(V::LJVacancy2D, case=:near)
+   X0 = copy(V.Xref); X1 = copy(V.Xref)
+   if case == :near
+      X0 *= .1; X1 *= .9
+   elseif case == :far
+      X0 *= -.3; X1 *= 1.3
+   elseif case == :min
+      X0 *= .0; X1 *= 1.
+   else
+      error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
+   end
+   return return X0[:, V.Ifree][:], X1[:, V.Ifree][:]
 end
 
 function pos2dofs(V::LJVacancy2D, P::AbstractMatrix)

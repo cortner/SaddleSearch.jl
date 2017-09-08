@@ -33,7 +33,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    # initialise variables
    x, t = copy(x0), copy(t0)
    param = collect(linspace(.0, 1., length(x)))
-   Np = length(precon); P = i -> precon[mod(i-Np+1,Np)+1]
+   Np = length(precon);
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()

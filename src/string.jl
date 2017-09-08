@@ -46,7 +46,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    for nit = 0:maxnit
       # normalise t
       P = precon_prep!(P, x)
-      t ./= [sqrt(dot(t[i], P, t[i])) for i=1:length(x)]
+      t ./= [norm(P, t[i]) for i=1:length(x)]
       t[1] =zeros(t[1]); t[end]=zeros(t[1])
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:length(x)]
@@ -60,7 +60,8 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       end
       if maxres <= tol_res
          if verbose >= 1
-            println("StringMethod terminates succesfully after $(nit) iterations")
+            println("StringMethod terminates succesfully after $(nit)
+            iterations")
          end
          return x, log
       end
@@ -76,7 +77,8 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       linspace(0., 1., length(x)) ]
    end
    if verbose >= 1
-      println("StringMethod terminated unsuccesfully after $(maxnit) iterations.")
+      println("StringMethod terminated unsuccesfully after $(maxnit)
+      iterations.")
    end
    return x, log
 end
