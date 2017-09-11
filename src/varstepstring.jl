@@ -66,7 +66,7 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
       α = [steps[i][1] for i=1:length(steps)]
 
       for k=1:5
-         α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
+         α = [.5 * (α[1] + α[2]); [.25 * (α[n-1] + α[n+1]) + .5 * α[n] for n=2:length(α)-1]; .5 * (α[end-1] + α[end])]
       end
       numE += sum([steps[i][2] for i=1:length(steps)])
 

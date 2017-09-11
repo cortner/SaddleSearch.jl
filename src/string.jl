@@ -67,14 +67,16 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       end
       x -= alpha * dE0⟂
       # reparametrise
-      ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
-      s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-      s /= s[end]; s[end] = 1.
-      S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
-            k = 3, bc = "error") for i=1:length(x[1])]
-      x = [[S[i](s) for i in 1:length(S)] for s in linspace(0., 1., length(x)) ]
-      t = [[derivative(S[i], s) for i in 1:length(S)] for s in
-      linspace(0., 1., length(x)) ]
+      reparametrise!(method, x, t)
+
+      # ds = [sqrt(dot(x[i+1]-x[i], P, x[i+1]-x[i])) for i=1:length(x)-1]
+      # s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
+      # s /= s[end]; s[end] = 1.
+      # S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
+      #       k = 3, bc = "error") for i=1:length(x[1])]
+      # x = [[S[i](s) for i in 1:length(S)] for s in linspace(0., 1., length(x)) ]
+      # t = [[derivative(S[i], s) for i in 1:length(S)] for s in
+      # linspace(0., 1., length(x)) ]
    end
    if verbose >= 1
       println("StringMethod terminated unsuccesfully after $(maxnit)
