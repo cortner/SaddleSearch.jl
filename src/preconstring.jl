@@ -58,16 +58,16 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       numE += length(x); numdE += length(x)
 
       # perform linesearch to find optimal step
-      # steps = []
-      # ls = Backtracking(c1 = .2, mindecfact = 1.)
-      # for i=1:length(x)
-      #    push!(steps, linesearch!(ls, E, E0[i][], dot(dE0[i],-F[i]), x[i], -F[i], copy(alpha)))
-      # end
-      # α = [steps[i][1] for i=1:length(steps)]
-      # for k=1:5
-      #    α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
-      # end
-      # numE += sum([steps[i][2] for i=1:length(steps)])
+      steps = []
+      ls = Backtracking(c1 = .2, mindecfact = 1.)
+      for i=1:length(x)
+         push!(steps, linesearch!(ls, E, E0[i][], dot(dE0[i],-F[i]), x[i], -F[i], copy(alpha), conditiob=iter->iter>=10))
+      end
+      α = [steps[i][1] for i=1:length(steps)]
+      for k=1:5
+         α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
+      end
+      numE += sum([steps[i][2] for i=1:length(steps)])
 
       # residual, store history
       res = maxres(P, dE0⟂, F)

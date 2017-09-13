@@ -58,17 +58,17 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
       numE += length(x); numdE += length(x)
 
       # perform linesearch to find optimal step
-      steps = []
+      α = []
       ls = Backtracking(c1 = .2, mindecfact = 1.)
       for i=1:length(x)
-         push!(steps, linesearch!(ls, E, E0[i], dot(dE0[i],-dE0⟂[i]), x[i], -dE0⟂[i], copy(alpha)))
+         αi, cost, _ = linesearch!(ls, E, E0[i], dot(dE0[i],-dE0⟂[i]), x[i], -dE0⟂[i], copy(alpha), condition=iter->iter>=10)
+         push!(α, αi)
+         numE += cost
       end
-      α = [steps[i][1] for i=1:length(steps)]
 
-      for k=1:5
+      for k=1:10
          α = [.5 * (α[1] + α[2]); [.25 * (α[n-1] + α[n+1]) + .5 * α[n] for n=2:length(α)-1]; .5 * (α[end-1] + α[end])]
       end
-      numE += sum([steps[i][2] for i=1:length(steps)])
 
       # residual, store history
       maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
@@ -99,7 +99,7 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
    if verbose >= 1
       println("VarStepStringMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
-   return x, param, log
+   return (x, param), log
 end
 
 # function reparametrise!(method::VarStepStringMethod, x, t, P, param)
