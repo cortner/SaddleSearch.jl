@@ -42,7 +42,7 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, dE), ref(x), length(x), log, method; g = x_ -> reparametrise(method, x, x_, precon_scheme), tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, dE), ref(x), length(x), log, method; g = x_ -> redistribute(x_, x, t, precon_scheme), tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
@@ -87,7 +87,7 @@ function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})
    return x
 end
 
-function reparametrise{T}(method::ODEStringMethod, x::Vector{T}, xref::Vector{Float64}, precon_scheme)
+function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, t::Vector{T}, precon_scheme)
    @unpack precon, precon_prep!, precon_cond = precon_scheme
 
    precon = precon_prep!(precon, x)
@@ -95,12 +95,13 @@ function reparametrise{T}(method::ODEStringMethod, x::Vector{T}, xref::Vector{Fl
 
    x = set_ref!(x, xref)
 
-   ds = [sqrt(dot(x[i+1]-x[i], (P(i)+P(i+1))/2, x[i+1]-x[i])) for i=1:length(x)-1]
-   s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-   s /= s[end]; s[end] = 1.
-   S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
-        k = 3, bc = "error") for i=1:length(x[1])]
-   x = [ [S[i](s) for i in 1:length(S)] for s in linspace(0., 1., length(x)) ]
+   ds = [norm((P(i)+P(i+1))/2, x[i+1]-x[i]) for i=1:length(x)-1]
+   reparamerise!(x, t, ds)
+   # s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
+   # s /= s[end]; s[end] = 1.
+   # S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
+   #      k = 3, bc = "error") for i=1:length(x[1])]
+   # x = [ [S[i](s) for i in 1:length(S)] for s in linspace(0., 1., length(x)) ]
 
    return ref(x)
 end

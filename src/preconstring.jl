@@ -32,7 +32,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    @unpack precon, precon_prep!, precon_cond, tangent_norm, gradDescent⟂, force_eval, maxres = precon_scheme
    # initialise variables
    x, t = copy(x0), copy(t0)
-   param = collect(linspace(.0, 1., length(x)))
+   param = linspace(.0, 1., length(x)) |> collect
    Np = length(precon);
    nit = 0
    numdE, numE = 0, 0
@@ -84,12 +84,14 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       x -= alpha .* F
 
       # reparametrise
-      x, t = reparametrise!(method, x, t, param, precon_scheme)
+      ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
+      reparametrise!(x, t, ds, parametrisation = param)
 
       # string refinement
       if refine_points > 0
-         refine!(param, x, t, refine_points)
-         x, t = reparametrise!(method, x, t, param, precon_scheme)
+         refine!(param, refine_points, t)
+         ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
+         reparametrise!(x, t, ds, parametrisation = param)
       end
 
    end
@@ -99,18 +101,18 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    return x, log
 end
 
-function reparametrise!(method::PreconStringMethod, x, t, param, precon_scheme)
-   @unpack precon, precon_prep!, precon_cond = precon_scheme
-
-   precon = precon_prep!(precon, x)
-   Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
-
-   ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
-   param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-   param_temp /= param_temp[end]; param_temp[end] = 1.
-   S = [Spline1D(param_temp, [x[j][i] for j=1:length(x)],
-         w =  ones(length(x)), k = 3, bc = "error") for i=1:length(x[1])]
-   x = [[S[i](s) for i in 1:length(S)] for s in param]
-   t = [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-   return x, t
-end
+# function reparametrise!(method::PreconStringMethod, x, t, param, precon_scheme)
+#    @unpack precon, precon_prep!, precon_cond = precon_scheme
+#
+#    precon = precon_prep!(precon, x)
+#    Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
+#
+#    ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
+#    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
+#    param_temp /= param_temp[end]; param_temp[end] = 1.
+#    S = [Spline1D(param_temp, [x[j][i] for j=1:length(x)],
+#          w =  ones(length(x)), k = 3, bc = "error") for i=1:length(x[1])]
+#    x = [[S[i](s) for i in 1:length(S)] for s in param]
+#    t = [[derivative(S[i], s) for i in 1:length(S)] for s in param]
+#    return x, t
+# end

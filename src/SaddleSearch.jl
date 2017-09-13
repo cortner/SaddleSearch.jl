@@ -64,6 +64,8 @@ include("odeneb.jl")
 
 include("pathpreconschemes.jl")
 
+include("stringparametrisation.jl")
+
 include("testsets.jl")
 
 
