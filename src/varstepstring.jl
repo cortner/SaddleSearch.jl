@@ -59,7 +59,7 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
 
       # perform linesearch to find optimal step
       α = []
-      ls = Backtracking(c1 = .2, mindecfact = 1.)
+      ls = Backtracking(c1 = .2, mindecfact = .1, minα = 0.)
       for i=1:length(x)
          αi, cost, _ = linesearch!(ls, E, E0[i], dot(dE0[i],-dE0⟂[i]), x[i], -dE0⟂[i], copy(alpha), condition=iter->iter>=10)
          push!(α, αi)
@@ -99,33 +99,5 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
    if verbose >= 1
       println("VarStepStringMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
-   return (x, param), log
+   return x, log
 end
-
-# function reparametrise!(method::VarStepStringMethod, x, t, P, param)
-#    ds = [norm(P, x[i+1]-x[i]) for i=1:length(x)-1]
-#    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-#    param_temp /= param_temp[end]; param_temp[end] = 1.
-#    S = [Spline1D(param_temp, [x[j][i] for j=1:length(x)],
-#          w =  ones(length(x)), k = 3, bc = "error") for i=1:length(x[1])]
-#    x = [[S[i](s) for i in 1:length(S)] for s in param]
-#    t = [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-#    return x, t
-# end
-
-# function refine!(param, x, t, refine_points)
-#    N = length(x)
-#    for n = 2:N-1
-#       cosine = dot(t[n-1], t[n+1]) /(norm(t[n-1]) * norm(t[n+1]))
-#       if ( cosine < 0 )
-#          n1 = n-1; n2 = n+1; k = refine_points
-#          k1 = floor(param[n1] * k); k2 = floor((param[end] - param[n2-1]) * k)
-#          k = k1 + k2
-#          s1 = (n1 - k1 == 1) ? [.0] : collect(linspace(.0, 1., n1 - k1 )) * param[n1]
-#          s2 = collect(param[n1] + linspace(.0, 1., k + 3 ) * (param[n2] - param[n1]))
-#          s3 = (N - n2 - k2 + 1 == 1) ? [1.] : collect(param[n2] + linspace(.0, 1., N - n2 - k2 + 1 ) * (1 - param[n2]))
-#          param = [s1;  s2[2:end-1]; s3]
-#       end
-#    end
-#    return param, x, t
-# end

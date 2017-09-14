@@ -5,7 +5,7 @@ function reparametrise!{T}(x::Vector{T}, t::Vector{T}, ds::T; parametrisation=li
    s = [0; copy(ds)]; [s[i]+=s[i-1] for i=2:length(s)]
    s /= s[end]; s[end] = 1.
 
-   S = [Spline1D(s, [x[i][j] for i=1:length(s)], w = ones(length(x)),
+   S = [Spline1D(s, [x[i][j] for i=1:length(x)], w = ones(length(x)),
         k = 3, bc = "error") for j=1:length(x[1])]
    xref = [[Sj(s) for s in parametrisation] for Sj in S ]
    tref = [[derivative(Sj, s) for s in parametrisation] for Sj in S]
@@ -30,6 +30,8 @@ function refine!(param, refine_points, t)
          s2 = collect(param[n1] + linspace(.0, 1., k + 3 ) * (param[n2] - param[n1]))
          s3 = (N - n2 - k2 + 1 == 1) ? [1.] : collect(param[n2] + linspace(.0, 1., N - n2 - k2 + 1 ) * (1 - param[n2]))
          param[:] = [s1;  s2[2:end-1]; s3][:]
+      else
+         param[:] = collect(linspace(0., 1., length(t)))[:]
       end
    end
    return param

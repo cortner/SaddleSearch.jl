@@ -8,6 +8,8 @@ export PreconStringMethod
 ### Parameters:
 * 'precon_scheme' : preconditioning method
 * `alpha` : step length
+* `refine_points` : number of points allowed in refinement region, negative for no refinement of path
+* `ls_cond` : true/false whether to perform linesearch during the minimisation step
 * `tol_res` : residual tolerance
 * `maxnit` : maximum number of iterations
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
@@ -15,7 +17,8 @@ export PreconStringMethod
 @with_kw type PreconStringMethod
    precon_scheme = coordTransform()
    alpha::Float64
-   refine_points::Int
+   refine_points::Int = -1
+   ls_cond::Bool = false
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
    maxnit::Int = 1000
@@ -27,13 +30,13 @@ end
 
 function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
-   @unpack precon_scheme, alpha, refine_points, tol_res, maxnit,
+   @unpack precon_scheme, alpha, refine_points, ls_cond, tol_res, maxnit,
             verbose = method
    @unpack precon, precon_prep!, precon_cond, tangent_norm, gradDescent⟂, force_eval, maxres = precon_scheme
    # initialise variables
    x, t = copy(x0), copy(t0)
    param = linspace(.0, 1., length(x)) |> collect
-   Np = length(precon);
+   Np = length(precon)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
@@ -51,23 +54,30 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
 
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:length(x)]
+      numdE += length(x)
 
       # evaluate force term
       dE0⟂ = gradDescent⟂(P, dE0, t)
       F = force_eval(P, dE0, dE0⟂, t)
-      numE += length(x); numdE += length(x)
 
       # perform linesearch to find optimal step
-      steps = []
-      ls = Backtracking(c1 = .2, mindecfact = 1.)
-      for i=1:length(x)
-         push!(steps, linesearch!(ls, E, E0[i][], dot(dE0[i],-F[i]), x[i], -F[i], copy(alpha), conditiob=iter->iter>=10))
+      if ls_cond
+         E0  = [E(x[i]) for i=1:length(x)]
+         numE += length(x)
+         α = []
+         ls = Backtracking(c1 = .2, mindecfact = .1, minα = 0.)
+         for i=1:length(x)
+            αi, cost, _ = linesearch!(ls, E, E0[i], dot(dE0[i],-F[i]), x[i], -F[i], copy(alpha), condition=iter->iter>=10)
+            push!(α, αi)
+            numE += cost
+         end
+
+         for k=1:10
+            α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
+         end
+      else
+         α = alpha
       end
-      α = [steps[i][1] for i=1:length(steps)]
-      for k=1:5
-         α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
-      end
-      numE += sum([steps[i][2] for i=1:length(steps)])
 
       # residual, store history
       res = maxres(P, dE0⟂, F)
@@ -81,7 +91,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
          end
          return x, log
       end
-      x -= alpha .* F
+      x -= α .* F
 
       # reparametrise
       ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
@@ -100,19 +110,3 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    end
    return x, log
 end
-
-# function reparametrise!(method::PreconStringMethod, x, t, param, precon_scheme)
-#    @unpack precon, precon_prep!, precon_cond = precon_scheme
-#
-#    precon = precon_prep!(precon, x)
-#    Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
-#
-#    ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
-#    param_temp = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-#    param_temp /= param_temp[end]; param_temp[end] = 1.
-#    S = [Spline1D(param_temp, [x[j][i] for j=1:length(x)],
-#          w =  ones(length(x)), k = 3, bc = "error") for i=1:length(x[1])]
-#    x = [[S[i](s) for i in 1:length(S)] for s in param]
-#    t = [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-#    return x, t
-# end
