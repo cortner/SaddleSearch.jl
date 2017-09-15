@@ -302,11 +302,11 @@ end
 function ic_path(V::LJVacancy2D, case=:near)
    X0 = copy(V.Xref); X1 = copy(V.Xref)
    if case == :near
-      X0 *= .1; X1 *= .9
+      X0[:,1] *= .1; X1[:,1] *= .9
    elseif case == :far
-      X0 *= -.3; X1 *= 1.3
+      X0[:,1] *= -.3; X1[:,1] *= 1.3
    elseif case == :min
-      X0 *= .0; X1 *= 1.
+      X0[:,1] *= .0; X1[:,1] *= 1.
    else
       error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
    end
