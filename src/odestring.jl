@@ -69,7 +69,7 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
 
    dE0 = [dE(x[i]) for i=1:length(x)]
    dE0⟂ = gradDescent⟂(P, dE0, t)
-   F = [force_eval(P(i), dE0[i], dE0⟂[i], t[i]) for i=1:length(x)]
+   F = force_eval(P, dE0, dE0⟂, t)
 
    res = maxres(P, dE0⟂, F)
 
@@ -95,13 +95,8 @@ function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, t::Vector{T}, prec
 
    x = set_ref!(x, xref)
 
-   ds = [norm((P(i)+P(i+1))/2, x[i+1]-x[i]) for i=1:length(x)-1]
-   reparamerise!(x, t, ds)
-   # s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-   # s /= s[end]; s[end] = 1.
-   # S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
-   #      k = 3, bc = "error") for i=1:length(x[1])]
-   # x = [ [S[i](s) for i in 1:length(S)] for s in linspace(0., 1., length(x)) ]
+   ds = [norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i]) for i=1:length(x)-1]
+   reparametrise!(x, t, ds)
 
    return ref(x)
 end

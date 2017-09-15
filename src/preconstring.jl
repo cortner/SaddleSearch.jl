@@ -1,5 +1,4 @@
 
-using Dierckx
 export PreconStringMethod
 
 """
