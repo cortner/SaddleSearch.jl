@@ -24,11 +24,19 @@ function refine!(param, refine_points, t)
       cosine = dot(t[n-1], t[n+1]) / (norm(t[n-1]) * norm(t[n+1]))
       if ( cosine < 0 )
          n1 = n-1; n2 = n+1; k = refine_points
-         k1 = floor(param[n1] * k); k2 = floor((param[end] - param[n2-1]) * k)
+         # number of nodes moved from [0., param[n1]) to [param[n1], param[n2]]
+         k1 = floor(param[n1] * k)
+         # number of nodes moved from (param[n2], 1.] to [param[n1], param[n2]]
+         k2 = floor((param[end] - param[n2-1]) * k)
+         # update the number refine points to be consistend with integer partitioning of [0., param[n1]) and (param[n2], 1.]
          k = k1 + k2
+         # new parametrisation of [0., param[n1])
          s1 = (n1 - k1 == 1) ? [.0] : collect(linspace(.0, 1., n1 - k1 )) * param[n1]
+         # new parametrisation of [param[n1], param[n2]]
          s2 = collect(param[n1] + linspace(.0, 1., k + 3 ) * (param[n2] - param[n1]))
+         # new parametrisation of (param[n2], 1.]
          s3 = (N - n2 - k2 + 1 == 1) ? [1.] : collect(param[n2] + linspace(.0, 1., N - n2 - k2 + 1 ) * (1 - param[n2]))
+         # update parametrisation
          param[:] = [s1;  s2[2:end-1]; s3][:]
       else
          param[:] = collect(linspace(0., 1., length(t)))[:]
