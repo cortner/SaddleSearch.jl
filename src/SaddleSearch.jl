@@ -56,6 +56,8 @@ include("varstepstring.jl")
 
 include("preconstring.jl")
 
+include("preconneb.jl")
+
 
 include("odestring.jl")
 

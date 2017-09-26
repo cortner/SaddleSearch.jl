@@ -33,8 +33,7 @@ end
 function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack solver, k, tol_res, maxnit,
-            precon_prep!, verbose, precon_cond = method
-   P=method.precon
+            precon, precon_prep!, verbose, precon_cond = method
    # initialise variables
    x = copy(x0)
    nit = 0
@@ -46,32 +45,32 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
       @printf("-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_) -> forces(x, x_, k, dE, P, precon_prep!), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_) -> forces(x, x_, k, dE, precon, precon_prep!), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
 end
 
 function forces{T}(x::Vector{T}, xref::Vector{Float64},
-                     k::Float64, dE, P, precon_prep!)
+                     k::Float64, dE, precon, precon_prep!)
    x = set_ref!(x, xref)
    N = length(x)
-   P = precon_prep!(P, x)
-   Np = length(P)
+   precon = precon_prep!(precon, x)
+   Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
 
    # central finite differences
    dxds = [(x[i+1]-x[i-1])/2 for i=2:N-1]
-   dxds ./= [sqrt(dot(dxds[i], P[mod(i-Np+1,Np)+1], dxds[i])) for i=1:length(dxds)]
+   dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
    dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-   Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P[mod(i-Np+1,Np)+1], dxds[i]) * dxds[i] for i=2:N-1]
+   Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
    Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
 
    dE0 = [dE(x[i]) for i=1:length(x)]
 
-   dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
+   dE0⟂ = [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
 
-   maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
+   res = maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
 
-   return ref(- dE0⟂), maxres
+   return ref(- dE0⟂), res
 
 end

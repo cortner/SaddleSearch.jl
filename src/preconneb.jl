@@ -101,6 +101,25 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
       Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
       dE0⟂ = [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
 
+      # perform linesearch to find optimal step
+      if ls_cond
+         E0  = [E(x[i]) for i=1:length(x)]
+         numE += length(x)
+         α = []
+         ls = Backtracking(c1 = .2, mindecfact = .1, minα = 0.)
+         for i=1:length(x)
+            αi, cost, _ = linesearch!(ls, E, E0[i], dot(dE0[i],Fk[i]-dE0⟂[i]), x[i], Fk[i]-dE0⟂[i], copy(alpha), condition=iter->iter>=10)
+            push!(α, αi)
+            numE += cost
+         end
+
+         for k=1:10
+            α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
+         end
+      else
+         α = alpha
+      end
+
       # residual, store history
       maxres = maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, maxres)
