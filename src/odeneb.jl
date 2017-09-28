@@ -71,6 +71,6 @@ function forces{T}(x::Vector{T}, xref::Vector{Float64},
 
    res = maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
 
-   return ref(- dE0⟂), res
+   return ref(- dE0⟂+Fk), res
 
 end
