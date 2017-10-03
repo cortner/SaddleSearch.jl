@@ -310,7 +310,7 @@ function ic_path(V::LJVacancy2D, case=:near)
    else
       error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
    end
-   return return X0[:, V.Ifree][:], X1[:, V.Ifree][:]
+   return X0[:, V.Ifree][:], X1[:, V.Ifree][:]
 end
 
 function pos2dofs(V::LJVacancy2D, P::AbstractMatrix)
