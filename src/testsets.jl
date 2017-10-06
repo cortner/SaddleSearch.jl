@@ -415,3 +415,122 @@ function precond(V::Molecule2D, r)
 end
 
 end
+
+# # ============================================================================
+# # TEST SET: SurfaceCluster
+# # ============================================================================
+#
+# @with_kw type SurfaceCluster
+#
+# end
+#
+# function energy(V::SurfaceCluster, r)
+#    np = 343; nd = np*3
+#    aa = 0.7102; a = 1.6047
+#    r0 = 2.8970; rc = 9.5
+#
+#    e = exp(-a*(rc-r0))
+#    ecut = e*e - 2*e
+#
+#    c = 2.74412
+#    box = [7*c 4*c*sqrt(3)]
+#
+#    En = 0
+#    f = zeros(3,np)
+#
+#    # atoms below zfix are fixed
+#    zfix = 6.7212
+#
+#    # H = zeros(nd,nd)
+#    # [ H[ np*mod(i-1, 3) + (i-1)÷3 + 1, i ] = 1 for i=1:nd ]
+#    # r0 = H*r
+#    # R = [r[ 3*mod(i-1, np) + (i-1)÷np + 1 ] for i=1:nd ]
+#    # R = [ [ x[3*(j-1)+i] for j=1:np ] for i=1:3]
+#    R  = [ [ r[i*np + j] for j=1:np ] for i=0:2 ]
+#
+#    for i=1:np, j=i+1:np
+#       if (R[3][i]>zfix || R[3][j]>zfix)
+#          rel = [R[k][i]-R[k][j] for k=1:3]
+#          [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
+#          r2 = dot(rel,rel)
+#
+#          if (z(i)>zfix || z(j)>zfix)
+#       #  minimum distance between i and j;
+#       rx=x(i)-x(j);
+#       rx=rx-box1.*round(rx./box1);
+#       ry=y(i)-y(j);
+#       ry=ry-box2.*round(ry./box2);
+#       rz=z(i)-z(j);
+#       r2=rx^2+ry^2+rz^2;
+#
+#       if(r2<rc^2)
+#          e=exp(-a*(sqrt(r2)-r0));
+#       %% potential energy;
+#          En=En+(e^2-2*e) - ecut;
+#
+#       %% force;
+#       ff=(e^2-e)/sqrt(r2);
+#       dfx=ff*rx;
+#       dfy=ff*ry;
+#       dfz=ff*rz;
+#       if(z(i)>zfix)
+#       fx(i)=fx(i)+dfx;
+#       fy(i)=fy(i)+dfy;
+#       fz(i)=fz(i)+dfz;
+#       end;
+#       if(z(j)>zfix)
+#       fx(j)=fx(j)-dfx;
+#       fy(j)=fy(j)-dfy;
+#       fz(j)=fz(j)-dfz;
+#       end;
+#       end
+#       end;
+#
+#    end
+#    dists(r::Matrix) = [norm(r[:,i]-r[:,j])
+#                         for i = 1:size(r,2)-1 for j = i+1:size(r,2)]
+#
+#    dists(r::Vector) = dists(reshape(r, 2, length(r) ÷ 2))
+#
+#    LJpot(r) = r.^(-12) - 2 * r.^(-6)
+#    LJenergy(r) = sum(LJpot(dists(r)))
+#
+#    energy(V::LJcluster, r) = 4.0 * V.ε * LJenergy(r / V.σ)
+#
+#    function lj_refconfig()
+#       ω = π / 3.0
+#       return [ [ 0.0, 0.0], [ 1.0, 0.0], [cos(ω), sin(ω)], [cos(2*ω), sin(2*ω)],
+#                [-1.0, 0.0], [cos(4*ω), sin(4*ω)], [cos(5*ω), sin(5*ω)] ]
+#    end
+#
+#    function ic_dimer(V::LJcluster, case=:near)
+#       if case == :near
+#          x = [-0.516917, 0.46756, 1.06511, -0.0369461, 0.350324, 0.476477,
+#                -0.229551, 1.31733, -1.15186, -0.120603, -0.501187, -0.870874,
+#                0.502517, -0.870205]
+#          v = [-0.254188, 0.666259, -0.017954, 0.0379428, -0.226884, -0.232232,
+#               -0.0667094, 0.546372, 0.279263, 0.056547, 0.00602156, -0.0110506,
+#                0.00103608, 0.000875767]
+#          return x, v
+#       elseif case == :far
+#          R = lj_refconfig()
+#          S = copy(R)
+#          R[4] += 0.5 * R[3]     # push third atom outwards
+#          R[1] += 0.5 * S[4] + 0.25 * R[5] # push middle atom outwards towards third atom
+#          R[3] *= 0.5            # push second atom towards centre
+#          x = vcat(R...)
+#          v = [ R[4] [0,0] (- 0.5 * R[3]) R[4] [0,0] [0,0] [0,0] ][:]
+#          return x, v
+#       end
+#       error("unkown `case` in `icdimer(::LJCluster,...)`")
+#    end
+#
+#
+#    function ic_path(V::LJcluster)
+#       R = lj_refconfig()
+#       r1 = [R[5]; R[4]; R[3]; R[2]; R[7]; R[6]; R[1]]
+#       r2 = [R[5]; R[3]; R[1]; R[2]; R[7]; R[6]; R[4]]
+#       return V.ρ_min * r1, V.ρ_min * r2
+#    end
+#
+#    precond(V::LJcluster, r) = LJaux.exp_precond(reshape(r, 2, length(r) ÷ 2))
