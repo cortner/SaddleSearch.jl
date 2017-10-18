@@ -56,7 +56,7 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
    precon = precon_prep!(precon, x)
    Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
 
-   ds = [norm(P(i), x[i+1]-x[i]) for i=1:length(x)-1]
+   ds = [norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i]) for i=1:length(x)-1]
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
