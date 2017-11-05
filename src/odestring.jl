@@ -49,40 +49,43 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
 end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
-   @unpack precon, precon_prep!, precon_cond, tangent_norm, gradDescent⟂, force_eval, maxres = precon_scheme
+   @unpack precon, precon_prep!, precon_cond, dist, tangent_norm,
+            gradDescent⟂, force_eval, maxres = precon_scheme
 
    x = set_ref!(x, xref)
 
    precon = precon_prep!(precon, x)
-   Np = length(precon); P = i -> precon[mod(i-1,Np)+1]
+   Np = size(precon, 1); # P = i -> precon[mod(i-1,Np)+1]
+   function P(i) return precon[mod(i-1,Np)+1, 1]; end
+   function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
 
-   ds = [norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i]) for i=1:length(x)-1]
+   ds = [dist(P, x, i) for i=1:length(x)-1]
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
    S = [Spline1D(param, [x[j][i] for j=1:length(x)], w = ones(length(x)),
          k = 3, bc = "error") for i=1:length(x[1])]
-   t= [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-   t ./= [tangent_norm(P(i), t[i]) for i=1:length(x)]
+   t = [[derivative(S[i], s) for i in 1:length(S)] for s in param]
+   t ./= tangent_norm(P, t)
 
    t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
    dE0 = [dE(x[i]) for i=1:length(x)]
    dE0⟂ = gradDescent⟂(P, dE0, t)
-   F = force_eval(P, dE0, dE0⟂, t)
+   F = force_eval(precon, dE0⟂)
 
-   res = maxres(P, dE0⟂, F)
+   res = maxres(P, dE0⟂)
 
-   return ref(- F), res
+   return F, res
 end
 
-function ref{T}(x::Vector{T})
-   return cat(1, x...)
-end
-
-function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})
-   Nimg = length(x); Nref = length(xref) ÷ Nimg
-   X = reshape(xref, Nref, Nimg)
-   x = [ X[:, n] for n = 1:Nimg ]
-   return x
-end
+# function ref{T}(x::Vector{T})
+#    return cat(1, x...)
+# end
+#
+# function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})
+#    Nimg = length(x); Nref = length(xref) ÷ Nimg
+#    X = reshape(xref, Nref, Nimg)
+#    x = [ X[:, n] for n = 1:Nimg ]
+#    return x
+# end
