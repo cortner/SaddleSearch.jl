@@ -16,6 +16,7 @@ export PreconNudgedElasticBandMethod
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type PreconNudgedElasticBandMethod
+   precon_scheme = coordTransform()
    alpha::Float64
    k::Float64
    scheme::Symbol
@@ -24,21 +25,23 @@ export PreconNudgedElasticBandMethod
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
    maxnit::Int = 1000
-   precon = [I]
-   precon_prep! = (P, x) -> P
+   # precon = [I]
+   # precon_prep! = (P, x) -> P
    verbose::Int = 2
-   precon_cond::Bool = false
+   # precon_cond::Bool = false
 end
 
 
 function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack alpha, k, scheme, refine_points, ls_cond, tol_res, maxnit,
-            precon, precon_prep!, verbose, precon_cond = method
+   @unpack precon_scheme, alpha, k, scheme, refine_points, ls_cond, tol_res,
+            maxnit, verbose = method
+   @unpack precon, precon_prep!, precon_cond, dist, point_norm,
+            proj_grad, forcing, maxres = precon_scheme
    # initialise variables
    x = copy(x0)
    param = linspace(.0, 1., length(x)) |> collect
-   Np = length(precon); N = length(x)
+   Np = Np = size(precon, 1); N = length(x)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
@@ -49,24 +52,29 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    end
    for nit = 0:maxnit
       precon = precon_prep!(precon, x)
-      P = i -> precon[mod(i-1,Np)+1]
+      function P(i) return precon[mod(i-1,Np)+1, 1]; end
+      function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
+
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:N]
       numdE += length(x)
+
       # evaluate the tangent and spring force along the path
       dxds=[]; Fk=[]
       if scheme == :simple
          # forward and central finite differences
          dxds = [(x[i+1]-x[i]) for i=2:N-1]
-         dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
+         dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+         d²xds² = [[dxds[1]]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [dxds[1]]]
+         # Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :central
          # central finite differences
          dxds = [0.5*(x[i+1]-x[i-1]) for i=2:N-1]
-         dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
+         dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+         d²xds² = [[dxds[1]]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [dxds[1]]]
+         # Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :upwind
          # upwind scheme
          E0 = [E(x[i]) for i=1:N]; numE += length(x)
@@ -78,9 +86,10 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          f_weight = 0.5*[(1 + index2[i])*Ediffmax[i] + (index2[i] - 1) * Ediffmin[i] for i=1:N-2]
          b_weight = 0.5*[(1 + index2[i])*Ediffmin[i] + (index2[i] - 1) *     Ediffmax[i] for i=1:N-2]
          dxds = [(1 - index1[i-1]) .* f_weight[i-1] .* (x[i+1]-x[i]) + (1 + index1[i-1]) .* b_weight[i-1] .* (x[i]-x[i-1]) for i=2:N-1]
-         dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
+         dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+         d²xds² = [[dxds[1]]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [dxds[1]]]
+         # Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :splines
          # spline scheme
          ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
@@ -90,16 +99,19 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
                k = 3, bc = "error") for i=1:length(x[1])]
          dxds = [[derivative(S[i], si) for i in 1:length(S)] for si in s ]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
+         dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
          dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
-         d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s ]
-         Fk = k*(1/(N*N))*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+         d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s]
+         k *= (1/(N*N))
+         # Fk = k*(1/(N*N))*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       else
          error("unknown differentiation scheme")
       end
 
-      Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
-      dE0⟂ = [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
+      Fk = elastic_force(P, k, dxds, d²xds²)
+      # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
+      dE0⟂ = proj_grad(P, dE0, t)
+      # dE0⟂ = [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
 
       # perform linesearch to find optimal step
       if ls_cond

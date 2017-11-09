@@ -31,8 +31,8 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    # read all the parameters
    @unpack precon_scheme, alpha, refine_points, ls_cond, tol_res, maxnit,
             verbose = method
-   @unpack precon, precon_prep!, precon_cond, dist, tangent_norm,
-            gradDescent⟂, force_eval, maxres = precon_scheme
+   @unpack precon, precon_prep!, precon_cond, dist, point_norm,
+            proj_grad, forcing, maxres = precon_scheme
    # initialise variables
    x, t = copy(x0), copy(t0)
    param = linspace(.0, 1., length(x)) |> collect
@@ -51,7 +51,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       function P(i) return precon[mod(i-1,Np)+1, 1]; end
       function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
 
-      t ./= tangent_norm(P, t)
+      t ./= point_norm(P, t)
       t[1] = zeros(t[1]); t[end] = zeros(t[1])
 
       # evaluate gradients
@@ -59,8 +59,8 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       numdE += length(x)
 
       # evaluate force term
-      dE0⟂ = gradDescent⟂(P, dE0, t)
-      F = force_eval(precon, dE0⟂); f = set_ref!(copy(x), F)
+      dE0⟂ = proj_grad(P, dE0, t)
+      F = forcing(precon, dE0⟂); f = set_ref!(copy(x), F)
 
       # perform linesearch to find optimal step
       if ls_cond
