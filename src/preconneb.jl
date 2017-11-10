@@ -67,7 +67,6 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
          d²xds² = [[dxds[1]]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [dxds[1]]]
-         # Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :central
          # central finite differences
          dxds = [0.5*(x[i+1]-x[i-1]) for i=2:N-1]
