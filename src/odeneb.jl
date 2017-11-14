@@ -54,6 +54,8 @@ end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
                      k::Float64, dE)
+   @unpack precon, precon_prep!, precon_cond, dist, point_norm,
+               proj_grad, forcing, elastic_force, maxres = precon_scheme
    x = set_ref!(x, xref)
    N = length(x)
    precon = precon_prep!(precon, x)

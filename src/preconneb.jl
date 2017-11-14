@@ -76,6 +76,11 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
                                                                [zeros(x[1])] ]
          # Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+
+         # dxds = [0.5*(x[i+1]-x[i-1]) for i=2:N-1]
+         # dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
+         # dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
+         # Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :upwind
          # upwind scheme
          E0 = [E(x[i]) for i=1:N]; numE += length(x)
@@ -105,9 +110,26 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s]
          k *= (1/(N*N))
          # Fk = k*(1/(N*N))*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+
+         # # spline scheme
+         # ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
+         #
+         # s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
+         # s /= s[end]; s[end] = 1.
+         # S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
+         #       k = 3, bc = "error") for i=1:length(x[1])]
+         # dxds = [[derivative(S[i], si) for i in 1:length(S)] for si in s ]
+         # dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
+         # dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
+         # d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s ]
+         # Fk = k*(1/(N*N))*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       else
          error("unknown differentiation scheme")
       end
+
+      # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
+      # dE0⟂ = [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
+      # # @show(size(Fk), size(dE0⟂))
 
       Fk = elastic_force(P, k, dxds, d²xds²)
       # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
@@ -146,7 +168,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          end
          return x, log
       end
-      x += α .* f
+      x += α .* f #( dE0⟂ - Fk ) #f
    end
    if verbose >= 1
       println("PreconNudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")
