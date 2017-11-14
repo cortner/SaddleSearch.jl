@@ -25,12 +25,11 @@ along the path is preconditioned independently.
    precon_prep! = (P, x) -> P
    precon_cond::Bool = false
    dist = (P, x, i) ->  norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i])
-   point_norm = (P, t) -> [norm(P(i), t[i]) for i=1:length(t)]
+   point_norm = (P, t) -> [ 1; [norm(P(i), t[i]) for i=2:length(t)-1]; 1 ]
    proj_grad = (P, ∇E, dxds) -> -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
    forcing = (P, ∇E⟂) -> ref(∇E⟂)
-   elastic_force = (P, κ, dxds, d²xds²) -> ref(
-      [ [dxds[1]]; κ*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:N-1];
-      [dxds[1]] ] )
+   elastic_force = (P, κ, dxds, d²xds²) -> - [ [zeros(dxds[1])]; κ*[dot(d²xds²[i],
+         P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1]; [zeros(dxds[1])] ]
    maxres = (P, ∇E⟂) ->  maximum([norm(P(i)*∇E⟂[i],Inf) for i = 1:length(∇E⟂)])
 end
 
@@ -53,6 +52,8 @@ end
    proj_grad = (P, ∇E, t) -> ref(-[∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)])
    forcing = (P, ∇E⟂) -> ref(P) \ ∇E⟂
    # [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)-length(t)+1]
+   elastic_force = (P, κ, dxds, d²xds²) -> - [ [dxds[1]]; κ*[dot(d²xds²[i],
+                                 dxds[i]) * dxds[i] for i=2:N-1]; [dxds[1]] ]
    maxres = (P, ∇E⟂) -> vecnorm(∇E⟂, Inf)
 end
 

@@ -16,7 +16,7 @@ export PreconNudgedElasticBandMethod
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type PreconNudgedElasticBandMethod
-   precon_scheme = coordTransform()
+   precon_scheme = localPrecon()
    alpha::Float64
    k::Float64
    scheme::Symbol
@@ -37,11 +37,11 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    @unpack precon_scheme, alpha, k, scheme, refine_points, ls_cond, tol_res,
             maxnit, verbose = method
    @unpack precon, precon_prep!, precon_cond, dist, point_norm,
-            proj_grad, forcing, maxres = precon_scheme
+            proj_grad, forcing, elastic_force, maxres = precon_scheme
    # initialise variables
    x = copy(x0)
    param = linspace(.0, 1., length(x)) |> collect
-   Np = Np = size(precon, 1); N = length(x)
+   Np = size(precon, 1); N = length(x)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
@@ -63,16 +63,18 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
       dxds=[]; Fk=[]
       if scheme == :simple
          # forward and central finite differences
-         dxds = [(x[i+1]-x[i]) for i=2:N-1]
-         dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
-         dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         d²xds² = [[dxds[1]]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [dxds[1]]]
+         dxds = [ [zeros(x[1])]; [(x[i+1]-x[i]) for i=2:N-1]; [zeros(x[1])] ]
+         dxds ./= point_norm(P, dxds)
+         d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
+                                                               [zeros(x[1])] ]
       elseif scheme == :central
          # central finite differences
-         dxds = [0.5*(x[i+1]-x[i-1]) for i=2:N-1]
-         dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
-         dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         d²xds² = [[dxds[1]]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [dxds[1]]]
+         dxds = [ [zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1];
+                                                               [zeros(x[1])] ]
+         dxds ./= point_norm(P, dxds)
+         dxds = [ [zeros(x[1])]; dxds; [zeros(dxds[1])] ]
+         d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
+                                                               [zeros(x[1])] ]
          # Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       elseif scheme == :upwind
          # upwind scheme
@@ -85,9 +87,10 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          f_weight = 0.5*[(1 + index2[i])*Ediffmax[i] + (index2[i] - 1) * Ediffmin[i] for i=1:N-2]
          b_weight = 0.5*[(1 + index2[i])*Ediffmin[i] + (index2[i] - 1) *     Ediffmax[i] for i=1:N-2]
          dxds = [(1 - index1[i-1]) .* f_weight[i-1] .* (x[i+1]-x[i]) + (1 + index1[i-1]) .* b_weight[i-1] .* (x[i]-x[i-1]) for i=2:N-1]
-         dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
+         # dxds ./= [norm(P(i+1), dxds[i]) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         d²xds² = [[dxds[1]]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [dxds[1]]]
+         dxds ./= point_norm(P, dxds)
+         d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [zeros(x[1])] ]
       elseif scheme == :splines
          # spline scheme
          ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
@@ -97,7 +100,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
                k = 3, bc = "error") for i=1:length(x[1])]
          dxds = [[derivative(S[i], si) for i in 1:length(S)] for si in s ]
-         dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
+         dxds ./= point_norm(P, dxds)
          dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
          d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s]
          k *= (1/(N*N))
@@ -108,7 +111,8 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
 
       Fk = elastic_force(P, k, dxds, d²xds²)
       # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
-      dE0⟂ = proj_grad(P, dE0, t)
+      dE0⟂ = proj_grad(P, dE0, dxds)
+      F = forcing(precon, dE0⟂-Fk); f = set_ref!(copy(x), F)
       # dE0⟂ = [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
 
       # perform linesearch to find optimal step
@@ -118,11 +122,10 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          α = []
          ls = Backtracking(c1 = .2, mindecfact = .1, minα = 0.)
          for i=1:length(x)
-            αi, cost, _ = linesearch!(ls, E, E0[i], dot(dE0[i],Fk[i]-dE0⟂[i]), x[i], Fk[i]-dE0⟂[i], copy(alpha), condition=iter->iter>=10)
+            αi, cost, _ = linesearch!(ls, E, E0[i], dot(dE0[i], f[i]), x[i], f[i], copy(alpha), condition=iter->iter>=10)
             push!(α, αi)
             numE += cost
          end
-
          for k=1:10
             α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
          end
@@ -131,18 +134,19 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
       end
 
       # residual, store history
-      maxres = maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
-      push!(log, numE, numdE, maxres)
+      res = maxres(P, dE0⟂)
+      # maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
+      push!(log, numE, numdE, res)
       if verbose >= 2
-         @printf("%4d |   %1.2e\n", nit, maxres)
+         @printf("%4d |   %1.2e\n", nit, res)
       end
-      if maxres <= tol_res
+      if res <= tol_res
          if verbose >= 1
             println("PreconNudgedElasticBandMethod terminates succesfully after $(nit) iterations")
          end
          return x, log
       end
-      x -= alpha * ( dE0⟂ - Fk )
+      x += α .* f
    end
    if verbose >= 1
       println("PreconNudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")

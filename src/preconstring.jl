@@ -14,7 +14,7 @@ export PreconStringMethod
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
 """
 @with_kw type PreconStringMethod
-   precon_scheme = coordTransform()
+   precon_scheme = localPrecon()
    alpha::Float64
    refine_points::Int = -1
    ls_cond::Bool = false
@@ -73,7 +73,6 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
             push!(α, αi)
             numE += cost
          end
-
          for k=1:10
             α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
          end

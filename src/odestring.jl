@@ -18,7 +18,7 @@ export ODEStringMethod
 """
 @with_kw type ODEStringMethod
    solver = ode12(1e-6, 1e-3, true)
-   precon_scheme = coordTransform()
+   precon_scheme = localPrecon()
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
    maxnit::Int = 1000
