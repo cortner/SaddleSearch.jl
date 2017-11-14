@@ -72,7 +72,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          dxds = [ [zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1];
                                                                [zeros(x[1])] ]
          dxds ./= point_norm(P, dxds)
-         dxds = [ [zeros(x[1])]; dxds; [zeros(dxds[1])] ]
+         # dxds = [ [zeros(x[1])]; dxds; [zeros(dxds[1])] ]
          d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
                                                                [zeros(x[1])] ]
          # Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
