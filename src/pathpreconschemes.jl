@@ -52,8 +52,8 @@ end
    proj_grad = (P, ∇E, t) -> ref(-[∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)])
    forcing = (P, ∇E⟂) -> ref(P) \ ∇E⟂
    # [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)-length(t)+1]
-   elastic_force = (P, κ, dxds, d²xds²) -> - [ [dxds[1]]; κ*[dot(d²xds²[i],
-                                 dxds[i]) * dxds[i] for i=2:N-1]; [dxds[1]] ]
+   elastic_force = (P, κ, dxds, d²xds²) -> ref(-[ [zeros(dxds[1])];
+         κ*[dot(d²xds²[i], dxds[i]) * dxds[i] for i=2:N-1]; [zeros(dxds[1])] ])
    maxres = (P, ∇E⟂) -> vecnorm(∇E⟂, Inf)
 end
 
