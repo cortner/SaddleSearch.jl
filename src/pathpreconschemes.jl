@@ -1,7 +1,7 @@
 export localPrecon, globalPrecon
 
 """
-the three preconditioning schemes implemented for Sting and NEB-type methods
+the two preconditioning schemes implemented for String and NEB-type methods
 
 'localPrecon' : the preconditioner acts as a coordinate transformation of the
 state space
@@ -33,16 +33,6 @@ along the path is preconditioned independently.
    maxres = (P, ∇E⟂) ->  maximum([norm(P(i)*∇E⟂[i],Inf) for i = 1:length(∇E⟂)])
 end
 
-# @with_kw type forcePrecon
-#    precon = I
-#    precon_prep! = (P, x) -> P
-#    precon_cond::Bool = false
-#    tangent_norm = (P, t) -> [norm(t[i]) i=1:length(t)]
-#    gradDescent⟂ = (∇E, t) -> [∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)]
-#    force_eval = (P, ∇E, ∇E⟂, t) -> -[P(i) \ ∇E⟂[i] for i=1:length(t)]
-#    maxres = (P, ∇E⟂, force) -> vecnorm(cat(2, ∇E⟂...)', Inf)
-# end
-
 @with_kw type globalPrecon
    precon = I
    precon_prep! = (P, x) -> P
@@ -65,9 +55,9 @@ function ref{T}(A::Array{Array{T,2},2})
     return cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
 end
 
-function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})
-   Nimg = length(x); Nref = length(xref) ÷ Nimg
-   X = reshape(xref, Nref, Nimg)
-   x = [ X[:, n] for n = 1:Nimg ]
-   return x
+function set_ref!{T}(x::Vector{T}, X::Vector{Float64})
+  Nimg = length(x); Nref = length(X) ÷ Nimg
+  xfull = reshape(X, Nref, Nimg)
+  x = [ xfull[:, n] for n = 1:Nimg ]
+  return x
 end
