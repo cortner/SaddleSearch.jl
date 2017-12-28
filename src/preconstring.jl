@@ -42,8 +42,8 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  sup|∇E|_∞   \n")
-      @printf("-----|-----------------\n")
+      @printf("SADDLESEARCH:  nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: -----|-----------------\n")
    end
    for nit = 0:maxnit
       # normalise t
@@ -84,11 +84,11 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       res = maxres(P, dE0⟂)
       push!(log, numE, numdE, res)
       if verbose >= 2
-         @printf("%4d |   %1.2e\n", nit, res)
+         @printf("SADDLESEARCH: %4d |   %1.2e\n", nit, res)
       end
       if res <= tol_res
          if verbose >= 1
-            println("PreconStringMethod terminates succesfully after $(nit) iterations")
+            println("SADDLESEARCH: PreconStringMethod terminates succesfully after $(nit) iterations")
          end
          return x, log
       end
@@ -107,7 +107,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
 
    end
    if verbose >= 1
-      println("PreconStringMethod terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: PreconStringMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
    return x, log
 end

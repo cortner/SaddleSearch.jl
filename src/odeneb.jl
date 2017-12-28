@@ -41,8 +41,8 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  sup|∇E|_∞   \n")
-      @printf("-----|-----------------\n")
+      @printf("SADDLESEARCH:  nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: -----|-----------------\n")
    end
 
    αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, k,

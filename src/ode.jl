@@ -61,11 +61,11 @@ function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
          push!(log, numE, numdE, maxres)
 
          if verbose >= 2
-            @printf("%4d |   %1.2e\n", nit, maxres)
+            @printf("SADDLESEARCH: %4d |   %1.2e\n", nit, maxres)
          end
          if maxres <= tol_res
             if verbose >= 1
-               println("$(typeof(method)) terminates succesfully after $(nit) iterations")
+               println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
             end
             return tout, xout, log
          end
@@ -74,12 +74,12 @@ function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
       # Compute a new step size.
       h = h*min(5, 0.8*(rtol/err)^(1/3) / 2)
       if abs(h) <= hmin
-         warn("Step size $h too small at t = $t.");
+         warn("SADDLESEARCH: Step size $h too small at t = $t.");
       end
    end
 
    if verbose >= 1
-      println("$(typeof(method)) terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: $(typeof(method)) terminated unsuccesfully after $(maxnit) iterations.")
    end
    return tout, xout, log
 end
@@ -150,11 +150,11 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
 
          if verbose >= 2
             @show(nit)
-            @printf("%4d |   %1.2e\n", nit, maxres)
+            @printf("SADDLESEARCH: %4d |   %1.2e\n", nit, maxres)
          end
          if maxres <= tol_res
             if verbose >= 1
-               println("$(typeof(method)) terminates succesfully after $(nit) iterations")
+               println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
             end
             return tout, xout, log
          end
@@ -163,12 +163,12 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
       # Compute a new step size.
       h = h * min(5, 0.5*sqrt(rtol/err) )
       if abs(h) <= hmin
-         warn("Step size $h too small at t = $t.");
+         warn("SADDLESEARCH: Step size $h too small at t = $t.");
       end
    end
 
    if verbose >= 1
-      println("$(typeof(method)) terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: $(typeof(method)) terminated unsuccesfully after $(maxnit) iterations.")
    end
    return tout, xout, log
 end
@@ -215,7 +215,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    h = max(h, hmin)
    numdE += N
    push!(log, numE, numdE, Rn)
-   @printf("%4d |   %1.2e\n", 0, Rn)
+   @printf("SADDLESEARCH: %4d |   %1.2e\n", 0, Rn)
 
    for nit = 0:maxnit
 
@@ -250,7 +250,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
       elseif extrapolate == 3   # min | F(xn + h Fn) |
          h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
       else
-         error("invalid `extrapolate` parameter")
+         error("SADDLESEARCH: invalid `extrapolate` parameter")
       end
       if isnan(h_ls) || (h_ls < hmin)
          h_ls = Inf
@@ -267,11 +267,11 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
          # keeping x = g(x) here technically constitutes a bug
 
          if verbose >= 2
-            @printf("%4d |   %1.2e\n", nit, Rn)
+            @printf("SADDLESEARCH: %4d |   %1.2e\n", nit, Rn)
          end
          if Rn <= tol_res
             if verbose >= 1
-               println("$(typeof(method)) terminates succesfully after $(nit) iterations")
+               println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
             end
             return tout, xout, log
          end
@@ -279,28 +279,28 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
          # Compute a new step size.
          h = max(0.25 * h, min(4*h, h_err, h_ls))
          if verbose >= 3
-            println("     accept: new h = $h, |F| = $(Rn)")
-            println("               hls = $(h_ls)")
-            println("              herr = $(h_err)")
+            println("SADDLESEARCH:      accept: new h = $h, |F| = $(Rn)")
+            println("SADDLESEARCH:                hls = $(h_ls)")
+            println("SADDLESEARCH:               herr = $(h_err)")
          end
       else
          h = max(0.1 * h, min(0.25 * h, h_err, h_ls))
          if verbose >= 3
-            println("     reject: new h = $h")
-            println("              |Fnew| = $(Rnew)")
-            println("              |Fold| = $(Rn)")
-            println("       |Fnew|/|Fold| = $(Rnew/Rn)")
+            println("SADDLESEARCH:      reject: new h = $h")
+            println("SADDLESEARCH:               |Fnew| = $(Rnew)")
+            println("SADDLESEARCH:               |Fold| = $(Rn)")
+            println("SADDLESEARCH:        |Fnew|/|Fold| = $(Rnew/Rn)")
          end
       end
 
       if abs(h) <= hmin
-         warn("Step size $h too small at t = $t.");
+         warn("SADDLESEARCH: Step size $h too small at t = $t.");
          return tout, xout, log
       end
    end
 
    if verbose >= 1
-      println("$(typeof(solver)) terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: $(typeof(solver)) terminated unsuccesfully after $(maxnit) iterations.")
    end
 
    # println("DEBUG")
@@ -313,109 +313,3 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
 
    return tout, xout, log
 end
-
-# function odesolve(solver::ode12var, f, x0::Vector{T},
-#                   log::IterationLog, method;
-#                   g=x->x, tol_res=1e-4, maxnit=100 )
-#
-#    @unpack atol, rtol, adapt_rtol = solver
-#    @unpack verbose = method
-#
-#    t0 = 0
-#    atol0 = atol
-#    rtol0 = rtol
-#
-#    threshold = atol/rtol
-#
-#    t = t0
-#    x = x0[:]
-#
-#    tout = []
-#    xout = []
-#
-#    numdE, numE = 0, 0
-#
-#    # computation of the initial step
-#    s1, _ = f(t, x)
-#    if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
-#    r = [norm(s1[i]./max(abs(x[i]),threshold),Inf) + realmin(Float64) for i=1:length(x)]
-#    h = [0.5 * rtol^(1/2) / r[i] for i=1:length(r)]
-#    rtol = [rtol for xi in x]
-#    numdE += N
-#
-#    nit = 0
-#    while nit <= maxnit
-#       x = g(x)
-#
-#       hmin = 16*eps(Float64).*abs(t)
-#
-#       xtemp = copy(x)
-#       ttemp = copy(t)
-#
-#       unchanged =  find(x->x==0, sum( cat(2,xtemp - x...), 1 ) )
-#       while any(xtemp != x) || nit <= maxnit
-#          [abs(h[i]) < hmin ? h[i] = hmin: h[i] = h[i] for i in unchanged]
-#
-#          s2, maxres = f(t+h, x+h.*s1)
-#          tnew = t + h
-#          xnew = x + h .* s1
-#
-#          numdE += N
-#
-#          # error estimation
-#          e = 0.5 * h .* (s2 - s1)
-#          err = [norm(ei./max(max(abs(x),abs(xnew)),threshold),Inf) + realmin(Float64) for ei in e]
-#
-#          for i in unchanged
-#             if err[i] <= rtol
-#                ttemp[i] = tnew[i]
-#                xtemp[i] = xnew[i]
-#             end
-#          end
-#
-#          # Compute a new step sizes.
-#          unchanged =  find(x->x==0, sum( cat(2,xtemp - x...), 1 ) )
-#          [h[i] = h[i] * min(5, 0.5*sqrt(rtol[i]/err[i]) ) for i in unchanged]
-#          for i in unchanged
-#             if abs(h[i]) <= hmin[i]
-#                warn("Step size $h[i] too small at t = $t[i] and node = $i.");
-#             end
-#          end
-#
-#          nit += 1
-#       end
-#       t = ttemp
-#       x = xtemp
-#       push!(tout, t)
-#       push!(xout, x)
-#       s1 = s2
-#       # maxres = vecnorm(s1, Inf)
-#
-#       if adapt_rtol; [rtol[i] = min(rtol0 * norm(s1[i], Inf), rtol0) for i=1:length(rtol)]; end
-#
-#       push!(log, numE, numdE, maxres)
-#
-#       if verbose >= 2
-#          @printf("%4d |   %1.2e\n", nit, maxres)
-#       end
-#       if maxres <= tol_res
-#          if verbose >= 1
-#             println("$(typeof(method)) terminates succesfully after $(nit) iterations")
-#          end
-#          return tout, xout, log
-#       end
-#
-#       # Compute a new step size.
-#       h = h .* min(5, 0.5*sqrt(rtol./err) )
-#       for i=1:length(h)
-#          if abs(h[i]) <= hmin[i]
-#             warn("Step size $h[i] too small at t = $t[i] and node = $i.");
-#          end
-#       end
-#    end
-#
-#    if verbose >= 1
-#       println("$(typeof(method)) terminated unsuccesfully after $(maxnit) iterations.")
-#    end
-#    return tout, xout, log
-# end

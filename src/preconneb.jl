@@ -47,8 +47,8 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  sup|∇E|_∞   \n")
-      @printf("-----|-----------------\n")
+      @printf("SADDLESEARCH:  nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: -----|-----------------\n")
    end
    for nit = 0:maxnit
       precon = precon_prep!(precon, x)
@@ -124,7 +124,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          # d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s ]
          # Fk = k*(1/(N*N))*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:N-1]
       else
-         error("unknown differentiation scheme")
+         error("SADDLESEARCH: unknown differentiation scheme")
       end
 
       # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
@@ -160,18 +160,18 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
       # maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, res)
       if verbose >= 2
-         @printf("%4d |   %1.2e\n", nit, res)
+         @printf("SADDLESEARCH: %4d |   %1.2e\n", nit, res)
       end
       if res <= tol_res
          if verbose >= 1
-            println("PreconNudgedElasticBandMethod terminates succesfully after $(nit) iterations")
+            println("SADDLESEARCH: PreconNudgedElasticBandMethod terminates succesfully after $(nit) iterations")
          end
          return x, log
       end
       x += α .* f #( dE0⟂ - Fk ) #f
    end
    if verbose >= 1
-      println("PreconNudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: PreconNudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
    return x, log
 end
