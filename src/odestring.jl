@@ -38,8 +38,8 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf("SADDLESEARCH:   time   | nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: ---------|-----|-----------------\n")
+      @printf("SADDLESEARCH:  time  | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: -------|-----|-----------------\n")
    end
 
    αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, dE), ref(x), length(x), log, method; g = x_ -> redistribute(x_, x, t, precon_scheme), tol_res = tol_res, maxnit=maxnit )

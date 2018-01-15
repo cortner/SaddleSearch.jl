@@ -42,8 +42,8 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf("SADDLESEARCH:  nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: -----|-----------------\n")
+      @printf("SADDLESEARCH:  time  | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: -------|-----|-----------------\n")
    end
    for nit = 0:maxnit
       # normalise t
@@ -84,7 +84,8 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       res = maxres(P, dE0⟂)
       push!(log, numE, numdE, res)
       if verbose >= 2
-         @printf("SADDLESEARCH: %4d |   %1.2e\n", nit, res)
+         dt = Dates.format(now(), "HH:MM")
+         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, res)
       end
       if res <= tol_res
          if verbose >= 1

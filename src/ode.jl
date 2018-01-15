@@ -61,7 +61,7 @@ function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
          push!(log, numE, numdE, maxres)
 
          if verbose >= 2
-            dt = Dates.format(now(), "H:M:S")
+            dt = Dates.format(now(), "HH:MM")
             @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, maxres)
          end
          if maxres <= tol_res
@@ -150,7 +150,7 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
          push!(log, numE, numdE, maxres)
 
          if verbose >= 2
-            dt = Dates.format(now(), "H:M:S")
+            dt = Dates.format(now(), "HH:MM")
             @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, maxres)
          end
          if maxres <= tol_res
@@ -216,7 +216,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    h = max(h, hmin)
    numdE += N
    push!(log, numE, numdE, Rn)
-   dt = Dates.format(now(), "H:M:S")
+   dt = Dates.format(now(), "HH:MM")
    @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
 
    for nit = 0:maxnit
@@ -269,7 +269,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
          # keeping x = g(x) here technically constitutes a bug
 
          if verbose >= 2
-            dt = Dates.format(now(), "H:M:S")
+            dt = Dates.format(now(), "HH:MM")
             @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
          end
          if Rn <= tol_res

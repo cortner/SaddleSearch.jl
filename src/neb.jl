@@ -44,8 +44,8 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf("SADDLESEARCH:  nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: -----|-----------------\n")
+      @printf("SADDLESEARCH:  time  | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: -------|-----|-----------------\n")
    end
    for nit = 0:maxnit
       P = precon_prep!(P, x)
@@ -104,7 +104,8 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
       maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, maxres)
       if verbose >= 2
-         @printf("SADDLESEARCH: %4d |   %1.2e\n", nit, maxres)
+         dt = Dates.format(now(), "HH:MM")
+         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, maxres)
       end
       if maxres <= tol_res
          if verbose >= 1
