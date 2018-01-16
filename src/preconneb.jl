@@ -45,8 +45,8 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf("SADDLESEARCH:  time  | nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: -------|-----|-----------------\n")
+      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
    for nit = 0:maxnit
       precon = precon_prep!(precon, x)
@@ -65,6 +65,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          dxds ./= point_norm(P, dxds)
          d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
                                                                [zeros(x[1])] ]
+         # k *= N*N
       elseif scheme == :central
          # central finite differences
          dxds = [ [zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1];
@@ -73,6 +74,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          # dxds = [ [zeros(x[1])]; dxds; [zeros(dxds[1])] ]
          d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
                                                                [zeros(x[1])] ]
+         # k *= N*N
       elseif scheme == :upwind
          # upwind scheme
          E0 = [E(x[i]) for i=1:N]; numE += length(x)
@@ -87,6 +89,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
          dxds ./= point_norm(P, dxds)
          d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [zeros(x[1])] ]
+         # k *= N*N
       elseif scheme == :splines
          # spline scheme
          ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
@@ -104,7 +107,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          error("SADDLESEARCH: unknown differentiation scheme")
       end
 
-      Fk = elastic_force(P, k, dxds, d²xds²)
+      Fk = elastic_force(P, k*N*N, dxds, d²xds²)
       dE0⟂ = proj_grad(P, dE0, dxds)
       F = forcing(precon, dE0⟂-Fk); f = set_ref!(copy(x), F)
 

@@ -42,8 +42,8 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf("SADDLESEARCH:  time  | nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: -------|-----|-----------------\n")
+      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
    for nit = 0:maxnit
       # normalise t

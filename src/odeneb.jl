@@ -41,8 +41,8 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf("SADDLESEARCH:  time  | nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: -------|-----|-----------------\n")
+      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
    αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, k,
@@ -69,7 +69,7 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
    # dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
    d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
                                                          [zeros(x[1])] ]
-   Fk = elastic_force(P, k, dxds, d²xds²)
+   Fk = elastic_force(P, k*N*N, dxds, d²xds²)
    #k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
    # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
 
