@@ -45,15 +45,14 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, k,
-   dE), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x,
 
    x = set_ref!(x, xout[end])
    return x, log, αout
 end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
-                     k::Float64, dE)
+                     k::Float64, dE, nit)
    @unpack precon, precon_prep!, precon_cond, dist, point_norm,
                proj_grad, forcing, elastic_force, maxres = precon_scheme
    x = set_ref!(x, xref)
@@ -73,7 +72,10 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
    #k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
    # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
 
-   dE0 = [dE(x[i]) for i=1:length(x)]
+   M = length(x)
+   ord = M-mod(nit,2)*(M-1):2*mod(nit,2)-1:M-mod(nit+1,2)*(M-1)
+   dE0_temp = [dE(x[i]) for i in ord]
+   dE0 = [dE0_temp[i] for i in ord]
 
    dE0⟂ = proj_grad(P, dE0, dxds)
    # [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]

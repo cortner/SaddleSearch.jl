@@ -25,7 +25,7 @@ function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
    numdE, numE = 0, 0
 
    # computation of the initial step
-   s1, _ = f(t, x)
+   s1, _ = f(t, x, -1)
    if adapt_rtol; rtol = min(rtol0 * norm(s1, Inf), rtol0); end
    r = norm(s1./max(abs(x),threshold),Inf) + realmin(Float64)
    h = 0.8*rtol^(1/3)/r
@@ -36,8 +36,7 @@ function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
 
       abs(h) < hmin ? h = hmin: h = h
 
-      s2, _ = f(t+h*0.5, x+h*0.5*s1)
-      s3, _ = f(t+h*0.75, x+h*0.75*s2)
+      s3, _ = f(t+h*0.75, x+h*0.75*s2, 2*nit+1)
       tnew = t + h
       xnew = x + h * (2*s1 + 3*s2 + 4*s3)./9
       s4, maxres = f(tnew, xnew)
@@ -115,7 +114,7 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
    numdE, numE = 0, 0
 
    # computation of the initial step
-   s1, _ = f(t, x)
+   s1, _ = f(t, x, -1)
    if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
    r = norm(s1./max(abs(x),threshold),Inf) + realmin(Float64)
    h = 0.5 * rtol^(1/2) / r
@@ -126,7 +125,7 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
 
       abs(h) < hmin ? h = hmin: h = h
 
-      s2, maxres = f(t+h, x+h*s1)
+      s2, maxres = f(t+h, x+h*s1, nit)
       tnew = t + h
       xnew = x + h * s1
 
@@ -210,7 +209,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    # computation of the initial step
    x = g(x)
    # push(xout, x) TODO: chck if this is the correct place to move this
-   Fn, Rn = f(t, x)
+   Fn, Rn = f(t, x, -1)
    r = norm(Fn ./ max(abs.(x), threshold), Inf) + realmin(Float64)
    h = 0.5 * rtol^(1/2) / r
    h = max(h, hmin)
@@ -225,7 +224,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
       xnew = g(x + h * Fn)   # the redistribution is better done here I think
                              # that way it implicitly becomes part of `f`
                              # but it seems to make the evolution slower; need more testing!
-      Fnew, Rnew = f(tnew, xnew)
+      Fnew, Rnew = f(tnew, xnew, nit)
 
       numdE += N
 

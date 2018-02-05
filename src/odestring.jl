@@ -42,13 +42,13 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_) -> forces(precon_scheme, x, x_, dE), ref(x), length(x), log, method; g = x_ -> redistribute(x_, x, t, precon_scheme), tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x, x_, dE, nit), ref(x), length(x), log, method; g = x_ -> redistribute(x_, x, t, precon_scheme), tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
 end
 
-function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
+function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, nit)
    @unpack precon, precon_prep!, precon_cond, dist, point_norm,
             proj_grad, forcing, maxres = precon_scheme
 
@@ -70,7 +70,11 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE)
 
    t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
-   dE0 = [dE(x[i]) for i=1:length(x)]
+   M = length(x)
+   ord = M-mod(nit,2)*(M-1):2*mod(nit,2)-1:M-mod(nit+1,2)*(M-1)
+   dE0_temp = [dE(x[i]) for i in ord]
+   dE0 = [dE0_temp[i] for i in ord]
+
    dE0⟂ = proj_grad(P, dE0, t)
    F = forcing(precon, dE0⟂)
 
