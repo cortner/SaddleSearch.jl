@@ -45,7 +45,7 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x,
+   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x, x_, k, dE), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
