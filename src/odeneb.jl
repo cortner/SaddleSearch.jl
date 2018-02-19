@@ -20,6 +20,7 @@ export ODENudgedElasticbandMethod
 @with_kw type ODENudgedElasticBandMethod
    solver = ode12(1e-6, 1e-3, true)
    precon_scheme = localPrecon()
+   path_traverse = serial()
    k::Float64
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
@@ -33,7 +34,9 @@ end
 
 function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack solver, precon_scheme, k, tol_res, maxnit, verbose = method
+   @unpack solver, precon_scheme, path_traverse, k, tol_res, maxnit,
+            verbose = method
+   @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
    nit = 0
@@ -45,14 +48,14 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x, x_, k, dE), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x, x_, k, dE, direction(length(x), nit)), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
 end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
-                     k::Float64, dE, nit)
+                     k::Float64, dE, direction)
    @unpack precon, precon_prep!, precon_cond, dist, point_norm,
                proj_grad, forcing, elastic_force, maxres = precon_scheme
    x = set_ref!(x, xref)
@@ -72,10 +75,9 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
    #k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
    # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
 
-   M = length(x)
-   ord = M-mod(nit,2)*(M-1):2*mod(nit,2)-1:M-mod(nit+1,2)*(M-1)
-   dE0_temp = [dE(x[i]) for i in ord]
-   dE0 = [dE0_temp[i] for i in ord]
+   # ord = M-mod(nit,2)*(M-1):2*mod(nit,2)-1:M-mod(nit+1,2)*(M-1)
+   dE0_temp = [dE(x[i]) for i in direction]
+   dE0 = [dE0_temp[i] for i in direction]
 
    dE0⟂ = proj_grad(P, dE0, dxds)
    # [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]

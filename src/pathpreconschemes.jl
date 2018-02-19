@@ -4,7 +4,7 @@ export localPrecon, globalPrecon
 the two preconditioning schemes implemented for String and NEB-type methods
 
 'localPrecon' : the preconditioner acts as a coordinate transformation of the
-state space
+state space.
 'globalPrecon' : the preconditioner is applied to the force directly, each point
 along the path is preconditioned independently.
 
