@@ -25,13 +25,27 @@ function odesolve(solver::ode23, f, x0::Vector{Float64}, N::Int,
    numdE, numE = 0, 0
 
    # computation of the initial step
-   s1, _ = f(t, x, -1)
+   s1, _ = f(t, x, 0)
+   numdE += N
+   push!(tout, t)
+   push!(xout, x)
+   push!(log, numE, numdE, Rn)
+   if verbose >= 2
+      dt = Dates.format(now(), "HH:MM")
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+   end
+   if Rn <= tol_res
+      if verbose >= 1
+         println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
+      end
+      return tout, xout, log
+   end
+
    if adapt_rtol; rtol = min(rtol0 * norm(s1, Inf), rtol0); end
    r = norm(s1./max(abs(x),threshold),Inf) + realmin(Float64)
    h = 0.8*rtol^(1/3)/r
-   numdE += N
 
-   for nit = 0:maxnit
+   for nit = 1:maxnit
       hmin = 16*eps(Float64)*abs(t)
 
       abs(h) < hmin ? h = hmin: h = h
@@ -114,13 +128,27 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
    numdE, numE = 0, 0
 
    # computation of the initial step
-   s1, _ = f(t, x, -1)
+   s1, _ = f(t, x, 0)
+   numdE += N
+   push!(tout, t)
+   push!(xout, x)
+   push!(log, numE, numdE, Rn)
+   if verbose >= 2
+      dt = Dates.format(now(), "HH:MM")
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+   end
+   if Rn <= tol_res
+      if verbose >= 1
+         println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
+      end
+      return tout, xout, log
+   end
+
    if adapt_rtol; rtol = min(rtol0 * norm(s1), rtol0); end
    r = norm(s1./max(abs(x),threshold),Inf) + realmin(Float64)
    h = 0.5 * rtol^(1/2) / r
-   numdE += N
 
-   for nit = 0:maxnit
+   for nit = 1:maxnit
       hmin = 16*eps(Float64)*abs(t)
 
       abs(h) < hmin ? h = hmin: h = h
@@ -190,6 +218,8 @@ end
 function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
                   log::IterationLog, method;
                   g=x->x, tol_res=1e-4, maxnit=100 )
+   dt = Dates.format(now(), "d-m-yyyy_HH:MM")
+   file = open("log_$(dt).txt", "w");
 
    @unpack atol, rtol, C1, C2, hmin, extrapolate = solver
    @unpack verbose = method
@@ -209,16 +239,33 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    # computation of the initial step
    x = g(x)
    # push(xout, x) TODO: chck if this is the correct place to move this
-   Fn, Rn = f(t, x, -1)
+   Fn, Rn = f(t, x, 0)
+   numdE += N
+   push!(tout, t)
+   push!(xout, x)
+   push!(log, numE, numdE, Rn)
+   if verbose >= 2
+      dt = Dates.format(now(), "HH:MM")
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+      write(file, strlog)
+      flush(file)
+   end
+   if Rn <= tol_res
+      if verbose >= 1
+         println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(typeof(method))", "$(nit)")
+         write(file, strlog)
+      end
+      close(file)
+      return tout, xout, log
+   end
+
    r = norm(Fn ./ max(abs.(x), threshold), Inf) + realmin(Float64)
    h = 0.5 * rtol^(1/2) / r
    h = max(h, hmin)
-   numdE += N
-   push!(log, numE, numdE, Rn)
-   dt = Dates.format(now(), "HH:MM")
-   @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
 
-   for nit = 0:maxnit
+   for nit = 1:maxnit
 
       tnew = t + h
       xnew = g(x + h * Fn)   # the redistribution is better done here I think
@@ -251,6 +298,10 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
       elseif extrapolate == 3   # min | F(xn + h Fn) |
          h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
       else
+         @printf("SADDLESEARCH: invalid `extrapolate` parameter")
+         strlog = @sprintf("SADDLESEARCH: invalid `extrapolate` parameter")
+         write(file, strlog)
+         close(file)
          error("SADDLESEARCH: invalid `extrapolate` parameter")
       end
       if isnan(h_ls) || (h_ls < hmin)
@@ -270,11 +321,17 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
          if verbose >= 2
             dt = Dates.format(now(), "HH:MM")
             @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+            strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+            write(file, strlog)
+            flush(file)
          end
          if Rn <= tol_res
             if verbose >= 1
                println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
+               strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations\n", "$(typeof(method))", "$(nit)")
+               write(file, strlog)
             end
+            close(file)
             return tout, xout, log
          end
 
@@ -284,6 +341,13 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
             println("SADDLESEARCH:      accept: new h = $h, |F| = $(Rn)")
             println("SADDLESEARCH:                hls = $(h_ls)")
             println("SADDLESEARCH:               herr = $(h_err)")
+
+            strlog = @sprintf("SADDLESEARCH:      accept: new h = %s, |F| = %s\n
+                               SADDLESEARCH:                hls = %s\n
+                               SADDLESEARCH:               herr = %s\n",
+                               "$h", "$(Rn)", "$(h_ls)", "$(h_err)")
+            write(file, strlog)
+            flush(file)
          end
       else
          h = max(0.1 * h, min(0.25 * h, h_err, h_ls))
@@ -292,17 +356,30 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
             println("SADDLESEARCH:               |Fnew| = $(Rnew)")
             println("SADDLESEARCH:               |Fold| = $(Rn)")
             println("SADDLESEARCH:        |Fnew|/|Fold| = $(Rnew/Rn)")
+
+            strlog = @sprintf("SADDLESEARCH:      reject: new h = %s\n
+                               SADDLESEARCH:               |Fnew| = %s\n
+                               SADDLESEARCH:               |Fold| = %s\n
+                               SADDLESEARCH:        |Fnew|/|Fold| = %s\n",
+                               "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn)")
+            write(file, strlog)
+            flush(file)
          end
       end
 
       if abs(h) <= hmin
          warn("SADDLESEARCH: Step size $h too small at t = $t.");
+         strlog = @sprintf("SADDLESEARCH: Step size %s too small at t = %s.\n", "$h", "$t")
+         write(file, strlog)
+         close(file)
          return tout, xout, log
       end
    end
 
    if verbose >= 1
       println("SADDLESEARCH: $(typeof(solver)) terminated unsuccesfully after $(maxnit) iterations.")
+      strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(typeof(solver))", "$(maxnit)")
+      write(file, strlog)
    end
 
    # println("DEBUG")
@@ -312,6 +389,6 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, N::Int,
    #    Fnew, _ = f(t, x + h * Fold)
    #    println("   |Fnew(h)| = ", norm(Fnew, Inf))
    # end
-
+   close(file)
    return tout, xout, log
 end
