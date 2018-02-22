@@ -15,7 +15,7 @@ import ForwardDiff
 
 export objective,
    MullerPotential, DoubleWell, LJcluster, LJVacancy2D, Molecule2D,
-   ic_dimer, ic_string
+   SurfaceCluster, ic_dimer, ic_string
 
 
 
@@ -426,13 +426,23 @@ end
    r0 ::Float64 = 2.8970
    rc ::Float64 = 9.5
    c ::Float64 = 2.74412
+   Xref::Matrix{Float64}
+   Ifix::Vector{Int}
+   Ifree::Vector{Int}
+   Iisl::Vector{Int}
+   Ibulk::Vector{Int}
+   nfree::Int
 end
+
+SurfaceCluster(; n_bc1=6, n_bc2=14) =
+   SurfaceCluster(0.7102, 1.6047, 2.8970, 9.5, 2.74412,
+    surf_cluster_refconfig(n_bc1, n_bc2)...)
 
 function energy(V::SurfaceCluster, r)
    np = 343; nd = np*3
 
    e = exp(-V.a*(V.rc-V.r0))
-   ecut = e*e - 2*e
+   ecut = e*(e - 2)
 
    box = [7*V.c 4*V.c*sqrt(3)]
 
@@ -443,17 +453,18 @@ function energy(V::SurfaceCluster, r)
    zfix = 6.7212
 
    R  = [ [ r[i*np + j] for j=1:np ] for i=0:2 ]
+   # R  = [ r[i*np + 1: i*np + np] for i=0:2 ]
 
    for i=1:np, j=i+1:np
       if (R[3][i]>zfix || R[3][j]>zfix)
          rel = [R[k][i]-R[k][j] for k=1:3]
-         [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
+         [rel[i] -= box[i] * round(rel[i]./box[i]) for i=1:2]
          r2sqrt = norm(rel)
 
          if r2sqrt < rc
             e = exp( -V.a*(r2sqrt - V.r0) )
             # potential energy
-            En += e*e - 2*e - ecut
+            En += e*(e - 2) - ecut
 
             # # force
             # ff = (e*e - e) / r2sqrt
@@ -506,4 +517,21 @@ function gradient(V::SurfaceCluster, r)
    F = cat(1, f...)
    F *= 2 * V.a * V.aa
    return F
+end
+
+function ic_path(V::SurfaceCluster)
+   V.Xref, V.Ifix, V.Ifree, V.Isl, V.Ibulk, V.nfree = surf_cluster_refconfig()
+   x0 = X[:, V.Ifree][:]
+   return x0
+end
+
+function surf_cluster_refconfig(;n_bc1=6, n_bc2=14)
+   data = joinpath(Pkg.dir("SaddleSearch"), "data") * "/"
+   Xref = readdlm(data*"surf_cluster_min01a.dat")
+   Ifix = find(u->u<=n_bc1, Xref[:,3])
+   Ifree = setdiff(1:size(Xref,1), Ifix)
+   Iisl = find(u->u>=n_bc2, Xref[:,3])
+   Ibulk = setdiff(Ifree, Iisl)
+   nfree = length(Ifree)
+   return Xref, Ifix, Ifree, Iisl, Ibulk, nfree
 end
