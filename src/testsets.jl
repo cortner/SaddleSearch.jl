@@ -15,7 +15,7 @@ import ForwardDiff
 
 export objective,
    MullerPotential, DoubleWell, LJcluster, LJVacancy2D, Molecule2D,
-   SurfaceCluster, ic_dimer, ic_string
+   MorseIsland, ic_dimer, ic_path
 
 
 
@@ -414,18 +414,28 @@ function precond(V::Molecule2D, r)
    return P
 end
 
+# ============================================================================
+# TEST SET: MorseIsland
+# ============================================================================
+
+
+module MorseAux
+
+function island_refconfig(;n_bc1=6, n_bc2=14)
+   data = joinpath(Pkg.dir("SaddleSearch"), "data") * "/"
+   Xref = readdlm(data*"morse_island_min01a.dat")
+   Ifix = find(u->u<=n_bc1, Xref[:,3])
+   Ifree = setdiff(1:size(Xref,1), Ifix)
+   Iisl = find(u->u>=n_bc2, Xref[:,3])
+   Ibulk = setdiff(Ifree, Iisl)
+   nfree = length(Ifree)
+   return Xref, Ifix, Ifree, Iisl, Ibulk, nfree
 end
 
-# ============================================================================
-# TEST SET: SurfaceCluster
-# ============================================================================
+end
 
-@with_kw type SurfaceCluster
-   aa ::Float64 = 0.7102
-   a ::Float64 = 1.6047
-   r0 ::Float64 = 2.8970
-   rc ::Float64 = 9.5
-   c ::Float64 = 2.74412
+
+type MorseIsland
    Xref::Matrix{Float64}
    Ifix::Vector{Int}
    Ifree::Vector{Int}
@@ -434,17 +444,22 @@ end
    nfree::Int
 end
 
-SurfaceCluster(; n_bc1=6, n_bc2=14) =
-   SurfaceCluster(0.7102, 1.6047, 2.8970, 9.5, 2.74412,
-    surf_cluster_refconfig(n_bc1, n_bc2)...)
+MorseIsland(; n_bc1=6, n_bc2=14) =
+   MorseIsland(MorseAux.island_refconfig(n_bc1=n_bc1, n_bc2=n_bc2)...)
 
-function energy(V::SurfaceCluster, r)
+function energy(V::MorseIsland, r)
+   aa = 0.7102
+   a = 1.6047
+   r0 = 2.8970
+   rc = 9.5
+   c = 2.74412
+
    np = 343; nd = np*3
 
-   e = exp(-V.a*(V.rc-V.r0))
+   e = exp(-a*(rc-r0))
    ecut = e*(e - 2)
 
-   box = [7*V.c 4*V.c*sqrt(3)]
+   box = [7*c 4*c*sqrt(3)]
 
    En = 0
    # f = [zeros(np) for i=1:3]
@@ -462,7 +477,7 @@ function energy(V::SurfaceCluster, r)
          r2sqrt = norm(rel)
 
          if r2sqrt < rc
-            e = exp( -V.a*(r2sqrt - V.r0) )
+            e = exp( -a*(r2sqrt - r0) )
             # potential energy
             En += e*(e - 2) - ecut
 
@@ -475,19 +490,25 @@ function energy(V::SurfaceCluster, r)
       end
    end
 
-   En *= V.aa
+   En *= aa
    # F = cat(1, f...)
    # F *= 2 * V.a * V.aa
    return En #, F
 end
 
-function gradient(V::SurfaceCluster, r)
+function gradient(V::MorseIsland, r)
+   aa = 0.7102
+   a = 1.6047
+   r0 = 2.8970
+   rc = 9.5
+   c = 2.74412
+
    np = 343; nd = np*3
 
-   e = exp(-V.a*(V.rc-V.r0))
+   e = exp(-a*(rc-r0))
    ecut = e*e - 2*e
 
-   box = [7*V.c 4*V.c*sqrt(3)]
+   box = [7*c 4*c*sqrt(3)]
 
    f = [zeros(np) for i=1:3]
 
@@ -503,7 +524,7 @@ function gradient(V::SurfaceCluster, r)
          r2sqrt = norm(rel)
 
          if r2sqrt < rc
-            e = exp( -V.a*(r2sqrt - V.r0) )
+            e = exp( -a*(r2sqrt - r0) )
 
             # force
             ff = (e*e - e) / r2sqrt
@@ -515,23 +536,14 @@ function gradient(V::SurfaceCluster, r)
    end
 
    F = cat(1, f...)
-   F *= 2 * V.a * V.aa
+   F *= 2 * a * aa
    return F
 end
 
-function ic_path(V::SurfaceCluster)
-   V.Xref, V.Ifix, V.Ifree, V.Isl, V.Ibulk, V.nfree = surf_cluster_refconfig()
-   x0 = X[:, V.Ifree][:]
-   return x0
+function ic_path(V::MorseIsland)
+   V.Xref, V.Ifix, V.Ifree, V.Iisl, V.Ibulk, V.nfree = MorseAux.island_refconfig()
+   x0 = V.Xref[:, V.Ifree][:]
+   return x0, x0
 end
 
-function surf_cluster_refconfig(;n_bc1=6, n_bc2=14)
-   data = joinpath(Pkg.dir("SaddleSearch"), "data") * "/"
-   Xref = readdlm(data*"surf_cluster_min01a.dat")
-   Ifix = find(u->u<=n_bc1, Xref[:,3])
-   Ifree = setdiff(1:size(Xref,1), Ifix)
-   Iisl = find(u->u>=n_bc2, Xref[:,3])
-   Ibulk = setdiff(Ifree, Iisl)
-   nfree = length(Ifree)
-   return Xref, Ifix, Ifree, Iisl, Ibulk, nfree
 end
