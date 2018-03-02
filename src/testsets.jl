@@ -467,12 +467,12 @@ function energy(V::MorseIsland, r)
    # atoms below zfix are fixed
    zfix = 6.7212
 
-   R  = [ [ r[i*np + j] for j=1:np ] for i=0:2 ]
-   # R  = [ r[i*np + 1: i*np + np] for i=0:2 ]
+   # R  = [ [ r[i*np + j] for j=1:np ] for i=0:2 ]
+   R = reshape(r, (np,3))
 
    for i=1:np, j=i+1:np
-      if (R[3][i]>zfix || R[3][j]>zfix)
-         rel = [R[k][i]-R[k][j] for k=1:3]
+      if (R[i,3]>zfix || R[j,3]>zfix)
+         rel = [R[i,k]-R[j,k] for k=1:3]
          [rel[i] -= box[i] * round(rel[i]./box[i]) for i=1:2]
          r2sqrt = norm(rel)
 
@@ -515,11 +515,13 @@ function gradient(V::MorseIsland, r)
    # atoms below zfix are fixed
    zfix = 6.7212
 
-   R  = [ [ r[i*np + j] for j=1:np ] for i=0:2 ]
+   # R  = [ [ r[i*np + j] for j=1:np ] for i=0:2 ]
+   R = reshape(r, (np,3))
 
    for i=1:np, j=i+1:np
-      if (R[3][i]>zfix || R[3][j]>zfix)
-         rel = [R[k][i]-R[k][j] for k=1:3]
+      # if (R[3][i]>zfix || R[3][j]>zfix)
+      if (R[i,3]>zfix || R[j,3]>zfix)
+         rel = [R[i,k]-R[j,k] for k=1:3]
          [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
          r2sqrt = norm(rel)
 
@@ -529,8 +531,8 @@ function gradient(V::MorseIsland, r)
             # force
             ff = (e*e - e) / r2sqrt
             df = ff .* rel
-            if R[3][i] > zfix; [f[k][i] += df[k] for k=1:3]; end
-            if R[3][j] > zfix; [f[k][j] -= df[k] for k=1:3]; end
+            if R[i,3] > zfix; [f[k][i] += df[k] for k=1:3]; end
+            if R[j,3] > zfix; [f[k][j] -= df[k] for k=1:3]; end
          end
       end
    end
