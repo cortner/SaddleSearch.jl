@@ -476,7 +476,7 @@ function energy(V::MorseIsland, r)
          [rel[i] -= box[i] * round(rel[i]./box[i]) for i=1:2]
          r2sqrt = norm(rel)
 
-         if r2sqrt < rc
+         # if r2sqrt < rc
             e = exp( -a*(r2sqrt - r0) )
             # potential energy
             En += e*(e - 2) - ecut
@@ -486,7 +486,7 @@ function energy(V::MorseIsland, r)
             # df = ff .* rel
             # if R[3][i] > zfix; [f[k][i] += df[k] for k=1:3]; end
             # if R[3][j] > zfix; [f[k][j] -= df[k] for k=1:3]; end
-         end
+         # end
       end
    end
 
@@ -525,7 +525,7 @@ function gradient(V::MorseIsland, r)
          [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
          r2sqrt = norm(rel)
 
-         if r2sqrt < rc
+         # if r2sqrt < rc
             e = exp( -a*(r2sqrt - r0) )
 
             # force
@@ -533,7 +533,7 @@ function gradient(V::MorseIsland, r)
             df = ff .* rel
             if R[i,3] > zfix; [f[k][i] += df[k] for k=1:3]; end
             if R[j,3] > zfix; [f[k][j] -= df[k] for k=1:3]; end
-         end
+         # end
       end
    end
 

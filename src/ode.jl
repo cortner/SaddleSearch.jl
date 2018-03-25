@@ -128,7 +128,7 @@ function odesolve(solver::ode12, f, x0::Vector{Float64}, N::Int,
    numdE, numE = 0, 0
 
    # computation of the initial step
-   s1, _ = f(t, x, 0)
+   s1, Rn = f(t, x, 0)
    numdE += N
    push!(tout, t)
    push!(xout, x)
