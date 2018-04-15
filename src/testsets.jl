@@ -478,6 +478,7 @@ function energy(V::MorseIsland, r)
             e = exp( -a*(r2sqrt - r0) )
             # potential energy
             En += e*(e - 2) - ecut
+        # end
       end
    end
 
@@ -500,33 +501,40 @@ function gradient(V::MorseIsland, r)
    box = [7*c 4*c*sqrt(3)]
 
    f = [zeros(np) for i=1:3]
+   F = zeros(nd,1);
 
    # atoms below zfix are fixed
    zfix = 6.7212
 
    R = reshape(r, (np,3))
 
-   for i=1:np, j=i+1:np
-      if (R[i,3]>zfix || R[j,3]>zfix)
-         rel = [R[i,k]-R[j,k] for k=1:3]
-         [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
-         r2sqrt = norm(rel)
+   I = zeros(Int, 3, np)
+   I[:] = 1:nd
 
-         # if r2sqrt < rc
-            e = exp( -a*(r2sqrt - r0) )
+    for i=1:np, j=i+1:np
+        if (R[i,3]>zfix || R[j,3]>zfix)
+            Ii, Ij = I[:,i], I[:,j]
+            rel = [R[i,k]-R[j,k] for k=1:3]
+            [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
+            r2sqrt = norm(rel)
 
-            # force
-            ff = (e*e - e) / r2sqrt
-            df = ff .* rel
-            if R[i,3] > zfix; [f[k][i] += df[k] for k=1:3]; end
-            if R[j,3] > zfix; [f[k][j] -= df[k] for k=1:3]; end
-         # end
-      end
-   end
+            # if r2sqrt < rc
+                e = exp( -a*(r2sqrt - r0) )
 
-   F = cat(1, f...)
-   F *= 2 * a * aa
-   return -F
+                # force
+                ff = (e*e - e) / r2sqrt
+                df = ff .* rel
+                if R[i,3] > zfix; F[Ii] += df; end
+                if R[j,3] > zfix; F[Ij] -= df; end
+                # [f[k][i] += df[k] for k=1:3]
+                # [f[k][j] -= df[k] for k=1:3]
+            # end
+        end
+    end
+
+   # F = cat(1, f...)
+   F *= - 2 * a * aa
+   return F
 end
 
 function precond(V::MorseIsland, r)
@@ -546,42 +554,39 @@ function precond(V::MorseIsland, r)
     # atoms below zfix are fixed
     zfix = 6.7212
 
-    Rfree = reshape(r, (length(V.Ifree),3))
-    Rfix = V.Xref[V.Ifix, :]
+    # Rfree = reshape(r, (length(V.Ifree),3))
+    # Rfix = V.Xref[V.Ifix, :]
+    #
+    # R = zeros(np,3)
+    # R[V.Ifree, :] = Rfree
+    # R[V.Ifix,: ]= Rfix
 
-    R = zeros(np,3)
-    R[V.Ifree, :] = Rfree
-    R[V.Ifix,: ]= Rfix
-
-    # R = reshape(r, (np,3))
+    R = reshape(r, (np,3))
     P = zeros(nd, nd)
     I = zeros(Int, 3, np)
     I[:] = 1:nd
     for i=1:np, j=i+1:np
-        if (R[i,3]>zfix || R[j,3]>zfix)
+        if (R[i,3]>zfix && R[j,3]>zfix)
             Ii, Ij = I[:,i], I[:,j]
             rel = [R[i,k]-R[j,k] for k=1:3]
             [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
             r2sqrt = norm(rel)
 
             # if r2sqrt < rc
-            e = exp( -a*(r2sqrt - r0) )
-            ddf = 4 * a * e * eye(3)
+                e = exp( -a*(r2sqrt - r0) )
+                ddf = 4 * aa * a * a * e * e * eye(3)
 
-            if (R[i,3] > zfix) && (R[j,3] > zfix)
                 P[Ii, Ij] -= ddf
                 P[Ij, Ii] -= ddf
-            end
+                P[Ii, Ii] += ddf
+                P[Ij, Ij] += ddf
 
-            if R[i,3] > zfix; P[Ii, Ii] += ddf; end
-            if R[j,3] > zfix; P[Ij, Ij] += ddf; end
-
+            # end
         end
     end
 
-    allFree = cat(1,[collect(3*(i-1)+1:3*i) for i in V.Ifree]...)
-    Q = P[allFree, allFree]
-   return sparse(Q) + 0.001 * speye(length(allFree))
+    Q = P[I[:,V.Ifree][:], I[:,V.Ifree][:]]
+   return sparse(Q) + 0.001 * speye(length(I[:,V.Ifree]))
 end
 
 function ic_path(V::MorseIsland)
