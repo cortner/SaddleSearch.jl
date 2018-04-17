@@ -466,7 +466,14 @@ function energy(V::MorseIsland, r)
    # atoms below zfix are fixed
    zfix = 6.7212
 
-   R = reshape(r, (np,3))
+   Rfree = reshape(r, (length(V.Ifree),3))
+   Rfix = V.Xref[V.Ifix, :]
+
+   R = zeros(np,3)
+   R[V.Ifree, :] = Rfree
+   R[V.Ifix,: ]= Rfix
+
+   # R = reshape(r, (np,3))
 
    for i=1:np, j=i+1:np
       if (R[i,3]>zfix || R[j,3]>zfix)
@@ -506,14 +513,20 @@ function gradient(V::MorseIsland, r)
    # atoms below zfix are fixed
    zfix = 6.7212
 
-   R = reshape(r, (np,3))
+   Rfree = reshape(r, (length(V.Ifree),3))
+   Rfix = V.Xref[V.Ifix, :]
 
-   I = zeros(Int, 3, np)
+   R = zeros(np,3)
+   R[V.Ifree, :] = Rfree
+   R[V.Ifix,: ]= Rfix
+   # R = reshape(r, (np,3))
+
+   I = zeros(Int, np, 3)
    I[:] = 1:nd
 
     for i=1:np, j=i+1:np
         if (R[i,3]>zfix || R[j,3]>zfix)
-            Ii, Ij = I[:,i], I[:,j]
+            Ii, Ij = I[i,:], I[j,:]
             rel = [R[i,k]-R[j,k] for k=1:3]
             [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
             r2sqrt = norm(rel)
@@ -554,20 +567,20 @@ function precond(V::MorseIsland, r)
     # atoms below zfix are fixed
     zfix = 6.7212
 
-    # Rfree = reshape(r, (length(V.Ifree),3))
-    # Rfix = V.Xref[V.Ifix, :]
-    #
-    # R = zeros(np,3)
-    # R[V.Ifree, :] = Rfree
-    # R[V.Ifix,: ]= Rfix
+    Rfree = reshape(r, (length(V.Ifree),3))
+    Rfix = V.Xref[V.Ifix, :]
 
-    R = reshape(r, (np,3))
+    R = zeros(np,3)
+    R[V.Ifree, :] = Rfree
+    R[V.Ifix,: ]= Rfix
+
+    # R = reshape(r, (np,3))
     P = zeros(nd, nd)
-    I = zeros(Int, 3, np)
+    I = zeros(Int, np, 3)
     I[:] = 1:nd
     for i=1:np, j=i+1:np
         if (R[i,3]>zfix && R[j,3]>zfix)
-            Ii, Ij = I[:,i], I[:,j]
+            Ii, Ij = I[i,:], I[j,:]
             rel = [R[i,k]-R[j,k] for k=1:3]
             [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
             r2sqrt = norm(rel)
@@ -585,7 +598,7 @@ function precond(V::MorseIsland, r)
         end
     end
 
-    Q = P[I[:,V.Ifree][:], I[:,V.Ifree][:]]
+    Q = P[I[V.Ifree,:][:], I[V.Ifree,:][:]]
    return sparse(Q) + 0.001 * speye(length(I[:,V.Ifree]))
 end
 
