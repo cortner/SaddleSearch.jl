@@ -2,7 +2,6 @@
 
 export BBDimer
 
-# TODO: change maxnit to maxn_dE
 
 """
 `BBDimer`: dimer method with Barzilai-Borwein step-size + an Armijo
@@ -79,8 +78,12 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    while true
       nit += 1
 
-      @assert !any(isnan, v)
-      @assert !any(isnan, x)
+      if any(isnan, v) || any(isnan, x)
+         error("""BBDimer method has encountered NANs. This can happen with
+                  BB type step size selection, which can be fast but is sometimes
+                  unstable. To prevent this, use try different initial conditions
+                  or use a different saddle-search method.""")
+      end
 
       # normalise v
       P0 = precon_prep!(P0, x)
@@ -157,6 +160,13 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
       γ, numE_ls, _ = linesearch!(ls, F_rot, F_rot(v), -dot(p_rot, P, p_rot),
                                     v, p_rot, γ)
       numE += numE_ls
+
+      if isnan(β) || isnan(γ)
+         if verbose >= 1
+            println("BBDimer terminates unsuccesfully due to unsuccesful linesearch")
+         end
+         return x, v, log
+      end
 
       x_old, v_old = x, v
       # translation step

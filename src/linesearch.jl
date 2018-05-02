@@ -57,7 +57,9 @@ function linesearch!(ls::Backtracking, F, f0, df0, x, p, α; f0_goal=f0, conditi
          error("currently only quadratic backtracking is implemented")
       end
       # check whether α is too small now; probably something has gone wrong
-      @assert α > minα
+      if α < minα
+         return NaN, numE, fα
+      end
       # evaluate f again and loop
       fα = F(x + α * p)
       numE += 1

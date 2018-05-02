@@ -5,48 +5,26 @@ using Parameters
 export run!
 
 
-include("iterlog.jl")
+# logging, preconditioner transformation, weidth norms and dots,
+include("misc.jl")
 
-
-Base.dot{T}(x, A::UniformScaling{T}, y) = A.λ * dot(x,y)
-Base.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
-Base.norm(P, x) = sqrt(dot(x, P*x))
-dualnorm(P, f) = sqrt(dot(f, P \ f))
-
-"""
-An abstract linear operator representing `P + s * (Pv) ⊗ (Pv)`
-
-Define `*` and `\`, the latter via Sherman-Morrison-Woodbury formula.
-"""
-type PreconSMW{T} <: AbstractMatrix{T}
-   P       # an invertiable N x N matrix (probably spd)
-   v       # a vector of length N
-   Pv      # the vector P * v
-   s::T    # see doc
-   smw::T  # the SMW-factor
-end
-
-PreconSMW(P, v, s) = PreconSMW(P, v, P*v, s, s / (1.0 + s * dot(v, P, v)))
-
-import Base: *, \, size
-(*)(A::PreconSMW, x::AbstractVector) = A.P * x + (A.s * dot(A.Pv, x)) * A.Pv
-(\)(A::PreconSMW, f::AbstractVector) = (A.P \ f) - ((A.smw * dot(A.v, f)) * A.v)
-
-# Dimer / GAD type methods
-
+# some line-search related methods
 include("linesearch.jl")
 
 include("ode.jl")
 
-include("dimer.jl")
+# =========== Walker-type saddle search methods ============
+
+include("staticdimer.jl")
 
 include("bbdimer.jl")
 
+#  include("odedimer.jl")    # => TODO
+
 include("superlineardimer.jl")
 
-# include("newtonkrylovdimer.jl")
 
-# Sting and NEB-type methods
+# ============ Sting type methods ===================
 
 include("string.jl")
 
@@ -58,20 +36,15 @@ include("preconstring.jl")
 
 include("preconneb.jl")
 
-
 include("odestring.jl")
 
 include("odeneb.jl")
-
 
 include("pathpreconschemes.jl")
 
 include("pathtraversing.jl")
 
 include("stringparametrisation.jl")
-
-include("testsets.jl")
-
 
 
 

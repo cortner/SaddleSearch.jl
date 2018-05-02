@@ -2,7 +2,6 @@
 
 export StaticDimerMethod
 
-# TODO: change maxnit to maxn_dE
 
 """
 `StaticDimerMethod`: the most basic dimer variant, simply taking alternating
@@ -26,7 +25,7 @@ steps with a fixed step-size.
    # ------ shared parameters ------
    tol_trans::Float64 = 1e-5
    tol_rot::Float64 = 1e-2
-   maxnit::Int = 1000
+   maxnumdE::Int = 1000
    len::Float64 = 1e-3
    precon = I
    precon_prep! = (P, x) -> P
@@ -39,7 +38,7 @@ end
 function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
 
    # read all the parameters
-   @unpack a_trans, a_rot, tol_trans, tol_rot, maxnit, len,
+   @unpack a_trans, a_rot, tol_trans, tol_rot, maxnumdE, len,
             precon_prep!, verbose, precon_rot, rescale_v = method
    P0=method.precon
    # initialise variables
@@ -52,7 +51,7 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       @printf(" nit |  |∇E|_∞    |∇R|_∞     λ   \n")
       @printf("-----|-----------------------------\n")
    end
-   for nit = 0:maxnit
+   for nit = 0:maxnumdE  # there will be at most this many evaluations 
       # normalise v
       P0 = precon_prep!(P0, x)
       v /= sqrt(dot(v, P0, v))
@@ -84,6 +83,13 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
          end
          return x, v, log
       end
+      if numdE > maxnumdE
+         if verbose >= 1
+            println("StaticDimer terminates unsuccesfully due to numdE >= $(maxnumdE)")
+         end
+         return x, v, log
+      end
+
       # translation step
       p_trans = - (P \ dE0) + 2.0 * dot(v, dE0) * v
       x += a_trans * p_trans
@@ -95,8 +101,6 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       end
       v += a_rot * p_rot
    end
-   if verbose >= 1
-      println("StaticDimerMethod terminated unsuccesfully after $(maxnit) iterations.")
-   end
-   return x, v, log
+
+   error("why am I here?")
 end

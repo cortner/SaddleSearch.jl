@@ -1,7 +1,6 @@
 export SuperlinearDimer
 
-# TODO: change maxnit to maxn_dE
-#       allow CG, LBFGS, SD + switch to symbols
+# TODO:      allow CG, LBFGS, SD + switch to symbols
 
 """
 `SuperlinearDimer`: dimer variant based on Kastner's JCP 128, 014106 (2008) article & ASE implementation
@@ -105,7 +104,7 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
              numdE += 1
           end
 
-          dE1a = dE1     # dE1a store for later use (TODO: does it need to be a copy?)
+          dE1a = copy(dE1)     # dE1a store for later use (does it need to be a copy?)
 
           Hxv = (dE1 - dE2) / 2.0 / len
           curv = dot(Hxv, v)
