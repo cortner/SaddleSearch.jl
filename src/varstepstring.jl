@@ -41,8 +41,8 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  sup|∇E|_∞   \n")
-      @printf("-----|-----------------\n")
+      @printf("SADDLESEARCH:  nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: -----|-----------------\n")
    end
    for nit = 0:maxnit
       # normalise t
@@ -73,11 +73,11 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
       maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
       push!(log, numE, numdE, maxres)
       if verbose >= 2
-         @printf("%4d |   %1.2e\n", nit, maxres)
+         @printf("SADDLESEARCH: %4d |   %1.2e\n", nit, maxres)
       end
       if maxres <= tol_res
          if verbose >= 1
-            println("VarStepStringMethod terminates succesfully after $(nit) iterations")
+            println("SADDLESEARCH: VarStepStringMethod terminates succesfully after $(nit) iterations")
          end
          return x, log
       end
@@ -96,7 +96,7 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
 
    end
    if verbose >= 1
-      println("VarStepStringMethod terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: VarStepStringMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
    return x, log
 end

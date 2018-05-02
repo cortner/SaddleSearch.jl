@@ -19,22 +19,24 @@ export ODENudgedElasticbandMethod
 """
 @with_kw type ODENudgedElasticBandMethod
    solver = ode12(1e-6, 1e-3, true)
+   precon_scheme = localPrecon()
+   path_traverse = serial()
    k::Float64
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
    maxnit::Int = 1000
-   precon = [I]
-   precon_prep! = (P, x) -> P
+   # precon = [I]
+   # precon_prep! = (P, x) -> P
    verbose::Int = 2
-   precon_cond::Bool = false
+   # precon_cond::Bool = false
 end
 
 
 function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack solver, k, tol_res, maxnit,
-            precon_prep!, verbose, precon_cond = method
-   P=method.precon
+   @unpack solver, precon_scheme, path_traverse, k, tol_res, maxnit,
+            verbose = method
+   @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
    nit = 0
@@ -42,36 +44,48 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  sup|∇E|_∞   \n")
-      @printf("-----|-----------------\n")
+      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_) -> forces(x, x_, k, dE, P, precon_prep!), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
+   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x, x_, k, dE, direction(length(x), nit)), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
 
    x = set_ref!(x, xout[end])
    return x, log, αout
 end
 
-function forces{T}(x::Vector{T}, xref::Vector{Float64},
-                     k::Float64, dE, P, precon_prep!)
+function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
+                     k::Float64, dE, direction)
+   @unpack precon, precon_prep!, precon_cond, dist, point_norm,
+               proj_grad, forcing, elastic_force, maxres = precon_scheme
    x = set_ref!(x, xref)
    N = length(x)
-   P = precon_prep!(P, x)
-   Np = length(P)
+   precon = precon_prep!(precon, x)
+   Np = size(precon, 1); # P = i -> precon[mod(i-1,Np)+1]
+   function P(i) return precon[mod(i-1,Np)+1, 1]; end
+   function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
 
    # central finite differences
-   dxds = [(x[i+1]-x[i-1])/2 for i=2:N-1]
-   dxds ./= [sqrt(dot(dxds[i], P[mod(i-Np+1,Np)+1], dxds[i])) for i=1:length(dxds)]
-   dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-   Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P[mod(i-Np+1,Np)+1], dxds[i]) * dxds[i] for i=2:N-1]
-   Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
+   dxds = [[zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(x[1])]]
+   dxds ./= point_norm(P, dxds) # [norm(P(i), dxds[i]) for i=1:length(dxds)]
+   # dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
+   d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
+                                                         [zeros(x[1])] ]
+   Fk = elastic_force(P, k*N*N, dxds, d²xds²)
+   #k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+   # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
 
-   dE0 = [dE(x[i]) for i=1:length(x)]
+   # ord = M-mod(nit,2)*(M-1):2*mod(nit,2)-1:M-mod(nit+1,2)*(M-1)
+   dE0_temp = [dE(x[i]) for i in direction]
+   dE0 = [dE0_temp[i] for i in direction]
 
-   dE0⟂ = [P[mod(i-Np+1,Np)+1] \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
+   dE0⟂ = proj_grad(P, dE0, dxds)
+   # [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
+   F = forcing(precon, dE0⟂-Fk)
 
-   maxres = maximum([norm(P[mod(i-Np+1,Np)+1]*dE0⟂[i],Inf) for i = 1:length(x)])
+   res = maxres(P, dE0⟂)
+   #maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
 
-   return ref(- dE0⟂), maxres
+   return F, res
 
 end

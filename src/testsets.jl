@@ -15,7 +15,7 @@ import ForwardDiff
 
 export objective,
    MullerPotential, DoubleWell, LJcluster, LJVacancy2D, Molecule2D,
-   ic_dimer, ic_string
+   MorseIsland, ic_dimer, ic_path
 
 
 
@@ -310,7 +310,7 @@ function ic_path(V::LJVacancy2D, case=:near)
    else
       error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
    end
-   return return X0[:, V.Ifree][:], X1[:, V.Ifree][:]
+   return X0[:, V.Ifree][:], X1[:, V.Ifree][:]
 end
 
 function pos2dofs(V::LJVacancy2D, P::AbstractMatrix)
@@ -412,6 +412,204 @@ function precond(V::Molecule2D, r)
    P += V.k * (0.9 * q * q' + 0.1 * eye(3))
 
    return P
+end
+
+# ============================================================================
+# TEST SET: MorseIsland
+# ============================================================================
+
+
+module MorseAux
+
+function island_refconfig(;n_bc1=6, n_bc2=14)
+   data = joinpath(Pkg.dir("SaddleSearch"), "data") * "/"
+   Xref = readdlm(data*"morse_island_min01a.dat")
+   Ifix = find(u->u<=n_bc1, Xref[:,3])
+   Ifree = setdiff(1:size(Xref,1), Ifix)
+   Iisl = find(u->u>=n_bc2, Xref[:,3])
+   Ibulk = setdiff(Ifree, Iisl)
+   nfree = length(Ifree)
+   return Xref, Ifix, Ifree, Iisl, Ibulk, nfree
+end
+
+end
+
+
+type MorseIsland
+   Xref::Matrix{Float64}
+   Ifix::Vector{Int}
+   Ifree::Vector{Int}
+   Iisl::Vector{Int}
+   Ibulk::Vector{Int}
+   nfree::Int
+end
+
+MorseIsland(; n_bc1=6, n_bc2=14) =
+   MorseIsland(MorseAux.island_refconfig(n_bc1=n_bc1, n_bc2=n_bc2)...)
+
+function energy(V::MorseIsland, r)
+   aa = 0.7102
+   a = 1.6047
+   r0 = 2.8970
+   rc = 9.5
+   c = 2.74412
+
+   np = 343; nd = np*3
+
+   e = exp(-a*(rc-r0))
+   ecut = e*(e - 2)
+
+   box = [7*c 4*c*sqrt(3)]
+
+   En = 0
+
+   # atoms below zfix are fixed
+   zfix = 6.7212
+
+   Rfree = reshape(r, (length(V.Ifree),3))
+   Rfix = V.Xref[V.Ifix, :]
+
+   R = zeros(np,3)
+   R[V.Ifree, :] = Rfree
+   R[V.Ifix,: ]= Rfix
+
+   # R = reshape(r, (np,3))
+
+   for i=1:np, j=i+1:np
+      if (R[i,3]>zfix || R[j,3]>zfix)
+         rel = [R[i,k]-R[j,k] for k=1:3]
+         [rel[i] -= box[i] * round(rel[i]./box[i]) for i=1:2]
+         r2sqrt = norm(rel)
+
+         # if r2sqrt < rc
+            e = exp( -a*(r2sqrt - r0) )
+            # potential energy
+            En += e*(e - 2) - ecut
+        # end
+      end
+   end
+
+   En *= aa
+   return En
+end
+
+function gradient(V::MorseIsland, r)
+   aa = 0.7102
+   a = 1.6047
+   r0 = 2.8970
+   rc = 9.5
+   c = 2.74412
+
+   np = 343; nd = np*3
+
+   e = exp(-a*(rc-r0))
+   ecut = e*e - 2*e
+
+   box = [7*c 4*c*sqrt(3)]
+
+   f = [zeros(np) for i=1:3]
+   F = zeros(nd,1);
+
+   # atoms below zfix are fixed
+   zfix = 6.7212
+
+   Rfree = reshape(r, (length(V.Ifree),3))
+   Rfix = V.Xref[V.Ifix, :]
+
+   R = zeros(np,3)
+   R[V.Ifree, :] = Rfree
+   R[V.Ifix,: ]= Rfix
+   # R = reshape(r, (np,3))
+
+   I = zeros(Int, np, 3)
+   I[:] = 1:nd
+
+    for i=1:np, j=i+1:np
+        if (R[i,3]>zfix || R[j,3]>zfix)
+            Ii, Ij = I[i,:], I[j,:]
+            rel = [R[i,k]-R[j,k] for k=1:3]
+            [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
+            r2sqrt = norm(rel)
+
+            # if r2sqrt < rc
+                e = exp( -a*(r2sqrt - r0) )
+
+                # force
+                ff = (e*e - e) / r2sqrt
+                df = ff .* rel
+                if R[i,3] > zfix; F[Ii] += df; end
+                if R[j,3] > zfix; F[Ij] -= df; end
+                # [f[k][i] += df[k] for k=1:3]
+                # [f[k][j] -= df[k] for k=1:3]
+            # end
+        end
+    end
+
+   # F = cat(1, f...)
+   F *= - 2 * a * aa
+   return F
+end
+
+function precond(V::MorseIsland, r)
+    aa = 0.7102
+    a = 1.6047
+    r0 = 2.8970
+    rc = 9.5
+    c = 2.74412
+
+    np = 343; nd = np*3
+
+    e = exp(-a*(rc-r0))
+    ecut = e*e - 2*e
+
+    box = [7*c 4*c*sqrt(3)]
+
+    # atoms below zfix are fixed
+    zfix = 6.7212
+
+    Rfree = reshape(r, (length(V.Ifree),3))
+    Rfix = V.Xref[V.Ifix, :]
+
+    R = zeros(np,3)
+    R[V.Ifree, :] = Rfree
+    R[V.Ifix,: ]= Rfix
+
+    # R = reshape(r, (np,3))
+    P = zeros(nd, nd)
+    I = zeros(Int, np, 3)
+    I[:] = 1:nd
+    for i=1:np, j=i+1:np
+        if (R[i,3]>zfix && R[j,3]>zfix)
+            Ii, Ij = I[i,:], I[j,:]
+            rel = [R[i,k]-R[j,k] for k=1:3]
+            [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
+            r2sqrt = norm(rel)
+
+            # if r2sqrt < rc
+                e = exp( -a*(r2sqrt - r0) )
+                ddf = 4 * aa * a * a * e * e * eye(3)
+
+                P[Ii, Ij] -= ddf
+                P[Ij, Ii] -= ddf
+                P[Ii, Ii] += ddf
+                P[Ij, Ij] += ddf
+
+            # end
+        end
+    end
+
+    Q = P[I[V.Ifree,:][:], I[V.Ifree,:][:]]
+   return sparse(Q) + 0.001 * speye(length(I[:,V.Ifree]))
+end
+
+function ic_path(V::MorseIsland)
+   data = joinpath(Pkg.dir("SaddleSearch"), "data") * "/"
+   X0 = readdlm(data*"morse_island_min01a.dat")
+   x0 = X0[V.Ifree, :][:]
+   X1 = readdlm(data*"morse_island_min02a.dat")
+   x1 = X1[V.Ifree, :][:]
+
+   return X0, X1
 end
 
 end

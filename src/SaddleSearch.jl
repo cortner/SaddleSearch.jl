@@ -56,6 +56,8 @@ include("varstepstring.jl")
 
 include("preconstring.jl")
 
+include("preconneb.jl")
+
 
 include("odestring.jl")
 
@@ -63,6 +65,8 @@ include("odeneb.jl")
 
 
 include("pathpreconschemes.jl")
+
+include("pathtraversing.jl")
 
 include("stringparametrisation.jl")
 

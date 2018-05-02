@@ -6,16 +6,18 @@ export PreconNudgedElasticBandMethod
 `PreconNudgedElasticBandMethod`: a preconditioned neb variant
 
 ### Parameters:
+* `precon_scheme` : local/global preconditioning
 * `alpha` : step length
 * `k` : spring constant
+* `scheme` : finite difference scheme used to evaluate gradients
+* `refine_points` : -1 for no slope tracking and path refinement
+* `ls_cond` : true/false whether to perform line search to find next time step
 * `tol_res` : residual tolerance
 * `maxnit` : maximum number of iterations
-* `precon` : preconditioner
-* `precon_prep!` : update function for preconditioner
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
-* `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type PreconNudgedElasticBandMethod
+   precon_scheme = localPrecon()
    alpha::Float64
    k::Float64
    scheme::Symbol
@@ -24,49 +26,55 @@ export PreconNudgedElasticBandMethod
    # ------ shared parameters ------
    tol_res::Float64 = 1e-5
    maxnit::Int = 1000
-   precon = [I]
-   precon_prep! = (P, x) -> P
    verbose::Int = 2
-   precon_cond::Bool = false
 end
 
 
 function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack alpha, k, scheme, refine_points, ls_cond, tol_res, maxnit,
-            precon, precon_prep!, verbose, precon_cond = method
+   @unpack precon_scheme, alpha, k, scheme, refine_points, ls_cond, tol_res,
+            maxnit, verbose = method
+   @unpack precon, precon_prep!, precon_cond, dist, point_norm,
+            proj_grad, forcing, elastic_force, maxres = precon_scheme
    # initialise variables
    x = copy(x0)
    param = linspace(.0, 1., length(x)) |> collect
-   Np = length(precon); N = length(x)
+   Np = size(precon, 1); N = length(x)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf(" nit |  sup|∇E|_∞   \n")
-      @printf("-----|-----------------\n")
+      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
    for nit = 0:maxnit
       precon = precon_prep!(precon, x)
-      P = i -> precon[mod(i-1,Np)+1]
+      function P(i) return precon[mod(i-1,Np)+1, 1]; end
+      function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
+
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:N]
       numdE += length(x)
+
       # evaluate the tangent and spring force along the path
       dxds=[]; Fk=[]
       if scheme == :simple
          # forward and central finite differences
-         dxds = [(x[i+1]-x[i]) for i=2:N-1]
-         dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
-         dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+         dxds = [ [zeros(x[1])]; [(x[i+1]-x[i]) for i=2:N-1]; [zeros(x[1])] ]
+         dxds ./= point_norm(P, dxds)
+         d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
+                                                               [zeros(x[1])] ]
+         # k *= N*N
       elseif scheme == :central
          # central finite differences
-         dxds = [0.5*(x[i+1]-x[i-1]) for i=2:N-1]
-         dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
-         dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+         dxds = [ [zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1];
+                                                               [zeros(x[1])] ]
+         dxds ./= point_norm(P, dxds)
+         # dxds = [ [zeros(x[1])]; dxds; [zeros(dxds[1])] ]
+         d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
+                                                               [zeros(x[1])] ]
+         # k *= N*N
       elseif scheme == :upwind
          # upwind scheme
          E0 = [E(x[i]) for i=1:N]; numE += length(x)
@@ -78,9 +86,10 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          f_weight = 0.5*[(1 + index2[i])*Ediffmax[i] + (index2[i] - 1) * Ediffmin[i] for i=1:N-2]
          b_weight = 0.5*[(1 + index2[i])*Ediffmin[i] + (index2[i] - 1) *     Ediffmax[i] for i=1:N-2]
          dxds = [(1 - index1[i-1]) .* f_weight[i-1] .* (x[i+1]-x[i]) + (1 + index1[i-1]) .* b_weight[i-1] .* (x[i]-x[i-1]) for i=2:N-1]
-         dxds ./= [norm(P(i), dxds[i]) for i=1:length(dxds)]
          dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+         dxds ./= point_norm(P, dxds)
+         d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [zeros(x[1])] ]
+         # k *= N*N
       elseif scheme == :splines
          # spline scheme
          ds = [norm( 0.5*(P(i)+P(i+1)), x[i+1]-x[i] ) for i=1:length(x)-1]
@@ -90,33 +99,54 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
                k = 3, bc = "error") for i=1:length(x[1])]
          dxds = [[derivative(S[i], si) for i in 1:length(S)] for si in s ]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
+         dxds ./= point_norm(P, dxds)
          dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
-         d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s ]
-         Fk = k*(1/(N*N))*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:N-1]
+         d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s]
+         k *= (1/(N*N))
       else
-         error("unknown differentiation scheme")
+         error("SADDLESEARCH: unknown differentiation scheme")
       end
 
-      Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
-      dE0⟂ = [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
+      Fk = elastic_force(P, k*N*N, dxds, d²xds²)
+      dE0⟂ = proj_grad(P, dE0, dxds)
+      F = forcing(precon, dE0⟂-Fk); f = set_ref!(copy(x), F)
+
+      # perform linesearch to find optimal step
+      if ls_cond
+         E0  = [E(x[i]) for i=1:length(x)]
+         numE += length(x)
+         α = []
+         ls = Backtracking(c1 = .2, mindecfact = .1, minα = 0.)
+         for i=1:length(x)
+            αi, cost, _ = linesearch!(ls, E, E0[i], dot(dE0[i], f[i]), x[i], f[i], copy(alpha), condition=iter->iter>=10)
+            push!(α, αi)
+            numE += cost
+         end
+         for k=1:10
+            α = [.5 * (α[1] + α[2]); [(.25 * (α[n-1] + α[n+1]) + .5 * α[n]) for n=2:length(α)-1]; (.5 * (α[end-1] + α[end]))]
+         end
+      else
+         α = alpha
+      end
 
       # residual, store history
-      maxres = maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
-      push!(log, numE, numdE, maxres)
+      res = maxres(P, dE0⟂)
+
+      push!(log, numE, numdE, res)
       if verbose >= 2
-         @printf("%4d |   %1.2e\n", nit, maxres)
+         dt = Dates.format(now(), "HH:MM")
+         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, res)
       end
-      if maxres <= tol_res
+      if res <= tol_res
          if verbose >= 1
-            println("PreconNudgedElasticBandMethod terminates succesfully after $(nit) iterations")
+            println("SADDLESEARCH: PreconNudgedElasticBandMethod terminates succesfully after $(nit) iterations")
          end
          return x, log
       end
-      x -= alpha * ( dE0⟂ - Fk )
+      x += α .* f
    end
    if verbose >= 1
-      println("PreconNudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: PreconNudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")
    end
    return x, log
 end
