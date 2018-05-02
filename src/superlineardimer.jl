@@ -1,42 +1,9 @@
-export SuperlinearDimer
 
-# TODO:      allow CG, LBFGS, SD + switch to symbols
-
-"""
-`SuperlinearDimer`: dimer variant based on Kastner's JCP 128, 014106 (2008) article & ASE implementation
-
-### Parameters:
-* `tol_trans` : translation residual
-* `tol_rot` : rotation residual
-* `maxnit` : maximum number of iterations
-* `len` : dimer-length (i.e. distance of the two walkers)
-* `precon` : preconditioner
-* `precon_prep!` : update function for preconditioner
-* `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
-"""
-@with_kw type SuperlinearDimer
-   maximum_translation::Float64 = 0.001
-   max_num_rot::Int = 1
-   trial_angle::Float64 = pi / 4.0
-   trial_trans_step::Float64 = 0.0001
-   use_central_forces::Bool = false     # probably does not work well; maybe dont bother
-   extrapolate::Bool = true
-   translation_method::AbstractString = "CG"  # CG, LBFGS, SD
-   # ------ shared parameters ------
-   tol_trans::Float64 = 1e-5
-   tol_rot::Float64 = 1e-1
-   maxnumdE::Int = 1000
-   len::Float64 = 1e-3
-   precon = I
-   precon_prep! = (P, x) -> P
-   verbose::Int = 2
-   id::AbstractString = "SuperlinearDimer"
-end
 
 
 function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    # read all the parameters
-   @unpack maximum_translation, max_num_rot, trial_angle, trial_trans_step, use_central_forces, extrapolate, translation_method,
+   @unpack maximum_translation, max_num_rot, trial_angle, trial_trans_step, extrapolate, translation_method,
            tol_trans, tol_rot, maxnumdE, len, precon_prep!, verbose = method
   # @show translation_method
   P=method.precon
@@ -97,12 +64,8 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
           else
              dE1 = dE1e
           end
-          if use_central_forces
-             dE2 = dE1 - 2.0 * dE0    # extrapolated guess for dE2
-          else
-             dE2 = dE(x - len * v)
-             numdE += 1
-          end
+          dE2 = dE(x - len * v)
+          numdE += 1
 
           dE1a = copy(dE1)     # dE1a store for later use (does it need to be a copy?)
 
@@ -127,15 +90,10 @@ function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
 
              # update gradients
              dE1 = dE(x + len * v)
-             numdE += 1
-             if use_central_forces
-                dE2 = dE1 - 2.0 * dE0
-             else
-                dE2 = dE(x - len * v)
-                numdE += 1
-             end
+             dE2 = dE(x - len * v)
+             numdE += 2
 
-             dE1b = dE1
+             dE1b = copy(dE1)
 
              # get the curvature's derivative
              c1d = dot(dE1 - dE2, rot_unit_B) / len

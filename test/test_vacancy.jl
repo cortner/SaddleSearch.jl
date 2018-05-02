@@ -5,7 +5,7 @@
 
    locverb = 0
 
-   for R in (3.1, 4.1, 5.1, 7.1)
+   for R in (3.1, 4.1, 5.1)    # add 7.1 ??
 
       V = LJVacancy2D(R = R, bc = :free)
       x0, v0 = ic_dimer(V, :near)
@@ -53,14 +53,6 @@
       @test res_rot(log)[end] <= bbdimer.tol_rot
       println("   BB-Dimer(P): $(numdE(log)[end]) ∇E evaluations")
 
-      # ====== TODO: this one fails miserably ======
-      # supdimer = SuperlinearDimer(maximum_translation=0.01, max_num_rot=10,
-      #                             len=1e-3, maxnumdE=1000, verbose=locverb,
-      #                             precon=precond(V, x0), precon_prep! = (P,x) -> precond(V, x))
-      # xsup, vsup, logsup = run!(supdimer, E, dE, x0, v0)
-      # @test res_trans(logsup)[end] <= supdimer.tol_trans
-      # @test res_rot(logsup)[end] <= supdimer.tol_rot
-      # println("Superlinear(P): $(numdE(logsup)[end]) ∇E evaluations")
    end
 
 end

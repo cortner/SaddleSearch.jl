@@ -1,38 +1,6 @@
 
 
-export StaticDimerMethod
 
-
-"""
-`StaticDimerMethod`: the most basic dimer variant, simply taking alternating
-steps with a fixed step-size.
-
-### Parameters:
-* `a_trans` : translation step
-* `a_rot` : rotation step
-* `tol_trans` : translation residual
-* `tol_rot` : rotation residual
-* `maxnit` : maximum number of iterations
-* `len` : dimer-length (i.e. distance of the two walkers)
-* `precon` : preconditioner
-* `precon_prep!` : update function for preconditioner
-* `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
-* `precon_rot` : true/false whether to precondition the rotation step
-"""
-@with_kw type StaticDimerMethod
-   a_trans::Float64
-   a_rot::Float64
-   # ------ shared parameters ------
-   tol_trans::Float64 = 1e-5
-   tol_rot::Float64 = 1e-2
-   maxnumdE::Int = 1000
-   len::Float64 = 1e-3
-   precon = I
-   precon_prep! = (P, x) -> P
-   verbose::Int = 2
-   precon_rot::Bool = false
-   rescale_v::Bool = false
-end
 
 
 function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
@@ -51,7 +19,7 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       @printf(" nit |  |∇E|_∞    |∇R|_∞     λ   \n")
       @printf("-----|-----------------------------\n")
    end
-   for nit = 0:maxnumdE  # there will be at most this many evaluations 
+   for nit = 0:maxnumdE  # there will be at most this many evaluations
       # normalise v
       P0 = precon_prep!(P0, x)
       v /= sqrt(dot(v, P0, v))
