@@ -13,7 +13,7 @@
 
       heading2("Domain with R = $R, Nat = $(size(V.Xref, 2))")
 
-      dimer = StaticDimerMethod(a_trans=0.002, a_rot=0.002, len=1e-3,
+      dimer = StaticDimer(a_trans=0.002, a_rot=0.002, len=1e-3,
                                  maxnumdE=3000, verbose=locverb)
       x, v, log = run!(dimer, E, dE, x0, v0)
       @test res_trans(log)[end] <= dimer.tol_trans
@@ -36,7 +36,7 @@
       println("Superlinear(I): $(numdE(logsup)[end]) ∇E evaluations")
 
 
-      dimer = StaticDimerMethod( a_trans=1.0, a_rot=0.3, len=1e-3, maxnumdE=500,
+      dimer = StaticDimer( a_trans=1.0, a_rot=0.3, len=1e-3, maxnumdE=500,
             verbose=locverb, precon=precond(V, x0), precon_rot=true,  rescale_v=true,
             precon_prep! = (P,x) -> precond(V, x) )
       x, v, log = run!(dimer, E, dE, x0, v0)

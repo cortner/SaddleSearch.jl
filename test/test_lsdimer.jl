@@ -9,7 +9,7 @@ V = MullerPotential()
 x0, v0 = ic_dimer(V, :near)
 E, dE = objective(V)
 
-dimer = StaticDimerMethod(a_trans=0.002, a_rot=0.002, len=1e-3, maxnumdE=100, verbose=verbose)
+dimer = StaticDimer(a_trans=0.002, a_rot=0.002, len=1e-3, maxnumdE=100, verbose=verbose)
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test res_trans(log)[end] <= dimer.tol_trans
 @test res_rot(log)[end] <= dimer.tol_rot
@@ -40,7 +40,7 @@ V = DoubleWell()
 x0, v0 = ic_dimer(V, :near)
 E, dE = objective(V)
 
-dimer = StaticDimerMethod(a_trans=0.66, a_rot=0.4, len=1e-3, maxnumdE=100, verbose=verbose)
+dimer = StaticDimer(a_trans=0.66, a_rot=0.4, len=1e-3, maxnumdE=100, verbose=verbose)
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test res_trans(log)[end] <= dimer.tol_trans
 @test res_rot(log)[end] <= dimer.tol_rot

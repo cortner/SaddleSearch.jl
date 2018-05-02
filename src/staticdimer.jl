@@ -3,7 +3,7 @@
 
 
 
-function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
+function run!{T}(method::StaticDimer, E, dE, x0::Vector{T}, v0::Vector{T})
 
    # read all the parameters
    @unpack a_trans, a_rot, tol_trans, tol_rot, maxnumdE, len,
@@ -47,7 +47,7 @@ function run!{T}(method::StaticDimerMethod, E, dE, x0::Vector{T}, v0::Vector{T})
       end
       if res_trans <= tol_trans && res_rot <= tol_rot
          if verbose >= 1
-            println("StaticDimerMethod terminates succesfully after $(nit) iterations")
+            println("StaticDimer terminates succesfully after $(nit) iterations")
          end
          return x, v, log
       end

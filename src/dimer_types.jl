@@ -1,5 +1,5 @@
 
-export Dimer, StaticDimerMethod, BBDimer, SuperlinearDimer
+export Dimer, StaticDimer, BBDimer, SuperlinearDimer
 
 dimer_shared_docs =  """
 ### Shared Parameters
@@ -28,7 +28,7 @@ end
 
 
 """
-`StaticDimerMethod`: the most basic dimer variant, simply taking alternating
+`StaticDimer`: the most basic dimer variant, simply taking alternating
 steps with a fixed step-size.
 
 ### Parameters:
@@ -37,7 +37,7 @@ steps with a fixed step-size.
 
 $(dimer_shared_docs)
 """
-@with_kw type StaticDimerMethod
+@with_kw type StaticDimer
    a_trans::Float64
    a_rot::Float64
    # ------ shared parameters ------
@@ -112,7 +112,7 @@ end
 
 function Dimer(step, args...; kwargs...)
    if step == :sd
-      return StaticDimerMethod(args...; kwargs...)
+      return StaticDimer(args...; kwargs...)
    elseif step == :bb
       return BBDimer(args...; kwargs...)
    elseif step == :cg
