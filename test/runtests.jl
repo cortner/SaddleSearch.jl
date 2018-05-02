@@ -19,11 +19,13 @@ tests = [
    "superlinear",
    "vacancy",
    "molecule2d",
-   "newtonkrylov",
+   # "newtonkrylov",
 ]
 
 println("Starting `SaddleSearch` tests")
 println("≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡")
-for test in tests
-      runtest(test)
+@testset "SaddleSearch" begin
+   for test in tests
+         runtest(test)
+   end
 end

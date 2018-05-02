@@ -44,7 +44,7 @@ include("bbdimer.jl")
 
 include("superlineardimer.jl")
 
-include("newtonkrylovdimer.jl")
+# include("newtonkrylovdimer.jl")
 
 # Sting and NEB-type methods
 

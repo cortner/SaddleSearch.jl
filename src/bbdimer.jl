@@ -50,7 +50,7 @@ http://arxiv.org/abs/1407.2817
    len::Float64 = 1e-3
    precon = I
    precon_prep! = (P, x) -> P
-   verbose::Int = 2
+   verbose::Int = 1
    precon_rot::Bool = false
    rescale_v::Bool = false
    id::AbstractString = "BBDimer"
@@ -79,8 +79,8 @@ function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
    while true
       nit += 1
 
-      @assert !any(isnan(v))
-      @assert !any(isnan(x))
+      @assert !any(isnan, v)
+      @assert !any(isnan, x)
 
       # normalise v
       P0 = precon_prep!(P0, x)

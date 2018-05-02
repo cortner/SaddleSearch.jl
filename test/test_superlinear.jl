@@ -17,10 +17,9 @@ x, v, res = run!(dimer, E, dE, x0, v0)
 @show numE(res)[end], numdE(res)[end]
 
 # MullerPotential with good IC
-bb = BBDimer(verbose=2, a0_trans=0.01, a0_rot = 0.01) # , ls = Backtracking())
+bb = BBDimer(verbose=2, a0_trans=0.01, a0_rot = 0.01, verbose=verbose) # , ls = Backtracking())
 x, v, resbb = run!(bb, E, dE, x0, v0)
 @show numE(resbb)[end], numdE(resbb)[end]
-
 
 
 # precon_prep! = (P,x) -> hessprecond(V, x)+0.1*eye(length(x))

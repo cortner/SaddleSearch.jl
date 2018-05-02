@@ -186,9 +186,9 @@ function vacancy_refconfig(R, bc)
    x = ones(length(t)) * t'
    y = t * ones(length(t))'
    X = A * [x[:] y[:]]'
-   r = sqrt(sumabs2(X, 1))
+   r = sqrt.(sum(abs2, X, 1))
    Xref = X[:, find(0 .< r .<= R)]
-   r = sqrt(sumabs2(Xref, 1))
+   r = sqrt.(sum(abs2, Xref, 1))
    I0 = find(r .<= 1.1)[1]
    if I0 != 1
       Xref[:, [1,I0]] = Xref[:, [I0,1]]
