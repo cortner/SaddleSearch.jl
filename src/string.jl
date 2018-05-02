@@ -1,4 +1,9 @@
 
+
+
+
+# ========= OLD CODE BELOW ========
+
 # using Dierckx
 export StringMethod
 
