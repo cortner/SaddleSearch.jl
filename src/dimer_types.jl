@@ -1,5 +1,5 @@
 
-export Dimer, StaticDimer, BBDimer, SuperlinearDimer
+export Dimer, StaticDimer, BBDimer, SuperlinearDimer, ODEDimer
 
 dimer_shared_docs =  """
 ### Shared Parameters
@@ -15,7 +15,7 @@ dimer_shared_docs =  """
 """
 
 @def dimer_shared begin
-   tol_trans::Float64 = 1e-5
+   tol_trans::Float64 = 1e-4
    tol_rot::Float64 = 1e-2
    maxnumdE::Int = 1000
    len::Float64 = 1e-3
@@ -109,14 +109,25 @@ $(dimer_shared_docs)
 end
 
 
+@with_kw type ODEDimer
+   abstol::Float64
+   reltol::Float64
+   order::Int = 1
+   damping::Float64 = 1.0
+   # ------ shared parameters ------
+   @dimer_shared
+end
 
-function Dimer(step, args...; kwargs...)
+
+function Dimer(step=:ode; kwargs...)
    if step == :sd
-      return StaticDimer(args...; kwargs...)
+      return StaticDimer(; kwargs...)
    elseif step == :bb
-      return BBDimer(args...; kwargs...)
+      return BBDimer(; kwargs...)
    elseif step == :cg
       return SuperlinearDimer(; translation_method="CG", kwargs...)
+   elseif step == :ode
+      return ODEDimer(; kwargs...)
    else
       error("`Dimer`: unknown step selection mechanism $(step)")
    end

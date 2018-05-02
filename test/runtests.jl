@@ -1,6 +1,6 @@
 using SaddleSearch
 using Base.Test
-using SaddleSearch: numE, numdE, res_trans, res_rot
+using SaddleSearch: numE, numdE, res_trans, res_rot, maxres
 include("testsets.jl"); using TestSets
 
 function heading1(str)
@@ -18,8 +18,8 @@ verbose=1
 
 # test files are test_*** where *** is the string in this list
 tests = [
-   "staticvsbb",
-   "lsdimer",
+   # "staticvsbb",
+   # "lsdimer",
    "vacancy",
 ]
 

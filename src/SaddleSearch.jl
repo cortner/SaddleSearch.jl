@@ -17,11 +17,8 @@ include("ode.jl")
 
 include("dimer_types.jl")
 
-include("staticdimer.jl")
-
-include("bbdimer.jl")
-
-#  include("odedimer.jl")    # => TODO
+# dimer, bb, ode
+include("dimer.jl")
 
 include("superlineardimer.jl")
 
