@@ -20,7 +20,8 @@ verbose=1
 tests = [
    "staticvsbb",
    "lsdimer",
-   "vacancy",
+   # "vacancy",
+   "string",
 ]
 
 
