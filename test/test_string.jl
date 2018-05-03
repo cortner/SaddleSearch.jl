@@ -78,8 +78,8 @@ path = StringMethod(0.001, tol, maxint, I, (P, x) -> P, 1, false)
 PATHx, PATHlog = run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
-path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-3), preconI,
-                        serial(), tol, 600, 1)   # allow failure on 600 iterations
+path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-2, threshold=1e-5), preconI,
+                        serial(), tol, maxint, 1)   # allow failure on 600 iterations
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @show PATHlog[:maxres][end]
 println("[allowed test failure: target is $(path.tol_res)]")
