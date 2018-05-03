@@ -2,7 +2,6 @@
 
 @with_kw type ODE12r
    rtol::Float64 = 1e-1    # ode solver parameter
-   threshold::Float64 = 1.0  # parameter how forces are normalised for adaptivity
    C1::Float64 = 1e-2      # sufficientcontraction parameter
    C2::Float64 = 2.0       # residual growth control (Inf means there is no control)
    hmin::Float64 = 1e-10   # minimal allowed step size
@@ -18,7 +17,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                   P = I, precon_prep! = (P, x) -> P,
                   method = "ODE" )
 
-   @unpack threshold, rtol, C1, C2, hmin, extrapolate = solver
+   @unpack rtol, C1, C2, hmin, extrapolate = solver
 
    if verbose>=4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
@@ -63,8 +62,8 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
       return xout, log
    end
 
-   r = norm(Fn ./ max.(abs.(x), threshold), Inf) + realmin(Float64)
-   # r = norm(Fn) + eps(Float64)
+   # r = norm(Fn ./ max.(abs.(x), threshold), Inf) + realmin(Float64)
+   r = Rn + eps(Float64)
    h = 0.5 * rtol^(1/2) / r
    h = max(h, hmin)
 
@@ -80,7 +79,8 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
 
       # error estimation
       e = 0.5 * h * (Fnew - Fn)
-      err = norm(e ./ max.(maximum([abs.(x) abs.(xnew)],2), threshold), Inf) + realmin(Float64)
+      # err = norm(e ./ max.(maximum([abs.(x) abs.(xnew)],2), threshold), Inf) + realmin(Float64)
+      err = norm(e, Inf) + realmin(Float64)
 
       if (   ( Rnew <= Rn * (1 - C1 * h) )         # contraction
           || ( Rnew <= Rn * C2 && err <= rtol ) )  # moderate growth + error control
