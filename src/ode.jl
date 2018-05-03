@@ -1,8 +1,8 @@
 
 
 @with_kw type ODE12r
-   atol::Float64 = 1e-1    # ode solver parameter
    rtol::Float64 = 1e-1    # ode solver parameter
+   threshold::Float64 = 1.0  # parameter how forces are normalised for adaptivity
    C1::Float64 = 1e-2      # sufficientcontraction parameter
    C2::Float64 = 2.0       # residual growth control (Inf means there is no control)
    hmin::Float64 = 1e-10   # minimal allowed step size
@@ -18,14 +18,12 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                   P = I, precon_prep! = (P, x) -> P,
                   method = "ODE" )
 
-   @unpack atol, rtol, C1, C2, hmin, extrapolate = solver
+   @unpack threshold, rtol, C1, C2, hmin, extrapolate = solver
 
    if verbose>=4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
        file = open("log_$(dt).txt", "w")
    end
-
-   threshold = atol/rtol
 
    x = copy(x0)
    P = precon_prep!(P, x)
@@ -66,6 +64,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    end
 
    r = norm(Fn ./ max.(abs.(x), threshold), Inf) + realmin(Float64)
+   # r = norm(Fn) + eps(Float64)
    h = 0.5 * rtol^(1/2) / r
    h = max(h, hmin)
 

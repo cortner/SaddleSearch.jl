@@ -17,7 +17,7 @@ export ODEStringMethod
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type ODEStringMethod
-   solver = ode12(1e-6, 1e-3, true)
+   solver = ODE12r(rtol=1e-2)
    precon_scheme = localPrecon()
    path_traverse = serial()
    # ------ shared parameters ------

@@ -23,8 +23,8 @@ path = StringMethod(0.0009, tol, maxint, I, (P, x) -> P, 1, false)
 PATHx, PATHlog = run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
-path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-2, rtol=1e-2), preconI,
-serial(), tol, maxint, 1)
+path = ODEStringMethod(SaddleSearch.ODE12r(rtol=0.1), preconI,
+                        serial(), tol, maxint, 1)
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
@@ -45,8 +45,8 @@ path = StringMethod(1./c, tol, maxint, I, (P, x) -> P, 1, false)
 PATHx, PATHlog = run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
-path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-7, rtol=1e-0), preconI,
-serial(), tol, maxint, 1)
+path = ODEStringMethod(SaddleSearch.ODE12r(rtol=0.1, threshold=1e-2), preconI,
+                     serial(), tol, maxint, 1)
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
@@ -57,10 +57,11 @@ path = PreconStringMethod(preconP, 0.25, -1, false, tolP, maxint, 1)
 PATHx, PATHlog = run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
-path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-3, rtol=1e-0), preconP,
-serial(), tolP, maxint, 1)
+path = ODEStringMethod(SaddleSearch.ODE12r(rtol=0.1), preconP,
+                        serial(), tolP, maxint, 1)
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
+
 
 heading2("Vacancy migration potential")
 V = LJVacancy2D(R = 5.1)
@@ -77,8 +78,8 @@ path = StringMethod(0.001, tol, maxint, I, (P, x) -> P, 1, false)
 PATHx, PATHlog = run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
-path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-7, rtol=1e-2), preconI,
-serial(), tol, maxint, 1)
+path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-2, threshold = 1e-5), preconI,
+                        serial(), tol, maxint, 1)
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
@@ -89,8 +90,8 @@ path = PreconStringMethod(preconP, 1.55, -1, false, tolP, maxint, 1)
 PATHx, PATHlog = run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
-path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-2, rtol=1e-2), preconP,
-serial(), tolP, maxint, 1)
+path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-2), preconP,
+                        serial(), tolP, maxint, 1)
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
