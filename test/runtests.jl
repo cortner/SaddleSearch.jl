@@ -18,8 +18,8 @@ verbose=1
 
 # test files are test_*** where *** is the string in this list
 tests = [
-   "staticvsbb",
-   "lsdimer",
+   # "staticvsbb",
+   # "lsdimer",
    # "vacancy",
    "string",
 ]
