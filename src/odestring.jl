@@ -41,10 +41,16 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit)), ref(x), length(x), log, method; g = x_ -> redistribute(x_, x, t, precon_scheme), tol_res = tol_res, maxnit=maxnit )
+   xout, log = odesolve(solver,
+         (x_, P_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit)),
+         ref(x), log;
+         g = (x_, P_) -> redistribute(x_, x, t, precon_scheme),
+         tol_res = tol_res, maxnit=maxnit,
+         method = "ODEStringMethod",
+         verbose = verbose )
 
    x = set_ref!(x, xout[end])
-   return x, log, αout
+   return x, log
 end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direction)
@@ -78,7 +84,7 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direc
 
    res = maxres(P, dE0⟂)
 
-   return F, res
+   return F, res, length(param)
 end
 
 # function ref{T}(x::Vector{T})

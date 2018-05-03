@@ -12,12 +12,13 @@ end
 
 
 
-function odesolve(solver::ODE12r, f, x0::Vector{Float64},
-                  log::IterationLog, method;
-                  g=x->x, tol_res=1e-4, maxnit=100 )
+function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
+                  verbose = 1,
+                  g=x->x, tol_res=1e-4, maxnit=100,
+                  P = I, precon_prep! = (P, x) -> P,
+                  method = "ODE" )
 
    @unpack atol, rtol, C1, C2, hmin, extrapolate = solver
-   @unpack verbose, precon, precon_prep! = method
 
    if verbose>=4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
@@ -27,7 +28,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64},
    threshold = atol/rtol
 
    x = copy(x0)
-   P = precon_prep!(precon, x)
+   P = precon_prep!(P, x)
 
    xout = []
 
@@ -54,10 +55,10 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64},
    end
    if Rn <= tol_res
       if verbose >= 1
-         println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
+         println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations")
       end
       if verbose >= 4
-         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(typeof(method))", "$(nit)")
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
          write(file, strlog)
          close(file)
       end
@@ -133,10 +134,10 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64},
          end
          if Rn <= tol_res
             if verbose >= 1
-               println("SADDLESEARCH: $(typeof(method)) terminates succesfully after $(nit) iterations")
+               println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations")
             end
             if verbose >= 4
-               strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations\n", "$(typeof(method))", "$(nit)")
+               strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations\n", "$(method)", "$(nit)")
                write(file, strlog)
                close(file)
             end

@@ -25,7 +25,7 @@ PATHx, PATHlog = run!(path, E, dE, x, t)
 
 path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-2, rtol=1e-2), preconI,
 serial(), tol, maxint, 1)
-PATHx, PATHlog, _ = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 heading2("Double well potential")
@@ -47,7 +47,7 @@ PATHx, PATHlog = run!(path, E, dE, x, t)
 
 path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-7, rtol=1e-0), preconI,
 serial(), tol, maxint, 1)
-PATHx, PATHlog, _ = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 preconP = SaddleSearch.localPrecon(precon = [P], precon_prep! = (P, x) ->
@@ -59,7 +59,7 @@ PATHx, PATHlog = run!(path, E, dE, x, t)
 
 path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-3, rtol=1e-0), preconP,
 serial(), tolP, maxint, 1)
-PATHx, PATHlog, _ = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 heading2("Vacancy migration potential")
@@ -79,7 +79,7 @@ PATHx, PATHlog = run!(path, E, dE, x, t)
 
 path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-7, rtol=1e-2), preconI,
 serial(), tol, maxint, 1)
-PATHx, PATHlog, _ = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 preconP = SaddleSearch.localPrecon(precon = precon(x),
@@ -91,7 +91,7 @@ PATHx, PATHlog = run!(path, E, dE, x, t)
 
 path = ODEStringMethod(SaddleSearch.ODE12r(atol=1e-2, rtol=1e-2), preconP,
 serial(), tolP, maxint, 1)
-PATHx, PATHlog, _ = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 
