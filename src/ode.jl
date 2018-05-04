@@ -14,7 +14,7 @@ end
 
 function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                   verbose = 1,
-                  g=x->x, tol_res=1e-4, maxnit=100,
+                  g=(x, P)->x, tol_res=1e-4, maxnit=100,
                   P = I, precon_prep! = (P, x) -> P,
                   method = "ODE" )
 

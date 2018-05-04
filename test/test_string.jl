@@ -20,7 +20,7 @@ x = [(1-s)*x0 + s*x1 for s in linspace(.0, 1., N)]
 t = [((x1-x0)/norm(x1-x0)) for s in linspace(.0, 1., N)]
 
 path = StringMethod(0.0009, tol, maxint, I, (P, x) -> P, 1, false)
-PATHx, PATHlog = run!(path, E, dE, x, t)
+PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 path = ODEStringMethod(SaddleSearch.ODE12r(rtol=0.1), preconI,
@@ -42,7 +42,7 @@ P = copy(V.A); P[1] = 1.0
 precon = x->[P]
 
 path = StringMethod(1./c, tol, maxint, I, (P, x) -> P, 1, false)
-PATHx, PATHlog = run!(path, E, dE, x, t)
+PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-3), preconI,
@@ -75,7 +75,7 @@ t = [((x1-x0)/norm(x1-x0)) for s in linspace(.0, 1., N)]
 precon = x->[copy(precond(V, xn)) for xn in x]
 
 path = StringMethod(0.001, tol, maxint, I, (P, x) -> P, 1, false)
-PATHx, PATHlog = run!(path, E, dE, x, t)
+PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-2, threshold=1e-5), preconI,
@@ -92,7 +92,7 @@ path = PreconStringMethod(preconP, 1.55, -1, false, tolP, maxint, 1)
 PATHx, PATHlog = run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res
 
-path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-2), preconP,
+path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-1), preconP,
                         serial(), tolP, maxint, 1)
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
 @test PATHlog[:maxres][end] <= path.tol_res

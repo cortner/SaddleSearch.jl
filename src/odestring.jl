@@ -58,9 +58,9 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direc
             proj_grad, forcing, maxres = precon_scheme
 
    x = set_ref!(x, xref)
-
+   t = copy(x)
    precon = precon_prep!(precon, x)
-   Np = size(precon, 1); # P = i -> precon[mod(i-1,Np)+1]
+   Np = size(precon, 1); 
    function P(i) return precon[mod(i-1,Np)+1, 1]; end
    function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
 
@@ -68,14 +68,12 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direc
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
-   S = [Spline1D(param, [x[j][i] for j=1:length(x)], w = ones(length(x)),
-         k = 3, bc = "error") for i=1:length(x[1])]
-   t = [[derivative(S[i], s) for i in 1:length(S)] for s in param]
-   t ./= point_norm(P, t)
 
+   parametrise!(x, t, ds, parametrisation = param)
+
+   t ./= point_norm(P, t)
    t[1] =zeros(t[1]); t[end]=zeros(t[1])
 
-   # ord = M-mod(nit,2)*(M-1):2*mod(nit,2)-1:M-mod(nit+1,2)*(M-1)
    dE0_temp = [dE(x[i]) for i in direction]
    dE0 = [dE0_temp[i] for i in direction]
 
@@ -86,14 +84,3 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direc
 
    return F, res, length(param)
 end
-
-# function ref{T}(x::Vector{T})
-#    return cat(1, x...)
-# end
-#
-# function set_ref!{T}(x::Vector{T}, xref::Vector{Float64})
-#    Nimg = length(x); Nref = length(xref) ÷ Nimg
-#    X = reshape(xref, Nref, Nimg)
-#    x = [ X[:, n] for n = 1:Nimg ]
-#    return x
-# end

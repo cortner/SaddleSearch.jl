@@ -85,13 +85,13 @@ function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T
 
       # reparametrise
       ds = [norm(P, x[i+1]-x[i]) for i=1:length(x)-1]
-      reparametrise!(x, t, ds, parametrisation = param)
+      parametrise!(x, t, ds, parametrisation = param)
 
       # string refinement
       if refine_points > 0
          refine!(param, refine_points, t)
          ds = [norm(P, x[i+1]-x[i]) for i=1:length(x)-1]
-         reparametrise!(x, t, ds, parametrisation = param)
+         parametrise!(x, t, ds, parametrisation = param)
       end
 
    end

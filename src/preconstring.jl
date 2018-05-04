@@ -97,13 +97,13 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
 
       # reparametrise
       ds = [dist(P, x, i) for i=1:length(x)-1]
-      reparametrise!(x, t, ds, parametrisation = param)
+      parametrise!(x, t, ds, parametrisation = param)
 
       # string refinement
       if refine_points > 0
          refine!(param, refine_points, t)
          ds = [dist(P, x, i) for i=1:length(x)-1]
-         reparametrise!(x, t, ds, parametrisation = param)
+         parametrise!(x, t, ds, parametrisation = param)
       end
 
    end
