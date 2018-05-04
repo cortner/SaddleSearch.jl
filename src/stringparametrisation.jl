@@ -45,10 +45,11 @@ function refine!(param, refine_points, t)
    return param
 end
 
-function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, t::Vector{T}, precon_scheme)
+function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon_scheme)
    @unpack precon, precon_prep!, precon_cond, dist = precon_scheme
 
    x = set_ref!(x, xref)
+   t = copy(x)
 
    precon = precon_prep!(precon, x)
    Np = length(precon);

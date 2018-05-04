@@ -27,14 +27,26 @@ export PreconStringMethod
    # precon_cond::Bool = false
 end
 
-function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
+function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack precon_scheme, alpha, refine_points, ls_cond, tol_res, maxnit,
             verbose = method
    @unpack precon, precon_prep!, precon_cond, dist, point_norm,
             proj_grad, forcing, maxres = precon_scheme
    # initialise variables
-   x, t = copy(x0), copy(t0)
+
+   Np = size(precon, 1)
+   # precon = precon_prep!(precon, x)
+   function P(i) return precon[mod(i-1,Np)+1, 1]; end
+   function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
+
+   x, t = copy(x0), copy(x0)
+   ds = [dist(P, x, i) for i=1:length(x)-1]
+   parametrise!(x, t, ds)
+   # normalise t
+   t ./= point_norm(P, t)
+   t[1] = zeros(t[1]); t[end] = zeros(t[1])
+
    param = linspace(.0, 1., length(x)) |> collect
    Np = size(precon, 1)
    nit = 0
@@ -46,14 +58,6 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
    for nit = 0:maxnit
-      # normalise t
-      precon = precon_prep!(precon, x)
-      function P(i) return precon[mod(i-1,Np)+1, 1]; end
-      function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
-
-      t ./= point_norm(P, t)
-      t[1] = zeros(t[1]); t[end] = zeros(t[1])
-
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:length(x)]
       numdE += length(x)
@@ -96,8 +100,15 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T}, t0::Vector{T}
       x += α .* f
 
       # reparametrise
+      precon = precon_prep!(precon, x)
+      function P(i) return precon[mod(i-1,Np)+1, 1]; end
+      function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
+
       ds = [dist(P, x, i) for i=1:length(x)-1]
       parametrise!(x, t, ds, parametrisation = param)
+
+      t ./= point_norm(P, t)
+      t[1] = zeros(t[1]); t[end] = zeros(t[1])
 
       # string refinement
       if refine_points > 0

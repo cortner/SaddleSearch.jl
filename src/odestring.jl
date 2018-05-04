@@ -26,12 +26,12 @@ export ODEStringMethod
    verbose::Int = 2
 end
 
-function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
+function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack solver, precon_scheme, path_traverse, tol_res, maxnit, verbose = method
    @unpack direction = path_traverse
    # initialise variables
-   x, t = copy(x0), copy(t0)
+   x = copy(x0)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
@@ -44,7 +44,7 @@ function run!{T}(method::ODEStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    xout, log = odesolve(solver,
          (x_, P_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit)),
          ref(x), log;
-         g = (x_, P_) -> redistribute(x_, x, t, precon_scheme),
+         g = (x_, P_) -> redistribute(x_, x, precon_scheme),
          tol_res = tol_res, maxnit=maxnit,
          method = "ODEStringMethod",
          verbose = verbose )
@@ -60,7 +60,7 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direc
    x = set_ref!(x, xref)
    t = copy(x)
    precon = precon_prep!(precon, x)
-   Np = size(precon, 1); 
+   Np = size(precon, 1);
    function P(i) return precon[mod(i-1,Np)+1, 1]; end
    function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
 

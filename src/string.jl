@@ -39,8 +39,7 @@ function run!{T}(method::StringMethod, E, dE, x0::Vector{T})
             precon_prep!, verbose, precon_cond = method
    P=method.precon
    # initialise variables
-   x = copy(x0)
-   t = copy(x0)
+   x, t = copy(x0), copy(x0)
    ds = [norm(P, x[i+1]-x[i]) for i=1:length(x)-1]
    parametrise!(x, t, ds)
    nit = 0

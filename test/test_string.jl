@@ -25,7 +25,7 @@ PATHx, PATHlog = run!(path, E, dE, x)
 
 path = ODEStringMethod(SaddleSearch.ODE12r(rtol=0.1), preconI,
                         serial(), tol, maxint, 1)
-PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 heading2("Double well potential")
@@ -47,19 +47,19 @@ PATHx, PATHlog = run!(path, E, dE, x)
 
 path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-3), preconI,
                      serial(), tol, maxint, 1)
-PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 preconP = SaddleSearch.localPrecon(precon = [P], precon_prep! = (P, x) ->
 precon(x), precon_cond = true)
 
 path = PreconStringMethod(preconP, 0.25, -1, false, tolP, maxint, 1)
-PATHx, PATHlog = run!(path, E, dE, x, t)
+PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 path = ODEStringMethod(SaddleSearch.ODE12r(rtol=0.1), preconP,
                         serial(), tolP, maxint, 1)
-PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 
@@ -80,7 +80,7 @@ PATHx, PATHlog = run!(path, E, dE, x)
 
 path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-2, threshold=1e-5), preconI,
                         serial(), tol, maxint, 1)   # allow failure on 600 iterations
-PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @show PATHlog[:maxres][end]
 println("[allowed test failure: target is $(path.tol_res)]")
 # @test PATHlog[:maxres][end] <= path.tol_res
@@ -89,12 +89,12 @@ preconP = SaddleSearch.localPrecon(precon = precon(x),
 precon_prep! = (P, x) -> precon(x), precon_cond = true)
 
 path = PreconStringMethod(preconP, 1.55, -1, false, tolP, maxint, 1)
-PATHx, PATHlog = run!(path, E, dE, x, t)
+PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 path = ODEStringMethod(SaddleSearch.ODE12r(rtol=1e-1), preconP,
                         serial(), tolP, maxint, 1)
-PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x, t)
+PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol_res
 
 
