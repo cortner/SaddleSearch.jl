@@ -56,8 +56,7 @@ end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
                      k::Float64, dE, direction)
-   @unpack precon, precon_prep!, precon_cond, dist, point_norm,
-               proj_grad, forcing, elastic_force, maxres = precon_scheme
+   @unpack precon, precon_prep! = precon_scheme
    x = set_ref!(x, xref)
    N = length(x)
    precon = precon_prep!(precon, x)
@@ -67,11 +66,11 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
 
    # central finite differences
    dxds = [[zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(x[1])]]
-   dxds ./= point_norm(P, dxds) # [norm(P(i), dxds[i]) for i=1:length(dxds)]
+   dxds ./= point_norm(precon_scheme, P, dxds) # [norm(P(i), dxds[i]) for i=1:length(dxds)]
    # dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
    d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
                                                          [zeros(x[1])] ]
-   Fk = elastic_force(P, k*N*N, dxds, d²xds²)
+   Fk = elastic_force(precon_scheme, P, k*N*N, dxds, d²xds²)
    #k*[dot(x[i+1] - 2*x[i] + x[i-1], P(i), dxds[i]) * dxds[i] for i=2:N-1]
    # Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
 
@@ -79,11 +78,11 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
    dE0_temp = [dE(x[i]) for i in direction]
    dE0 = [dE0_temp[i] for i in direction]
 
-   dE0⟂ = proj_grad(P, dE0, dxds)
+   dE0⟂ = proj_grad(precon_scheme, P, dE0, dxds)
    # [P(i) \ dE0[i] - dot(dE0[i], dxds[i])*dxds[i] for i = 1:length(x)]
-   F = forcing(precon, dE0⟂-Fk)
+   F = forcing(precon_scheme, precon, dE0⟂-Fk)
 
-   res = maxres(P, dE0⟂)
+   res = maxres(precon_scheme, P, dE0⟂)
    #maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
 
    return F, res

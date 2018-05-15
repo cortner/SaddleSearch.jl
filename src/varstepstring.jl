@@ -31,7 +31,7 @@ end
 function run!{T}(method::VarStepStringMethod, E, dE, x0::Vector{T}, t0::Vector{T})
    # read all the parameters
    @unpack alpha, refine_points, tol_res, maxnit,
-            precon_prep!, verbose, precon_cond = method
+            precon_prep!, verbose = method
    P=method.precon
    # initialise variables
    x, t = copy(x0), copy(t0)

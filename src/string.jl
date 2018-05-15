@@ -1,85 +1,71 @@
 
-
-
-
-# ========= OLD CODE BELOW ========
-
-# using Dierckx
-export StringMethod
-
 """
-`StringMethod`: the most basic string method variant, minimising the energy
-normally to the string by successive steepest descent minimisations at fixed
-step-size with an intermediate redistribution of the nodes.
+`StaticString`: a preconditioning variant of the string method.
 
 ### Parameters:
+* 'precon_scheme' : preconditioning method
 * `alpha` : step length
+* `refine_points` : number of points allowed in refinement region, negative for no refinement of path
+* `ls_cond` : true/false whether to perform linesearch during the minimisation step
 * `tol_res` : residual tolerance
 * `maxnit` : maximum number of iterations
-* `precon` : preconditioner
-* `precon_prep!` : update function for preconditioner
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
-* `precon_cond` : true/false whether to precondition the minimisation step
 """
-@with_kw type StringMethod
-   alpha::Float64
-   # ------ shared parameters ------
-   tol_res::Float64 = 1e-5
-   maxnit::Int = 1000
-   precon = I
-   precon_prep! = (P, x) -> P
-   verbose::Int = 2
-   precon_cond::Bool = false
-end
+# @with_kw type StaticString
+#    precon_scheme = localPrecon()
+#    alpha::Float64
+#    path_traverse = serial()
+#    # ------ shared parameters ------
+#    tol_res::Float64 = 1e-5
+#    maxnit::Int = 1000
+#    verbose::Int = 2
+# end
 
-
-function run!{T}(method::StringMethod, E, dE, x0::Vector{T})
+function run!{T}(method::StaticString, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack alpha, tol_res, maxnit,
-            precon_prep!, verbose, precon_cond = method
-   P=method.precon
+   @unpack alpha, tol, maxnit, precon_scheme, path_traverse,
+            verbose = method
+   @unpack direction = path_traverse
    # initialise variables
-   x, t = copy(x0), copy(x0)
-   ds = [norm(P, x[i+1]-x[i]) for i=1:length(x)-1]
-   parametrise!(x, t, ds)
+   x = copy(x0)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
+
+   xref = redistribute(ref(x), x, precon_scheme)
+   Fn, Rn, ndE = forces(precon_scheme, x, xref, dE, direction(length(x), nit))
+   numdE += ndE
+
    # and just start looping
    if verbose >= 2
       @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
-   for nit = 0:maxnit
-      # normalise t
-      P = precon_prep!(P, x)
-      t ./= [norm(P, t[i]) for i=1:length(x)]
-      t[1] =zeros(t[1]); t[end]=zeros(t[1])
-      # evaluate gradients
-      dE0 = [dE(x[i]) for i=1:length(x)]
-      dE0⟂ = [P \ dE0[i] - dot(dE0[i],t[i])*t[i] for i = 1:length(x)]
-      numdE += length(x)
+   for nit = 1:maxnit
+      # redistribute
+      xnew = redistribute(xref + alpha * Fn, x, precon_scheme)
+
+      # return force
+      Fn, Rn, ndE = forces(precon_scheme, x, xnew, dE, direction(length(x), nit))
+      numdE += ndE
+
       # residual, store history
-      maxres = maximum([norm(P*dE0⟂[i],Inf) for i = 1:length(x)])
-      push!(log, numE, numdE, maxres)
+      push!(log, numE, numdE, Rn)
+
       if verbose >= 2
          dt = Dates.format(now(), "HH:MM")
-         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, maxres)
+         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, res)
       end
-      if maxres <= tol_res
+      if Rn <= tol
          if verbose >= 1
-            println("SADDLESEARCH: StringMethod terminates succesfully after $(nit) iterations")
+            println("SADDLESEARCH: StaticString terminates succesfully after $(nit) iterations")
          end
-         return x, log
+         return set_ref!(x, xnew), log
       end
-      x -= alpha * dE0⟂
-      # reparametrise
-      ds = [norm(P, x[i+1]-x[i]) for i=1:length(x)-1]
-      parametrise!(x, t, ds)
-
+      xref = xnew
    end
    if verbose >= 1
-      println("SADDLESEARCH: StringMethod terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: StaticString terminated unsuccesfully after $(maxnit) iterations.")
    end
-   return x, log
+   return set_ref!(x, xref), log
 end

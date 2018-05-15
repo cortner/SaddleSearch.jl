@@ -46,7 +46,7 @@ function refine!(param, refine_points, t)
 end
 
 function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon_scheme)
-   @unpack precon, precon_prep!, precon_cond, dist = precon_scheme
+   @unpack precon, precon_prep!, = precon_scheme
 
    x = set_ref!(x, xref)
    t = copy(x)
@@ -56,7 +56,7 @@ function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon_scheme)
    function P(i) return precon[mod(i-1,Np)+1, 1]; end
    function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
 
-   ds = [dist(P, x, i) for i=1:length(x)-1]
+   ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
    parametrise!(x, t, ds)
 
    return ref(x)

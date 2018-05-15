@@ -14,7 +14,7 @@ end
 
 function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                   verbose = 1,
-                  g=(x, P)->x, tol_res=1e-4, maxnit=100,
+                  g=(x, P)->x, tol=1e-4, maxnit=100,
                   P = I, precon_prep! = (P, x) -> P,
                   method = "ODE" )
 
@@ -51,7 +51,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
       write(file, strlog)
       flush(file)
    end
-   if Rn <= tol_res
+   if Rn <= tol
       if verbose >= 1
          println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations")
       end
@@ -130,7 +130,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
             write(file, strlog)
             flush(file)
          end
-         if Rn <= tol_res
+         if Rn <= tol
             if verbose >= 1
                println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations")
             end

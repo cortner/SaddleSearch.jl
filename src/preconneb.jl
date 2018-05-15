@@ -34,7 +34,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack precon_scheme, alpha, k, scheme, refine_points, ls_cond, tol_res,
             maxnit, verbose = method
-   @unpack precon, precon_prep!, precon_cond, dist, point_norm,
+   @unpack precon, precon_prep!, dist, point_norm,
             proj_grad, forcing, elastic_force, maxres = precon_scheme
    # initialise variables
    x = copy(x0)

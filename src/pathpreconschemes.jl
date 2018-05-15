@@ -11,7 +11,6 @@ along the path is preconditioned independently.
 ### Parameters:
 * `precon` : preconditioner
 * `precon_prep!` : update function for preconditioner
-* `precon_cond` : true/false whether to precondition the minimisation step
 * 'tangent_norm' : function evaluating the norm of tangents according to the
                    scheme of choice
 * 'proj_grad' : projected gradient
@@ -23,29 +22,60 @@ along the path is preconditioned independently.
 @with_kw type localPrecon
    precon = I
    precon_prep! = (P, x) -> P
-   precon_cond::Bool = false
-   dist = (P, x, i) ->  norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i])
-   point_norm = (P, t) -> [ 1; [norm(P(i), t[i]) for i=2:length(t)-1]; 1 ]
-   proj_grad = (P, ∇E, dxds) -> -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
-   forcing = (P, ∇E⟂) -> ref(∇E⟂)
-   elastic_force = (P, κ, dxds, d²xds²) -> - [ [zeros(dxds[1])]; κ*[dot(d²xds²[i],
-         P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1]; [zeros(dxds[1])] ]
-   maxres = (P, ∇E⟂) ->  maximum([norm(P(i)*∇E⟂[i],Inf) for i = 1:length(∇E⟂)])
 end
 
 @with_kw type globalPrecon
    precon = I
    precon_prep! = (P, x) -> P
-   precon_cond::Bool = false
-   dist = (P, x, i) -> norm(x[i+1]-x[i])
-   point_norm = (P, t) -> [norm(t[i]) for i=1:length(t)]
-   proj_grad = (P, ∇E, t) -> ref(-[∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)])
-   forcing = (P, ∇E⟂) -> ref(P) \ ∇E⟂
-   # [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)-length(t)+1]
-   elastic_force = (P, κ, dxds, d²xds²) -> ref(-[ [zeros(dxds[1])];
-         κ*[dot(d²xds²[i], dxds[i]) * dxds[i] for i=2:N-1]; [zeros(dxds[1])] ])
-   maxres = (P, ∇E⟂) -> vecnorm(∇E⟂, Inf)
 end
+
+function dist(precon_scheme::localPrecon, P, x, i)
+    return norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i])
+end
+function dist(precon_scheme::globalPrecon, P, x, i)
+    return norm(x[i+1]-x[i])
+end
+
+function point_norm(precon_scheme::localPrecon, P, t)
+    return [ 1; [norm(P(i), t[i]) for i=2:length(t)-1]; 1 ]
+end
+function point_norm(precon_scheme::globalPrecon, P, t)
+    return [norm(t[i]) for i=1:length(t)]
+end
+
+function proj_grad(precon_scheme::localPrecon, P, ∇E, dxds)
+    return -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
+end
+function proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds)
+    return ref(-[∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)])
+end
+
+function forcing(precon_scheme::localPrecon, P, ∇E⟂)
+    return ref(∇E⟂)
+end
+function forcing(precon_scheme::globalPrecon, P, ∇E⟂)
+    return ref(P) \ ∇E⟂
+    # [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)-length(t)+1]
+end
+
+function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
+    return - [ [zeros(dxds[1])];
+             κ*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1];
+             [zeros(dxds[1])] ]
+end
+function elastic_force(precon_scheme::globalPrecon, P, κ, dxds, d²xds²)
+    return ref(-[ [zeros(dxds[1])];
+                κ*[dot(d²xds²[i], dxds[i]) * dxds[i] for i=2:N-1];
+                [zeros(dxds[1])] ])
+end
+
+function maxres(precon_scheme::localPrecon, P, ∇E⟂)
+    return maximum([norm(P(i)*∇E⟂[i],Inf) for i = 1:length(∇E⟂)])
+end
+function maxres(precon_scheme::globalPrecon, P, ∇E⟂)
+    return vecnorm(∇E⟂, Inf)
+end
+
 
 function ref{T}(x::Vector{T})
    return cat(1, x...)

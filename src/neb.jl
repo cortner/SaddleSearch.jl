@@ -28,7 +28,6 @@ adjacent nodes.
    precon = I
    precon_prep! = (P, x) -> P
    verbose::Int = 2
-   precon_cond::Bool = false
 end
 
 

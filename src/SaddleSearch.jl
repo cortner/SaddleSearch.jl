@@ -25,14 +25,11 @@ include("superlineardimer.jl")
 
 
 # ============ Sting type methods ===================
+include("string_types.jl")
 
 include("string.jl")
 
 include("neb.jl")
-
-include("varstepstring.jl")
-
-include("preconstring.jl")
 
 include("preconneb.jl")
 
