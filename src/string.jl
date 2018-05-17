@@ -75,7 +75,7 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direc
    @unpack precon, precon_prep! = precon_scheme
 
    x = set_ref!(x, xref)
-   t = copy(x)
+   dxds = copy(x)
    precon = precon_prep!(precon, x)
    Np = size(precon, 1)
    P(i) = precon[mod(i-1,Np)+1, 1]
@@ -86,15 +86,15 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direc
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
 
-   parametrise!(t, x, ds, parametrisation = param)
+   parametrise!(dxds, x, ds, parametrisation = param)
 
-   t ./= point_norm(precon_scheme, P, t)
-   t[1] =zeros(t[1]); t[end]=zeros(t[1])
+   dxds ./= point_norm(precon_scheme, P, dxds)
+   dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
 
    dE0_temp = [dE(x[i]) for i in direction]
    dE0 = [dE0_temp[i] for i in direction]
 
-   dE0⟂ = proj_grad(precon_scheme, P, dE0, t)
+   dE0⟂ = proj_grad(precon_scheme, P, dE0, dxds)
    F = forcing(precon_scheme, precon, dE0⟂)
 
    res = maxres(precon_scheme, P, dE0⟂)

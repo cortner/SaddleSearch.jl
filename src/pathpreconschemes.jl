@@ -32,17 +32,16 @@ end
 dist(precon_scheme::localPrecon, P, x, i) = norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i])
 dist(precon_scheme::globalPrecon, P, x, i) = norm(x[i+1]-x[i])
 
-point_norm(precon_scheme::localPrecon, P, t) = [ 1; [norm(P(i), t[i])
-                                                    for i=2:length(t)-1]; 1 ]
-point_norm(precon_scheme::globalPrecon, P, t) = [norm(t[i]) for i=1:length(t)]
+point_norm(precon_scheme::localPrecon, P, dxds) = [ 1; [norm(P(i), dxds[i])
+                                                    for i=2:length(dxds)-1]; 1 ]
+point_norm(precon_scheme::globalPrecon, P, dxds) = [norm(dxds[i]) for i=1:length(dxds)]
 
 
 proj_grad(precon_scheme::localPrecon, P, ∇E, dxds) = -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
-proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds) = ref(-[∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)])
+proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds) = ref(-[∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)])
 
 forcing(precon_scheme::localPrecon, P, ∇E⟂) = return ref(∇E⟂)
 forcing(precon_scheme::globalPrecon, P, ∇E⟂) = ref(P) \ ∇E⟂
-    # [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)-length(t)+1]
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
     return - [ [zeros(dxds[1])];

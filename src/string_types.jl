@@ -1,4 +1,4 @@
-export StaticString, ODEString
+export StaticString, ODEString, StaticNEB, ODENEB
 
 @def neb_string_params begin
    tol::Float64 = 1e-5
@@ -41,7 +41,7 @@ end
 
 @with_kw type ODENEB
    reltol::Float64  # please think about reducing it to one tol parameter `odetol`
-   abstol::Float64
+   threshold::Float64 = 1.0   # threshold for error estimate; we want to get rid of this
    a0 = nothing      # if a0 is not passed then use a default
    @neb_params
    # ------ shared parameters ------
@@ -60,7 +60,9 @@ end
 
 solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold)
-    
+solver(method::StaticNEB) = Euler(h=method.alpha)
+solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold)
+
 
 # TODO:
 #  - write 3 test problems: muller, double-well and 2D vacancy

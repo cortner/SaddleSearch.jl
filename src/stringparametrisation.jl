@@ -1,6 +1,6 @@
 using Dierckx
 
-function parametrise!{T}(t::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x)))
+function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x)))
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
@@ -8,13 +8,14 @@ function parametrise!{T}(t::Vector{T}, x::Vector{T}, ds::T; parametrisation=lins
    S = [Spline1D(param, [x[i][j] for i=1:length(x)], w = ones(length(x)), k = 3, bc = "error") for j=1:length(x[1])]
 
    xref = [[Sj(s) for s in parametrisation] for Sj in S ]
-   tref = [[derivative(Sj, s) for s in parametrisation] for Sj in S]
+   dxdsref = [[derivative(Sj, s) for s in parametrisation] for Sj in S]
+   d²xds² = [[derivative(Sj, s, nu=2) for Sj in S] for s in parametrisation]
 
    x_ = cat(2, xref...)
-   t_ = cat(2, tref...)
+   dxds_ = cat(2, dxdsref...)
    [x[i] = x_[i,:] for i=1:length(x)]
-   [t[i] = t_[i,:] for i=1:length(x)]
-   return x, t
+   [dxds[i] = dxds_[i,:] for i=1:length(x)]
+   return d²xds²
 end
 
 

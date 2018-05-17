@@ -28,11 +28,13 @@ path = ODEString(reltol=0.1, tol = tol, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = PreconNudgedElasticBandMethod(preconI, 0.0007, 0.0002, :central, -1, false, tol, maxnit, verbose)
+path = StaticNEB(0.0007, 0.0002, 1, tol, maxnit, preconI, serial(), 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-2), preconI, serial(), 0.0002, tol, maxnit, verbose)
+path = ODENEB(reltol=1e-2, k=0.0002, interp=1, tol = tol, maxnit = maxnit,
+                        precon_scheme = preconI, path_traverse = serial(),
+                        verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
@@ -59,12 +61,13 @@ path = ODEString(reltol=1e-3, tol = tol, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = PreconNudgedElasticBandMethod(preconI, 0.07, 0.1, :splines, -1, false, tol, maxnit, verbose)
+path = StaticNEB(0.07, 0.1, 3, tol, maxnit, preconI, serial(), 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-1), preconI, serial(),
-0.1, tol, maxnit, verbose)
+path = ODENEB(reltol=1e-1, k=0.1, interp=1, tol = tol, maxnit = maxnit,
+                        precon_scheme = preconI, path_traverse = serial(),
+                        verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
@@ -80,12 +83,13 @@ path = ODEString(reltol=0.1, tol = tolP, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = PreconNudgedElasticBandMethod(preconP, 0.6, 0.00001, :splines, -1, false, tolP, maxnit, verbose)
+path = StaticNEB(0.6, 0.00001, 3, tolP, maxnit, preconP, serial(), 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-1), preconP, serial(),
-0.00001, tolP, maxnit, verbose)
+path = ODENEB(reltol=0.1, k=0.00001, interp=1, tol = tolP, maxnit = maxnit,
+                        precon_scheme = preconP, path_traverse = serial(),
+                        verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
@@ -112,12 +116,13 @@ PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 println("[allowed test failure: target is $(path.tol)]")
 # @test PATHlog[:maxres][end] <= path.tol
 
-path = PreconNudgedElasticBandMethod(preconI, 0.001, 0.01, :splines, -1, false, tol, maxnit, verbose)
+path = StaticNEB(0.001, 0.01, 3, tol, maxnit, preconI, serial(), 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-2), preconI, serial(),
-0.00001, tol, maxnit, verbose)
+path = ODENEB(reltol=1e-2, k=0.00001, interp=1, tol = tol, maxnit = maxnit,
+                        precon_scheme = preconI, path_traverse = serial(),
+                        verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
@@ -134,12 +139,13 @@ path = ODEString(reltol=1e-1, tol = tolP, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = PreconNudgedElasticBandMethod(preconP, 1.0, 0.001, :splines, -1, false, tolP, maxnit, verbose)
+path = StaticNEB(1.0, 0.001, 3, tolP, maxnit, preconP, serial(), 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-2), preconP, serial(),
-0.001, tolP, maxnit, verbose)
+path = ODENEB(reltol=1e-2, k=0.001, interp=1, tol = tolP, maxnit = maxnit,
+                        precon_scheme = preconP, path_traverse = serial(),
+                        verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
