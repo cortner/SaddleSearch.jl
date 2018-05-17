@@ -1,6 +1,6 @@
 using Dierckx
 
-function parametrise!{T}(x::Vector{T}, t::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x)))
+function parametrise!{T}(t::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x)))
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
@@ -57,7 +57,7 @@ function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon_scheme)
    function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
 
    ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
-   parametrise!(x, t, ds)
+   parametrise!(t, x, ds)
 
    return ref(x)
 end

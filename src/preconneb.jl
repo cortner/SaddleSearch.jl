@@ -12,7 +12,7 @@ export PreconNudgedElasticBandMethod
 * `scheme` : finite difference scheme used to evaluate gradients
 * `refine_points` : -1 for no slope tracking and path refinement
 * `ls_cond` : true/false whether to perform line search to find next time step
-* `tol_res` : residual tolerance
+* `tol` : residual tolerance
 * `maxnit` : maximum number of iterations
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
 """
@@ -24,7 +24,7 @@ export PreconNudgedElasticBandMethod
    refine_points::Int = -1
    ls_cond::Bool = false
    # ------ shared parameters ------
-   tol_res::Float64 = 1e-5
+   tol::Float64 = 1e-5
    maxnit::Int = 1000
    verbose::Int = 2
 end
@@ -32,10 +32,9 @@ end
 
 function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack precon_scheme, alpha, k, scheme, refine_points, ls_cond, tol_res,
+   @unpack precon_scheme, alpha, k, scheme, refine_points, ls_cond, tol,
             maxnit, verbose = method
-   @unpack precon, precon_prep!, dist, point_norm,
-            proj_grad, forcing, elastic_force, maxres = precon_scheme
+   @unpack precon, precon_prep! = precon_scheme
    # initialise variables
    x = copy(x0)
    param = linspace(.0, 1., length(x)) |> collect
@@ -50,8 +49,8 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
    end
    for nit = 0:maxnit
       precon = precon_prep!(precon, x)
-      function P(i) return precon[mod(i-1,Np)+1, 1]; end
-      function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
+      P(i) = precon[mod(i-1,Np)+1, 1]
+      P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
 
       # evaluate gradients
       dE0 = [dE(x[i]) for i=1:N]
@@ -62,7 +61,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
       if scheme == :simple
          # forward and central finite differences
          dxds = [ [zeros(x[1])]; [(x[i+1]-x[i]) for i=2:N-1]; [zeros(x[1])] ]
-         dxds ./= point_norm(P, dxds)
+         dxds ./= point_norm(precon_scheme, P, dxds)
          d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
                                                                [zeros(x[1])] ]
          # k *= N*N
@@ -70,7 +69,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          # central finite differences
          dxds = [ [zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1];
                                                                [zeros(x[1])] ]
-         dxds ./= point_norm(P, dxds)
+         dxds ./= point_norm(precon_scheme, P, dxds)
          # dxds = [ [zeros(x[1])]; dxds; [zeros(dxds[1])] ]
          d²xds² = [ [zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
                                                                [zeros(x[1])] ]
@@ -99,7 +98,7 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
                k = 3, bc = "error") for i=1:length(x[1])]
          dxds = [[derivative(S[i], si) for i in 1:length(S)] for si in s ]
-         dxds ./= point_norm(P, dxds)
+         dxds ./= point_norm(precon_scheme, P, dxds)
          dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
          d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s]
          k *= (1/(N*N))
@@ -107,9 +106,9 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
          error("SADDLESEARCH: unknown differentiation scheme")
       end
 
-      Fk = elastic_force(P, k*N*N, dxds, d²xds²)
-      dE0⟂ = proj_grad(P, dE0, dxds)
-      F = forcing(precon, dE0⟂-Fk); f = set_ref!(copy(x), F)
+      Fk = elastic_force(precon_scheme, P, k*N*N, dxds, d²xds²)
+      dE0⟂ = proj_grad(precon_scheme, P, dE0, dxds)
+      F = forcing(precon_scheme, precon, dE0⟂-Fk); f = set_ref!(copy(x), F)
 
       # perform linesearch to find optimal step
       if ls_cond
@@ -130,14 +129,14 @@ function run!{T}(method::PreconNudgedElasticBandMethod, E, dE, x0::Vector{T})
       end
 
       # residual, store history
-      res = maxres(P, dE0⟂)
+      res = maxres(precon_scheme, P, dE0⟂)
 
       push!(log, numE, numdE, res)
       if verbose >= 2
          dt = Dates.format(now(), "HH:MM")
          @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, res)
       end
-      if res <= tol_res
+      if res <= tol
          if verbose >= 1
             println("SADDLESEARCH: PreconNudgedElasticBandMethod terminates succesfully after $(nit) iterations")
          end

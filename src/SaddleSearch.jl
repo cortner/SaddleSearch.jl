@@ -33,7 +33,7 @@ include("neb.jl")
 
 include("preconneb.jl")
 
-include("odestring.jl")
+include("euler.jl")
 
 include("odeneb.jl")
 

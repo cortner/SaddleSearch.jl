@@ -28,6 +28,14 @@ path = ODEString(reltol=0.1, tol = tol, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
+path = PreconNudgedElasticBandMethod(preconI, 0.0007, 0.0002, :central, -1, false, tol, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
+
+path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-2), preconI, serial(), 0.0002, tol, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
+
 heading2("Double well potential")
 c = 16.0
 V = DoubleWell(diagm([.5, c*c*(0.02^(c-1)), c]))
@@ -51,6 +59,15 @@ path = ODEString(reltol=1e-3, tol = tol, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
+path = PreconNudgedElasticBandMethod(preconI, 0.07, 0.1, :splines, -1, false, tol, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
+
+path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-1), preconI, serial(),
+0.1, tol, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
+
 preconP = SaddleSearch.localPrecon(precon = [P], precon_prep! = (P, x) -> precon(x))
 
 path = StaticString(0.25, tolP, maxnit, preconP, serial(), 1)
@@ -63,6 +80,14 @@ path = ODEString(reltol=0.1, tol = tolP, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
+path = PreconNudgedElasticBandMethod(preconP, 0.6, 0.00001, :splines, -1, false, tolP, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
+
+path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-1), preconP, serial(),
+0.00001, tolP, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
 
 heading2("Vacancy migration potential")
 V = LJVacancy2D(R = 3.1)
@@ -87,6 +112,15 @@ PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 println("[allowed test failure: target is $(path.tol)]")
 # @test PATHlog[:maxres][end] <= path.tol
 
+path = PreconNudgedElasticBandMethod(preconI, 0.001, 0.01, :splines, -1, false, tol, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
+
+path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-2), preconI, serial(),
+0.00001, tol, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
+
 preconP = SaddleSearch.localPrecon(precon = precon(x),
 precon_prep! = (P, x) -> precon(x))
 
@@ -100,5 +134,13 @@ path = ODEString(reltol=1e-1, tol = tolP, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
+path = PreconNudgedElasticBandMethod(preconP, 1.0, 0.001, :splines, -1, false, tolP, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
+
+path = ODENudgedElasticBandMethod(SaddleSearch.ODE12r(rtol=1e-2), preconP, serial(),
+0.001, tolP, maxnit, verbose)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
 
 end

@@ -1,6 +1,6 @@
 
 using Dierckx
-export ODENudgedElasticbandMethod
+export ODENudgedElasticBandMethod
 
 """
 `ODENudgedElasticbandMethod`: neb variant utilising adaptive time step ode solvers
@@ -10,7 +10,7 @@ export ODENudgedElasticbandMethod
 * 'k' : spring constrant
 * 'abstol' : absolute errors tolerance
 * 'reltol' : relative errors tolerance
-* `tol_res` : residual tolerance
+* `tol` : residual tolerance
 * `maxnit` : maximum number of iterations
 * `precon` : preconditioner
 * `precon_prep!` : update function for preconditioner
@@ -18,12 +18,12 @@ export ODENudgedElasticbandMethod
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
 @with_kw type ODENudgedElasticBandMethod
-   solver = ode12(1e-6, 1e-3, true)
+   solver = ODE12r(rtol=1e-2)
    precon_scheme = localPrecon()
    path_traverse = serial()
    k::Float64
    # ------ shared parameters ------
-   tol_res::Float64 = 1e-5
+   tol::Float64 = 1e-5
    maxnit::Int = 1000
    # precon = [I]
    # precon_prep! = (P, x) -> P
@@ -34,7 +34,7 @@ end
 
 function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack solver, precon_scheme, path_traverse, k, tol_res, maxnit,
+   @unpack solver, precon_scheme, path_traverse, k, tol, maxnit,
             verbose = method
    @unpack direction = path_traverse
    # initialise variables
@@ -48,10 +48,11 @@ function run!{T}(method::ODENudgedElasticBandMethod, E, dE, x0::Vector{T})
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   αout, xout, log = odesolve(solver, (α_,x_, nit) -> forces(precon_scheme, x, x_, k, dE, direction(length(x), nit)), ref(x), length(x), log, method; tol_res = tol_res, maxnit=maxnit )
+   xout, log = odesolve(solver, (x_, P_, nit) -> forces(precon_scheme, x, x_, k, dE, direction(length(x), nit)),
+   ref(x), log; tol = tol, maxnit=maxnit, method = "ODENEB", verbose = verbose)
 
    x = set_ref!(x, xout[end])
-   return x, log, αout
+   return x, log
 end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
@@ -61,8 +62,8 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
    N = length(x)
    precon = precon_prep!(precon, x)
    Np = size(precon, 1); # P = i -> precon[mod(i-1,Np)+1]
-   function P(i) return precon[mod(i-1,Np)+1, 1]; end
-   function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
+   P(i) = precon[mod(i-1,Np)+1, 1]
+   P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
 
    # central finite differences
    dxds = [[zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(x[1])]]
@@ -85,6 +86,5 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64},
    res = maxres(precon_scheme, P, dE0⟂)
    #maximum([norm(P(i)*dE0⟂[i],Inf) for i = 1:length(x)])
 
-   return F, res
-
+   return F, res, N
 end

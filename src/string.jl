@@ -1,71 +1,103 @@
 
+using Dierckx
+
 """
-`StaticString`: a preconditioning variant of the string method.
+`ODEStringMethod`: string variant utilising adaptive time step ode solvers.
 
 ### Parameters:
-* 'precon_scheme' : preconditioning method
 * `alpha` : step length
-* `refine_points` : number of points allowed in refinement region, negative for no refinement of path
-* `ls_cond` : true/false whether to perform linesearch during the minimisation step
+* 'abstol' : absolute errors tolerance
+* 'reltol' : relative errors tolerance
 * `tol_res` : residual tolerance
 * `maxnit` : maximum number of iterations
+* `precon` : preconditioner
+* `precon_prep!` : update function for preconditioner
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
+* `precon_cond` : true/false whether to precondition the minimisation step
 """
-# @with_kw type StaticString
-#    precon_scheme = localPrecon()
-#    alpha::Float64
-#    path_traverse = serial()
-#    # ------ shared parameters ------
-#    tol_res::Float64 = 1e-5
-#    maxnit::Int = 1000
-#    verbose::Int = 2
-# end
 
-function run!{T}(method::StaticString, E, dE, x0::Vector{T})
+function run!{T}(method::ODEString, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack alpha, tol, maxnit, precon_scheme, path_traverse,
-            verbose = method
+   @unpack tol, maxnit, precon_scheme, path_traverse, verbose = method
    @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
-
-   xref = redistribute(ref(x), x, precon_scheme)
-   Fn, Rn, ndE = forces(precon_scheme, x, xref, dE, direction(length(x), nit))
-   numdE += ndE
-
    # and just start looping
    if verbose >= 2
       @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
-   for nit = 1:maxnit
-      # redistribute
-      xnew = redistribute(xref + alpha * Fn, x, precon_scheme)
 
-      # return force
-      Fn, Rn, ndE = forces(precon_scheme, x, xnew, dE, direction(length(x), nit))
-      numdE += ndE
+   xout, log = odesolve(solver(method),
+         (x_, P_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit)),
+         ref(x), log;
+         g = (x_, P_) -> redistribute(x_, x, precon_scheme),
+         tol = tol, maxnit=maxnit,
+         method = "ODEString",
+         verbose = verbose )
 
-      # residual, store history
-      push!(log, numE, numdE, Rn)
+   x = set_ref!(x, xout[end])
+   return x, log
+end
 
-      if verbose >= 2
-         dt = Dates.format(now(), "HH:MM")
-         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, res)
-      end
-      if Rn <= tol
-         if verbose >= 1
-            println("SADDLESEARCH: StaticString terminates succesfully after $(nit) iterations")
-         end
-         return set_ref!(x, xnew), log
-      end
-      xref = xnew
+function run!{T}(method::StaticString, E, dE, x0::Vector{T})
+   # read all the parameters
+   @unpack tol, maxnit, precon_scheme, path_traverse,
+           verbose = method
+   @unpack direction = path_traverse
+   # initialise variables
+   x = copy(x0)
+   nit = 0
+   numdE, numE = 0, 0
+   log = PathLog()
+   # and just start looping
+   if verbose >= 2
+      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
-   if verbose >= 1
-      println("SADDLESEARCH: StaticString terminated unsuccesfully after $(maxnit) iterations.")
-   end
-   return set_ref!(x, xref), log
+
+   xout, log = odesolve(solver(method),
+         (x_, P_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit)),
+         ref(x), log;
+         g = (x_, P_) -> redistribute(x_, x, precon_scheme),
+         tol = tol, maxnit=maxnit,
+         method = "StaticString",
+         verbose = verbose )
+
+   x = set_ref!(x, xout[end])
+   return x, log
+end
+
+function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direction)
+   @unpack precon, precon_prep! = precon_scheme
+
+   x = set_ref!(x, xref)
+   t = copy(x)
+   precon = precon_prep!(precon, x)
+   Np = size(precon, 1)
+   P(i) = precon[mod(i-1,Np)+1, 1]
+   P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
+
+   ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
+
+   param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
+   param /= param[end]; param[end] = 1.
+
+   parametrise!(t, x, ds, parametrisation = param)
+
+   t ./= point_norm(precon_scheme, P, t)
+   t[1] =zeros(t[1]); t[end]=zeros(t[1])
+
+   dE0_temp = [dE(x[i]) for i in direction]
+   dE0 = [dE0_temp[i] for i in direction]
+
+   dE0⟂ = proj_grad(precon_scheme, P, dE0, t)
+   F = forcing(precon_scheme, precon, dE0⟂)
+
+   res = maxres(precon_scheme, P, dE0⟂)
+
+   return F, res, length(param)
 end

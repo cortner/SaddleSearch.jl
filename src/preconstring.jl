@@ -37,12 +37,12 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T})
 
    Np = size(precon, 1)
    # precon = precon_prep!(precon, x)
-   function P(i) return precon[mod(i-1,Np)+1, 1]; end
-   function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
+   P(i) = precon[mod(i-1,Np)+1, 1]
+   P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
 
    x, t = copy(x0), copy(x0)
    ds = [dist(P, x, i) for i=1:length(x)-1]
-   parametrise!(x, t, ds)
+   parametrise!(t, x, ds)
    # normalise t
    t ./= point_norm(P, t)
    t[1] = zeros(t[1]); t[end] = zeros(t[1])
@@ -101,11 +101,11 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T})
 
       # reparametrise
       precon = precon_prep!(precon, x)
-      function P(i) return precon[mod(i-1,Np)+1, 1]; end
-      function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
+      P(i) = precon[mod(i-1,Np)+1, 1]
+      P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
 
       ds = [dist(P, x, i) for i=1:length(x)-1]
-      parametrise!(x, t, ds, parametrisation = param)
+      parametrise!(t, x, ds, parametrisation = param)
 
       t ./= point_norm(P, t)
       t[1] = zeros(t[1]); t[end] = zeros(t[1])
@@ -114,7 +114,7 @@ function run!{T}(method::PreconStringMethod, E, dE, x0::Vector{T})
       if refine_points > 0
          refine!(param, refine_points, t)
          ds = [dist(P, x, i) for i=1:length(x)-1]
-         parametrise!(x, t, ds, parametrisation = param)
+         parametrise!(t, x, ds, parametrisation = param)
       end
 
    end

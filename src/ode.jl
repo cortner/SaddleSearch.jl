@@ -20,7 +20,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
 
    @unpack threshold, rtol, C1, C2, hmin, extrapolate = solver
 
-   if verbose>=4
+   if verbose >= 4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
        file = open("log_$(dt).txt", "w")
    end
@@ -53,7 +53,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    end
    if Rn <= tol
       if verbose >= 1
-         println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations")
+         println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations.")
       end
       if verbose >= 4
          strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
@@ -69,9 +69,9 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
 
    for nit = 1:maxnit
 
-      xnew = g(x + h * Fn, P)   # the redistribution is better done here I think
-                             # that way it implicitly becomes part of `f`
-                             # but it seems to make the evolution slower; need more testing!
+      xnew = g(x + h * Fn, P)   # that way it implicitly becomes part
+                                # of `f`
+                                # but it seems to make the evolution slower; need more testing!
       Pnew = precon_prep!(P, xnew)
       Fnew, Rnew, ndE = f(xnew, Pnew, nit)
 
@@ -101,7 +101,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
          h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
       else
          @printf("SADDLESEARCH: invalid `extrapolate` parameter")
-         if verbose >=4
+         if verbose >= 4
              strlog = @sprintf("SADDLESEARCH: invalid `extrapolate` parameter")
              write(file, strlog)
              close(file)
@@ -132,10 +132,10 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
          end
          if Rn <= tol
             if verbose >= 1
-               println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations")
+               println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
             end
             if verbose >= 4
-               strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations\n", "$(method)", "$(nit)")
+               strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
                write(file, strlog)
                close(file)
             end
@@ -165,7 +165,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
             println("SADDLESEARCH:               |Fold| = $(Rn)")
             println("SADDLESEARCH:        |Fnew|/|Fold| = $(Rnew/Rn)")
          end
-         if verbose >=4
+         if verbose >= 4
             strlog = @sprintf("SADDLESEARCH:      reject: new h = %s\n
                                SADDLESEARCH:               |Fnew| = %s\n
                                SADDLESEARCH:               |Fold| = %s\n
@@ -188,14 +188,14 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    end
 
    if verbose >= 1
-      println("SADDLESEARCH: $(typeof(solver)) terminated unsuccesfully after $(maxnit) iterations.")
+      println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
    end
-   if verbose >=4
-      strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(typeof(solver))", "$(maxnit)")
+   if verbose >= 4
+      strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(method)", "$(maxnit)")
       write(file, strlog)
    end
 
-   if verbose >=4
+   if verbose >= 4
       close(file)
    end
    return xout, log

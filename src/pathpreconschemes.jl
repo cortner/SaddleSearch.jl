@@ -29,34 +29,20 @@ end
    precon_prep! = (P, x) -> P
 end
 
-function dist(precon_scheme::localPrecon, P, x, i)
-    return norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i])
-end
-function dist(precon_scheme::globalPrecon, P, x, i)
-    return norm(x[i+1]-x[i])
-end
+dist(precon_scheme::localPrecon, P, x, i) = norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i])
+dist(precon_scheme::globalPrecon, P, x, i) = norm(x[i+1]-x[i])
 
-function point_norm(precon_scheme::localPrecon, P, t)
-    return [ 1; [norm(P(i), t[i]) for i=2:length(t)-1]; 1 ]
-end
-function point_norm(precon_scheme::globalPrecon, P, t)
-    return [norm(t[i]) for i=1:length(t)]
-end
+point_norm(precon_scheme::localPrecon, P, t) = [ 1; [norm(P(i), t[i])
+                                                    for i=2:length(t)-1]; 1 ]
+point_norm(precon_scheme::globalPrecon, P, t) = [norm(t[i]) for i=1:length(t)]
 
-function proj_grad(precon_scheme::localPrecon, P, ∇E, dxds)
-    return -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
-end
-function proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds)
-    return ref(-[∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)])
-end
 
-function forcing(precon_scheme::localPrecon, P, ∇E⟂)
-    return ref(∇E⟂)
-end
-function forcing(precon_scheme::globalPrecon, P, ∇E⟂)
-    return ref(P) \ ∇E⟂
+proj_grad(precon_scheme::localPrecon, P, ∇E, dxds) = -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
+proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds) = ref(-[∇E[i] - dot(∇E[i],t[i])*t[i] for i=1:length(t)])
+
+forcing(precon_scheme::localPrecon, P, ∇E⟂) = return ref(∇E⟂)
+forcing(precon_scheme::globalPrecon, P, ∇E⟂) = ref(P) \ ∇E⟂
     # [(P(1) \ ∇E⟂)[i:i+length(t)-1] for i=1:length(t):length(∇E)-length(t)+1]
-end
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
     return - [ [zeros(dxds[1])];
@@ -69,21 +55,13 @@ function elastic_force(precon_scheme::globalPrecon, P, κ, dxds, d²xds²)
                 [zeros(dxds[1])] ])
 end
 
-function maxres(precon_scheme::localPrecon, P, ∇E⟂)
-    return maximum([norm(P(i)*∇E⟂[i],Inf) for i = 1:length(∇E⟂)])
-end
-function maxres(precon_scheme::globalPrecon, P, ∇E⟂)
-    return vecnorm(∇E⟂, Inf)
-end
+maxres(precon_scheme::localPrecon, P, ∇E⟂) =  maximum([norm(P(i)*∇E⟂[i],Inf)
+                                                        for i = 1:length(∇E⟂)])
+maxres(precon_scheme::globalPrecon, P, ∇E⟂) = vecnorm(∇E⟂, Inf)
 
 
-function ref{T}(x::Vector{T})
-   return cat(1, x...)
-end
-
-function ref{T}(A::Array{Array{T,2},2})
-    return cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
-end
+ref{T}(x::Vector{T}) = cat(1, x...)
+ref{T}(A::Array{Array{T,2},2}) = cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
 
 function set_ref!{T}(x::Vector{T}, X::Vector{Float64})
   Nimg = length(x); Nref = length(X) ÷ Nimg

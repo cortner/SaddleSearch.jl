@@ -48,17 +48,19 @@ end
    @neb_string_params
 end
 
-# function String(step, args...; kwargs...)
-#    if step == :sd
-#       return StaticDimerMethod(args...; kwargs...)
-#    elseif step == :bb
-#       return BBDimer(args...; kwargs...)
-#    elseif step == :cg
-#       return SuperlinearDimer(; translation_method="CG", kwargs...)
-#    else
-#       error("`Dimer`: unknown step selection mechanism $(step)")
-#    end
-# end
+function String(step, args...; kwargs...)
+   if step == :static
+      return StaticString(args...; kwargs...)
+  elseif step == :ode
+      return ODEString(args...; kwargs...)
+   else
+      error("`String`: unknown step selection mechanism $(step)")
+   end
+end
+
+solver(method::StaticString) = Euler(h=method.alpha)
+solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold)
+    
 
 # TODO:
 #  - write 3 test problems: muller, double-well and 2D vacancy
