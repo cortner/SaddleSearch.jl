@@ -58,6 +58,16 @@ function String(step, args...; kwargs...)
    end
 end
 
+function NEB(step, args...; kwargs...)
+   if step == :static
+      return StaticNEB(args...; kwargs...)
+  elseif step == :ode
+      return ODENEB(args...; kwargs...)
+   else
+      error("`NEB`: unknown step selection mechanism $(step)")
+   end
+end
+
 solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold)
 solver(method::StaticNEB) = Euler(h=method.alpha)

@@ -13,6 +13,8 @@ include("linesearch.jl")
 
 include("ode.jl")
 
+include("euler.jl")
+
 # =========== Walker-type saddle search methods ============
 
 include("staticdimer.jl")
@@ -30,12 +32,6 @@ include("string_types.jl")
 include("string.jl")
 
 include("neb.jl")
-
-include("preconneb.jl")
-
-include("euler.jl")
-
-include("odeneb.jl")
 
 include("pathpreconschemes.jl")
 

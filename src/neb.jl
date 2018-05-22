@@ -1,41 +1,26 @@
 
-using Optim, Dierckx
-export NudgedElasticBandMethod
+using Dierckx
+# export ODENudgedElasticBandMethod
 
 """
-`NudgedElasticBandMethod`: the basic neb method variant, minimising the
-energy normally to the string by successive steepest descent minimisations at
-fixed step-sizes and constraining nodes by a tangential force applied to
-adjacent nodes.
+`ODENudgedElasticbandMethod`: neb variant utilising adaptive time step ode solvers
 
 ### Parameters:
 * `alpha` : step length
-* `k` : spring constant
-* `tol_res` : residual tolerance
+* 'k' : spring constrant
+* 'abstol' : absolute errors tolerance
+* 'reltol' : relative errors tolerance
+* `tol` : residual tolerance
 * `maxnit` : maximum number of iterations
 * `precon` : preconditioner
 * `precon_prep!` : update function for preconditioner
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
-@with_kw type NudgedElasticBandMethod
-   alpha::Float64
-   k::Float64
-   scheme::Symbol
-   # ------ shared parameters ------
-   tol_res::Float64 = 1e-5
-   maxnit::Int = 1000
-   precon = I
-   precon_prep! = (P, x) -> P
-   verbose::Int = 2
-end
-
-
-function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
+function run!{T}(method::ODENEB, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack alpha, k, scheme, tol_res, maxnit,
-            precon_prep!, verbose, precon_cond = method
-   P=method.precon
+   @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, verbose = method
+   @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
    nit = 0
@@ -46,76 +31,83 @@ function run!{T}(method::NudgedElasticBandMethod, E, dE, x0::Vector{T})
       @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
-   for nit = 0:maxnit
-      P = precon_prep!(P, x)
-      # evaluate gradients
-      N = length(x)
-      dE0 = [dE(x[i]) for i=1:N]
-      numdE += length(x)
-      # evaluate the tangent and spring force along the path
-      dxds=[]; Fk=[]
-      if scheme == :simple
-         # forward and central finite differences
-         dxds = [(x[i+1]-x[i]) for i=2:N-1]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
-         dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*N*N*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
-      elseif scheme == :central
-         # central finite differences
-         dxds = [(x[i+1]-x[i-1])/2 for i=2:N-1]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
-         dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*N*N*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
-      elseif scheme == :upwind
-         # upwind scheme
-         E0 = [E(x[i]) for i=1:N]; numE += length(x)
-         ΔE0 = [E0[i-1]-E0[i] for i=2:N]
-         index1 = [ΔE0[i]/abs(ΔE0[i]) - ΔE0[i+1]/abs(ΔE0[i+1]) for i=1:N-2]
-         index2 = [E0[i+1]-E0[i-1]/abs(E0[i+1]-E0[i-1]) for i=2:N-1]
-         Ediffmax = [maximum([abs(ΔE0[i+1]) abs(ΔE0[i])], 2) for i=1:N-2]
-         Ediffmin = [minimum([abs(ΔE0[i+1]) abs(ΔE0[i])], 2) for i=1:N-2]
-         f_weight = 0.5*[(1 + index2[i])*Ediffmax[i] + (index2[i] - 1) * Ediffmin[i] for i=1:N-2]
-         b_weight = 0.5*[(1 + index2[i])*Ediffmin[i] + (index2[i] - 1) *     Ediffmax[i] for i=1:N-2]
-         dxds = [(1 - index1[i-1]) .* f_weight[i-1] .* (x[i+1]-x[i]) + (1 + index1[i-1]) .* b_weight[i-1] .* (x[i]-x[i-1]) for i=2:N-1]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
-         dxds = [ [zeros(dxds[1])]; dxds; [zeros(dxds[1])] ]
-         Fk = k*N*N*[dot(x[i+1] - 2*x[i] + x[i-1], dxds[i]) * dxds[i] for i=2:N-1]
-      elseif scheme == :splines
-         # spline scheme
-         ds = [sqrt(dot(x[i+1]-x[i], x[i+1]-x[i])) for i=1:length(x)-1]
-         s = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-         s /= s[end]; s[end] = 1.
-         S = [Spline1D(s, [x[j][i] for j=1:length(s)], w = ones(length(x)),
-               k = 3, bc = "error") for i=1:length(x[1])]
-         dxds = [[derivative(S[i], si) for i in 1:length(S)] for si in s ]
-         dxds ./= [norm(dxds[i]) for i=1:length(dxds)]
-         dxds[1] =zeros(dxds[1]); dxds[end]=zeros(dxds[1])
-         d²xds² = [[derivative(S[i], si, nu=2) for i in 1:length(S)] for si in s ]
-         Fk = k*[dot(d²xds²[i],dxds[i]) * dxds[i] for i=2:N-1]
-      else
-         error("SADDLESEARCH: unknown differentiation scheme")
-      end
 
-      Fk = [[zeros(x[1])]; Fk; [zeros(x[1])] ]
-      dE0⟂ = [dE0[i] - dot(dE0[i],dxds[i])*dxds[i] for i = 1:length(x)]
+   xout, log = odesolve(solver(method),
+   (x_, P_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit), k, interp),
+   ref(x), log;
+   tol = tol, maxnit=maxnit,
+   method = "ODENEB",
+   verbose = verbose)
 
-      # residual, store history
-      maxres = maximum([norm(dE0⟂[i],Inf) for i = 1:length(x)])
-      push!(log, numE, numdE, maxres)
-      if verbose >= 2
-         dt = Dates.format(now(), "HH:MM")
-         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, maxres)
-      end
-      if maxres <= tol_res
-         if verbose >= 1
-            println("SADDLESEARCH: NudgedElasticBandMethod terminates succesfully after $(nit) iterations")
-         end
-         return x, log
-      end
-      x -= alpha * ( dE0⟂ - Fk )
-   end
-   if verbose >= 1
-      println("SADDLESEARCH: NudgedElasticBandMethod terminated unsuccesfully after $(maxnit) iterations.")
-   end
+   x = set_ref!(x, xout[end])
    return x, log
+end
+
+function run!{T}(method::StaticNEB, E, dE, x0::Vector{T})
+   # read all the parameters
+   @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, verbose = method
+   @unpack direction = path_traverse
+   # initialise variables
+   x = copy(x0)
+   nit = 0
+   numdE, numE = 0, 0
+   log = PathLog()
+   # and just start looping
+   if verbose >= 2
+      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: ------|-----|-----------------\n")
+   end
+
+   xout, log = odesolve(solver(method),
+   (x_, P_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit), k, interp),
+   ref(x), log;
+   tol = tol, maxnit=maxnit,
+   method = "StaticNEB",
+   verbose = verbose)
+
+   x = set_ref!(x, xout[end])
+   return x, log
+end
+
+function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direction,
+                     k::Float64, interp::Int)
+   @unpack precon, precon_prep! = precon_scheme
+   x = set_ref!(x, xref)
+   dxds = copy(x)
+   precon = precon_prep!(precon, x)
+   Np = size(precon, 1); N = length(x)
+   P(i) = precon[mod(i-1,Np)+1, 1]
+   P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
+
+   if interp == 1
+       # central finite differences
+       dxds = [[zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(x[1])]]
+       d²xds² = [[zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [zeros(x[1])]]
+   elseif interp > 1
+       # splines
+       ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
+
+       param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
+       param /= param[end]; param[end] = 1.
+
+       d²xds² = parametrise!(dxds, x, ds, parametrisation = param)
+       k *= (1/(N*N))
+   else
+       error("SADDLESEARCH: invalid `interpolate` parameter")
+   end
+
+   dxds ./= point_norm(precon_scheme, P, dxds)
+   dxds[1]=zeros(dxds[1]); dxds[end]=zeros(dxds[1])
+
+   Fk = elastic_force(precon_scheme, P, k*N*N, dxds, d²xds²)
+
+   dE0_temp = [dE(x[i]) for i in direction]
+   dE0 = [dE0_temp[i] for i in direction]
+
+   dE0⟂ = proj_grad(precon_scheme, P, dE0, dxds)
+   F = forcing(precon_scheme, precon, dE0⟂-Fk)
+
+   res = maxres(precon_scheme, P, dE0⟂)
+
+   return F, res, N
 end
