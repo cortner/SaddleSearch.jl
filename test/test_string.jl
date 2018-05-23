@@ -10,13 +10,9 @@ heading1("TEST: String type methods with ode12r solver")
 
 heading2("Muller potential")
 V = MullerPotential()
-x0, x1 = ic_path(V, :near)
+x = ic_path(V, :near, 15)
 E, dE = objective(V)
 precon = x-> hessianprecond(V, x)
-
-N = 15
-x = [(1-s)*x0 + s*x1 for s in linspace(.0, 1., N)]
-t = [((x1-x0)/norm(x1-x0)) for s in linspace(.0, 1., N)]
 
 path = StaticString(0.0009, tol, maxnit, preconI, serial(), 1)
 PATHx, PATHlog = run!(path, E, dE, x)
@@ -41,12 +37,8 @@ PATHx, PATHlog = run!(path, E, dE, x)
 heading2("Double well potential")
 c = 16.0
 V = DoubleWell(diagm([.5, c*c*(0.02^(c-1)), c]))
-x0, x1 = ic_path(V, :near)
+x = ic_path(V, :near, 11)
 E, dE = objective(V)
-
-N = 11
-x = [(1-s)*x0 + s*x1 for s in linspace(.0, 1., N)]
-t = [((x1-x0)/norm(x1-x0)) for s in linspace(.0, 1., N)]
 
 P = copy(V.A); P[1] = 1.0
 precon = x->[P]
@@ -95,12 +87,8 @@ PATHx, PATHlog = run!(path, E, dE, x)
 
 heading2("Vacancy migration potential")
 V = LJVacancy2D(R = 3.1)
-x0, x1 = ic_path(V, :min)
+x = ic_path(V, :min, 9)
 E, dE = objective(V)
-
-N = 9
-x = [(1-s)*x0 + s*x1 for s in linspace(.0, 1., N)]
-t = [((x1-x0)/norm(x1-x0)) for s in linspace(.0, 1., N)]
 
 precon = x->[copy(precond(V, xn)) for xn in x]
 

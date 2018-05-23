@@ -6,14 +6,14 @@ export serial, palindrome
 # ------------- Path Traversing ------------
 
 """
-energies along a path in the String and NEB-type methods can be computed either
+energy evaluations along a path in the String/NEB-type methods can be performed
 in a 'serial' manner or in a 'palindrome' manner:
 
-'serial' : the energies of the images along the path are computed always in the same direction.
-'palindrome' : the order of computing the energies of the images along a path is reversed after each iteration.
+* `serial` : traverse path always in the same direction.
+* `palindrome` : the order of computing the energy of the images along a path is reversed after each iteration.
 
 ### Parameters:
-* `ord` : order of traversing the images along the path
+* `direction` : order of traversing the images along the path
 """
 @with_kw type serial
    direction = (M, nit) -> 1:M
@@ -27,9 +27,9 @@ end
 
 # ------------- Reparametrisation of Paths ------------
 
-
-
-
+"""
+parametrisation functions of paths for String/NEB-type methods
+"""
 function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x)))
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
@@ -48,33 +48,6 @@ function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=l
    return d²xds²
 end
 
-
-function refine!(param, refine_points, t)
-   N = length(t)
-   for n = 2:N-1
-      cosine = dot(t[n-1], t[n+1]) / (norm(t[n-1]) * norm(t[n+1]))
-      if ( cosine < 0 )
-         n1 = n-1; n2 = n+1; k = refine_points
-         # number of nodes moved from [0., param[n1]) to [param[n1], param[n2]]
-         k1 = floor(param[n1] * k)
-         # number of nodes moved from (param[n2], 1.] to [param[n1], param[n2]]
-         k2 = floor((param[end] - param[n2-1]) * k)
-         # update the number refine points to be consistend with integer partitioning of [0., param[n1]) and (param[n2], 1.]
-         k = k1 + k2
-         # new parametrisation of [0., param[n1])
-         s1 = (n1 - k1 == 1) ? [.0] : collect(linspace(.0, 1., n1 - k1 )) * param[n1]
-         # new parametrisation of [param[n1], param[n2]]
-         s2 = collect(param[n1] + linspace(.0, 1., k + 3 ) * (param[n2] - param[n1]))
-         # new parametrisation of (param[n2], 1.]
-         s3 = (N - n2 - k2 + 1 == 1) ? [1.] : collect(param[n2] + linspace(.0, 1., N - n2 - k2 + 1 ) * (1 - param[n2]))
-         # update parametrisation
-         param[:] = [s1;  s2[2:end-1]; s3][:]
-      else
-         param[:] = collect(linspace(0., 1., length(t)))[:]
-      end
-   end
-   return param
-end
 
 function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon_scheme)
    @unpack precon, precon_prep!, = precon_scheme
@@ -100,22 +73,28 @@ end
 export localPrecon, globalPrecon
 
 """
-the two preconditioning schemes implemented for String and NEB-type methods
+the two preconditioning schemes implemented for String/NEB-type methods
 
-'localPrecon' : the preconditioner acts as a coordinate transformation of the
+`localPrecon` : the preconditioner acts as a coordinate transformation of the
 state space.
-'globalPrecon' : the preconditioner is applied to the force directly, each point
+`globalPrecon` : the preconditioner is applied to the force directly, each point
 along the path is preconditioned independently.
 
 ### Parameters:
 * `precon` : preconditioner
 * `precon_prep!` : update function for preconditioner
-* 'tangent_norm' : function evaluating the norm of tangents according to the
-                   scheme of choice
-* 'proj_grad' : projected gradient
-* 'force_eval' : function evaluating the forces according to the scheme of choice
-* 'maxres' : function evaluating the residual error of the path, relative to
-            infinity norm
+
+### Functionality:
+* `dist` : distance of neighbouring images along path
+* `point_norm` : local P-norm
+* `proj_grad` : projected gradient
+* `forcing` : reference vector of preconditioned forces along path
+* `elastic_force` : Hooke's law elastic focres along path
+* `maxres` : residual error
+
+### Shared Functions:
+* `ref` : return long vector of values
+* `set_ref!` : update values of path list from path vector
 """
 
 @with_kw type localPrecon
@@ -144,17 +123,17 @@ forcing(precon_scheme::globalPrecon, P, ∇E⟂) = ref(P) \ ∇E⟂
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
     return - [ [zeros(dxds[1])];
-             κ*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1];
-             [zeros(dxds[1])] ]
+               κ*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1];
+               [zeros(dxds[1])] ]
 end
 function elastic_force(precon_scheme::globalPrecon, P, κ, dxds, d²xds²)
     return ref(-[ [zeros(dxds[1])];
-                κ*[dot(d²xds²[i], dxds[i]) * dxds[i] for i=2:N-1];
-                [zeros(dxds[1])] ])
+               κ*[dot(d²xds²[i], dxds[i]) * dxds[i] for i=2:N-1];
+               [zeros(dxds[1])] ])
 end
 
 maxres(precon_scheme::localPrecon, P, ∇E⟂) =  maximum([norm(P(i)*∇E⟂[i],Inf)
-                                                        for i = 1:length(∇E⟂)])
+                                                for i = 1:length(∇E⟂)])
 maxres(precon_scheme::globalPrecon, P, ∇E⟂) = vecnorm(∇E⟂, Inf)
 
 
@@ -162,8 +141,8 @@ ref{T}(x::Vector{T}) = cat(1, x...)
 ref{T}(A::Array{Array{T,2},2}) = cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
 
 function set_ref!{T}(x::Vector{T}, X::Vector{Float64})
-  Nimg = length(x); Nref = length(X) ÷ Nimg
-  xfull = reshape(X, Nref, Nimg)
-  x = [ xfull[:, n] for n = 1:Nimg ]
-  return x
+   Nimg = length(x); Nref = length(X) ÷ Nimg
+   xfull = reshape(X, Nref, Nimg)
+   x = [ xfull[:, n] for n = 1:Nimg ]
+   return x
 end

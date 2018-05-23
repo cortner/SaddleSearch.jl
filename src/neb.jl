@@ -1,22 +1,4 @@
 
-using Dierckx
-# export ODENudgedElasticBandMethod
-
-"""
-`ODENudgedElasticbandMethod`: neb variant utilising adaptive time step ode solvers
-
-### Parameters:
-* `alpha` : step length
-* 'k' : spring constrant
-* 'abstol' : absolute errors tolerance
-* 'reltol' : relative errors tolerance
-* `tol` : residual tolerance
-* `maxnit` : maximum number of iterations
-* `precon` : preconditioner
-* `precon_prep!` : update function for preconditioner
-* `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
-* `precon_cond` : true/false whether to precondition the minimisation step
-"""
 function run!{T}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, verbose = method
@@ -45,8 +27,8 @@ function run!{T}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Vector{T})
 end
 
 
-function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direction,
-                     k::Float64, interp::Int)
+function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
+                  direction, k::Float64, interp::Int)
    @unpack precon, precon_prep! = precon_scheme
    x = set_ref!(x, xref)
    dxds = copy(x)
@@ -56,24 +38,25 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direc
    P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
 
    if interp == 1
-       # central finite differences
-       dxds = [[zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(x[1])]]
-       d²xds² = [[zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1]; [zeros(x[1])]]
+      # central finite differences
+      dxds = [[zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(x[1])]]
+      d²xds² = [[zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
+               [zeros(x[1])]]
    elseif interp > 1
-       # splines
-       ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
+      # splines
+      ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
 
-       param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
-       param /= param[end]; param[end] = 1.
+      param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
+      param /= param[end]; param[end] = 1.
 
-       d²xds² = parametrise!(dxds, x, ds, parametrisation = param)
-       k *= (1/(N*N))
+      d²xds² = parametrise!(dxds, x, ds, parametrisation = param)
+      k *= (1/(N*N))
    else
-       error("SADDLESEARCH: invalid `interpolate` parameter")
+      error("SADDLESEARCH: invalid `interpolate` parameter")
    end
 
    dxds ./= point_norm(precon_scheme, P, dxds)
-   dxds[1]=zeros(dxds[1]); dxds[end]=zeros(dxds[1])
+   dxds[1] = zeros(dxds[1]); dxds[end] = zeros(dxds[1])
 
    Fk = elastic_force(precon_scheme, P, k*N*N, dxds, d²xds²)
 
