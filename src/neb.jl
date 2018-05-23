@@ -17,7 +17,7 @@ using Dierckx
 * `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
 * `precon_cond` : true/false whether to precondition the minimisation step
 """
-function run!{T}(method::ODENEB, E, dE, x0::Vector{T})
+function run!{T}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, verbose = method
    @unpack direction = path_traverse
@@ -33,41 +33,17 @@ function run!{T}(method::ODENEB, E, dE, x0::Vector{T})
    end
 
    xout, log = odesolve(solver(method),
-   (x_, P_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit), k, interp),
-   ref(x), log;
-   tol = tol, maxnit=maxnit,
-   method = "ODENEB",
-   verbose = verbose)
+               (x_, P_, nit) -> forces(precon_scheme, x, x_, dE,
+                                       direction(length(x), nit), k, interp),
+               ref(x), log;
+               tol = tol, maxnit=maxnit,
+               method = "$(typeof(method))",
+               verbose = verbose)
 
    x = set_ref!(x, xout[end])
    return x, log
 end
 
-function run!{T}(method::StaticNEB, E, dE, x0::Vector{T})
-   # read all the parameters
-   @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, verbose = method
-   @unpack direction = path_traverse
-   # initialise variables
-   x = copy(x0)
-   nit = 0
-   numdE, numE = 0, 0
-   log = PathLog()
-   # and just start looping
-   if verbose >= 2
-      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: ------|-----|-----------------\n")
-   end
-
-   xout, log = odesolve(solver(method),
-   (x_, P_, nit) -> forces(precon_scheme, x, x_, dE, direction(length(x), nit), k, interp),
-   ref(x), log;
-   tol = tol, maxnit=maxnit,
-   method = "StaticNEB",
-   verbose = verbose)
-
-   x = set_ref!(x, xout[end])
-   return x, log
-end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE, direction,
                      k::Float64, interp::Int)
