@@ -15,11 +15,10 @@ include("ode.jl")
 
 # =========== Walker-type saddle search methods ============
 
-include("staticdimer.jl")
+include("dimer_types.jl")
 
-include("bbdimer.jl")
-
-#  include("odedimer.jl")    # => TODO
+# dimer, bb, ode
+include("dimer.jl")
 
 include("superlineardimer.jl")
 

@@ -1,8 +1,8 @@
 
 
-@testset "StaticDimerMethod vs BBDimer" begin
+@testset "StaticDimer vs BBDimer" begin
 
-heading1("TEST: StaticDimerMethod, BBDimer with and without Preconditioning")
+heading1("TEST: StaticDimer, BBDimer with and without Preconditioning")
 
 heading2("Muller potential")
 
@@ -10,7 +10,7 @@ V = MullerPotential()
 x0, v0 = ic_dimer(V, :near)
 E, dE = objective(V)
 
-dimer = StaticDimerMethod(a_trans=0.002, a_rot=0.002, len=1e-3, verbose=verbose)
+dimer = StaticDimer(a_trans=0.002, a_rot=0.002, len=1e-3, verbose=verbose)
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test res_trans(log)[end] <= dimer.tol_trans
 @test res_rot(log)[end] <= dimer.tol_rot
@@ -23,7 +23,7 @@ xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
 
 heading2("Muller potential and preconditioning")
 
-dimer = StaticDimerMethod( a_trans=0.25, a_rot=0.5, len=1e-3, verbose=verbose,
+dimer = StaticDimer( a_trans=0.25, a_rot=0.5, len=1e-3, verbose=verbose,
       precon=eye(2), precon_rot=true, precon_prep! = (P,x) -> hessprecond(V, x) )
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test res_trans(log)[end] <= dimer.tol_trans
@@ -44,7 +44,7 @@ V = DoubleWell()
 x0, v0 = ic_dimer(V, :near)
 E, dE = objective(V)
 
-dimer = StaticDimerMethod(a_trans=0.66, a_rot=0.4, len=1e-3, verbose=verbose)
+dimer = StaticDimer(a_trans=0.66, a_rot=0.4, len=1e-3, verbose=verbose)
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test res_trans(log)[end] <= dimer.tol_trans
 @test res_rot(log)[end] <= dimer.tol_rot
@@ -62,7 +62,7 @@ V = DoubleWell(diagm([1.0, 10.0]))
 x0, v0 = ic_dimer(V, :near)
 E, dE = objective(V)
 
-dimer = StaticDimerMethod(a_trans=0.1, a_rot=0.1, len=1e-3, verbose=verbose)
+dimer = StaticDimer(a_trans=0.1, a_rot=0.1, len=1e-3, verbose=verbose)
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test res_trans(log)[end] <= dimer.tol_trans
 @test res_rot(log)[end] <= dimer.tol_rot
@@ -75,7 +75,7 @@ xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
 
 heading2("Ill-conditioned double-well, but now with preconditioner")
 
-dimer = StaticDimerMethod(a_trans=0.66, a_rot=0.4, len=1e-3, verbose=verbose,
+dimer = StaticDimer(a_trans=0.66, a_rot=0.4, len=1e-3, verbose=verbose,
       precon=V.A, precon_rot=true)
 x, v, log = run!(dimer, E, dE, x0, v0)
 @test res_trans(log)[end] <= dimer.tol_trans

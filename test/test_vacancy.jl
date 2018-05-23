@@ -5,7 +5,7 @@
 
    locverb = 0
 
-   for R in (3.1, 4.1, 5.1, 7.1)
+   for R in (3.1, 4.1, 5.1)    # add 7.1 ??
 
       V = LJVacancy2D(R = R, bc = :free)
       x0, v0 = ic_dimer(V, :near)
@@ -13,7 +13,7 @@
 
       heading2("Domain with R = $R, Nat = $(size(V.Xref, 2))")
 
-      dimer = StaticDimerMethod(a_trans=0.002, a_rot=0.002, len=1e-3,
+      dimer = StaticDimer(a_trans=0.002, a_rot=0.002, len=1e-3,
                                  maxnumdE=3000, verbose=locverb)
       x, v, log = run!(dimer, E, dE, x0, v0)
       @test res_trans(log)[end] <= dimer.tol_trans
@@ -35,8 +35,13 @@
       @test res_rot(logsup)[end] <= supdimer.tol_rot
       println("Superlinear(I): $(numdE(logsup)[end]) ∇E evaluations")
 
+      odedimer = ODEDimer(reltol=0.1, abstol=0.1, verbose=locverb)
+      xode, vode, logode = run!(odedimer, E, dE, x0, v0)
+      # @test res_trans(logode)[end] <= odedimer.tol_trans
+      @test maxres(logode)[end] <= odedimer.tol_trans
+      println("        ODE(I): $(numdE(logode)[end]) ∇E evaluations")
 
-      dimer = StaticDimerMethod( a_trans=1.0, a_rot=0.3, len=1e-3, maxnumdE=500,
+      dimer = StaticDimer( a_trans=1.0, a_rot=0.3, len=1e-3, maxnumdE=500,
             verbose=locverb, precon=precond(V, x0), precon_rot=true,  rescale_v=true,
             precon_prep! = (P,x) -> precond(V, x) )
       x, v, log = run!(dimer, E, dE, x0, v0)
@@ -53,14 +58,12 @@
       @test res_rot(log)[end] <= bbdimer.tol_rot
       println("   BB-Dimer(P): $(numdE(log)[end]) ∇E evaluations")
 
-      # ====== TODO: this one fails miserably ======
-      # supdimer = SuperlinearDimer(maximum_translation=0.01, max_num_rot=10,
-      #                             len=1e-3, maxnumdE=1000, verbose=locverb,
-      #                             precon=precond(V, x0), precon_prep! = (P,x) -> precond(V, x))
-      # xsup, vsup, logsup = run!(supdimer, E, dE, x0, v0)
-      # @test res_trans(logsup)[end] <= supdimer.tol_trans
-      # @test res_rot(logsup)[end] <= supdimer.tol_rot
-      # println("Superlinear(P): $(numdE(logsup)[end]) ∇E evaluations")
+      odedimer = ODEDimer(reltol=0.1, abstol=0.1, verbose=locverb,
+                precon=precond(V, x0), precon_prep! = (P,x) -> precond(V, x))
+      xode, vode, logode = run!(odedimer, E, dE, x0, v0)
+      # @test res_trans(logode)[end] <= odedimer.tol_trans
+      @test maxres(logode)[end] <= odedimer.tol_trans
+      println("        ODE(P): $(numdE(logode)[end]) ∇E evaluations")
    end
 
 end

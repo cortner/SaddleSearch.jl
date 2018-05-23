@@ -1,6 +1,6 @@
 using SaddleSearch
 using Base.Test
-using SaddleSearch: numE, numdE, res_trans, res_rot
+using SaddleSearch: numE, numdE, res_trans, res_rot, maxres
 include("testsets.jl"); using TestSets
 
 function heading1(str)
