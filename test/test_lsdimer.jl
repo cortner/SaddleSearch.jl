@@ -33,7 +33,7 @@ xsup, vsup, logsup = run!(supdimer, E, dE, copy(x0), copy(v0))
 @test res_trans(logsup)[end] <= supdimer.tol_trans
 @test vecnorm(xsup - x, Inf) < 1e-4
 
-odedimer = ODEDimer(reltol=0.1, abstol=0.1, verbose=verbose)
+odedimer = ODEDimer(verbose=verbose)
 xode, vode, logode = run!(odedimer, E, dE, copy(x0), copy(v0))
 # @test res_trans(logode)[end] <= odedimer.tol_trans
 @test maxres(logode)[end] <= odedimer.tol_trans
@@ -70,7 +70,7 @@ xsup, vsup, logsup = run!(supdimer, E, dE, x0, v0)
 @test res_trans(logsup)[end] <= supdimer.tol_trans
 @test vecnorm(xsup - x, Inf) < 1e-4
 
-odedimer = ODEDimer(reltol=0.1, abstol=0.1, verbose=verbose)
+odedimer = ODEDimer(verbose=verbose)
 xode, vode, logode = run!(odedimer, E, dE, copy(x0), copy(v0))
 # @test res_trans(logode)[end] <= odedimer.tol_trans
 @test maxres(logode)[end] <= odedimer.tol_trans

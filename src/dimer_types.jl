@@ -110,10 +110,9 @@ end
 
 
 @with_kw type ODEDimer
-   abstol::Float64
-   reltol::Float64
-   order::Int = 1
-   damping::Float64 = 1.0
+   ode::ODE12r = ODE12r()
+   # order::Int = 1    # what is this???
+   # damping::Float64 = 1.0   # TODO: add a relative damping for rotation vs translation
    # ------ shared parameters ------
    @dimer_shared
 end

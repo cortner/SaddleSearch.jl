@@ -35,7 +35,7 @@
       @test res_rot(logsup)[end] <= supdimer.tol_rot
       println("Superlinear(I): $(numdE(logsup)[end]) ∇E evaluations")
 
-      odedimer = ODEDimer(reltol=0.1, abstol=0.1, verbose=locverb)
+      odedimer = ODEDimer(verbose=locverb)
       xode, vode, logode = run!(odedimer, E, dE, x0, v0)
       # @test res_trans(logode)[end] <= odedimer.tol_trans
       @test maxres(logode)[end] <= odedimer.tol_trans
@@ -58,7 +58,7 @@
       @test res_rot(log)[end] <= bbdimer.tol_rot
       println("   BB-Dimer(P): $(numdE(log)[end]) ∇E evaluations")
 
-      odedimer = ODEDimer(reltol=0.1, abstol=0.1, verbose=locverb,
+      odedimer = ODEDimer(verbose=locverb,
                 precon=precond(V, x0), precon_prep! = (P,x) -> precond(V, x))
       xode, vode, logode = run!(odedimer, E, dE, x0, v0)
       # @test res_trans(logode)[end] <= odedimer.tol_trans

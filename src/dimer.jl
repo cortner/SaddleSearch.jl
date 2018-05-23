@@ -230,7 +230,7 @@ function dimer_ode(z, dE, P, precon_prep!, len)
    p_trans = - (P \ dE0) + 2.0 * dot(v, dE0) * v
    p_rot = - (P \ Hv) + dot(Hv, v) * v
    F = [p_trans; p_rot]
-   return F, norm(F, Inf)
+   return F, norm(F, Inf), 2
 end
 
 function dimer_project(z, P, precon_prep!)
@@ -247,30 +247,28 @@ end
 function run!(method::ODEDimer, E, dE, x0::Vector, v0::Vector)
 
    # read all the parameters
-   @unpack abstol, reltol, order, damping, tol_trans, tol_rot, maxnumdE, len,
-            precon_prep!, verbose, precon_rot, rescale_v = method
+   @unpack tol_trans, tol_rot, maxnumdE, len,
+            precon_prep!, verbose, precon_rot, rescale_v, ode = method
    P0=method.precon
 
    # initial condition
    n = length(x0)
    z0 = [x0; v0]
    # nonlinear system
-   F = (t, z, nit) -> dimer_ode(z, dE, P0, precon_prep!, len)
+   F = (z, P, nit) -> dimer_ode(z, dE, P0, precon_prep!, len)
    # projection (normalisation) step
-   G = z -> dimer_project(z, P0, precon_prep!)
+   G = (z, P) -> dimer_project(z, P0, precon_prep!)
    # initialise a log
    log = PathLog()
 
    # run the ODE solver
-   tout, zout, log = odesolve_co(ODE12r(atol=abstol, rtol=reltol),
-                              F,
-                              z0,   # initial condition
-                              2,    # number of dE evaluations per F call
-                              log,  # store iteration information in this log
-                              method,
-                              g = G,
-                              maxnit = maxnumdE,
-                              tol_res=min(tol_trans, tol_rot))
+   zout, log = odesolve(ode,
+                        F,
+                        z0,   # initial condition
+                        log,  # store iteration information in this log
+                        g = G,
+                        maxnit = maxnumdE,
+                        tol = min(tol_trans, tol_rot))
    z = zout[end]
    return z[1:n], z[n+1:end], log
 end
