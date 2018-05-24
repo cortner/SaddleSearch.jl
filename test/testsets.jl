@@ -393,7 +393,7 @@ function energy(V::MorseIsland, r)
    Rfree = reshape(r, (length(V.Ifree),3))
    Rfix = V.Xref[V.Ifix, :]
 
-   R = zeros(np,3)
+   R = zeros(typeof(r[1]), np, 3)
    R[V.Ifree, :] = Rfree
    R[V.Ifix,: ]= Rfix
 
@@ -440,7 +440,7 @@ function gradient(V::MorseIsland, r)
    Rfree = reshape(r, (length(V.Ifree),3))
    Rfix = V.Xref[V.Ifix, :]
 
-   R = zeros(np,3)
+   R = zeros(typeof(r[1]), np, 3)
    R[V.Ifree, :] = Rfree
    R[V.Ifix,: ]= Rfix
    # R = reshape(r, (np,3))
@@ -494,7 +494,7 @@ function precond(V::MorseIsland, r)
    Rfree = reshape(r, (length(V.Ifree),3))
    Rfix = V.Xref[V.Ifix, :]
 
-   R = zeros(np,3)
+   R = zeros(typeof(r[1]), np, 3)
    R[V.Ifree, :] = Rfree
    R[V.Ifix,: ]= Rfix
 
