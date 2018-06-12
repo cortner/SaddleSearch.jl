@@ -324,3 +324,149 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    end
    return xout, log
 end
+
+"""
+`Euler`: simple Euler method ODE solver with fixed step length.
+
+### Parameters:
+* `h` : step length
+"""
+@with_kw type LBFGS
+   hmax::Float64 = 1e-1
+   memory::Int = 10
+   damping::Float64
+   alphaguess::
+end
+
+# function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
+#                   verbose = 1,
+#                   g=(x, P)->x, tol=1e-4, maxnit=100,
+#                   P = I, precon_prep! = (P, x) -> P,
+#                   method = "Static" )
+#
+#    @unpack hmax, memory = solver
+#
+#    if verbose >= 4
+#        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
+#        file = open("log_$(dt).txt", "w")
+#    end
+#
+#    x = copy(x0)
+#    P = precon_prep!(P, x)
+#
+#    xout = []
+#
+#    numdE, numE = 0, 0
+#
+#    # initialise variables
+#    x = g(x, P)
+#    P = precon_prep!(P, x)
+#    Fn, Rn, ndE = f(x, P, 0)
+#    numdE += ndE
+#
+#    push!(xout, x)
+#    push!(log, numE, numdE, Rn)
+#
+#    if verbose >= 2
+#       dt = Dates.format(now(), "HH:MM")
+#       @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+#    end
+#    if verbose >= 4
+#       dt = Dates.format(now(), "HH:MM")
+#       strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+#       write(file, strlog)
+#       flush(file)
+#    end
+#    if Rn <= tol
+#       if verbose >= 1
+#          println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations.")
+#       end
+#       if verbose >= 4
+#          strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+#          write(file, strlog)
+#          close(file)
+#       end
+#       return xout, log
+#    end
+#
+#    # initialise algorithm specific parameters
+#    H0 = 1 ./ alphaguess
+#    s = []
+#    y = []
+#    rho = []
+#
+#    r0 = nothing
+#    F0 = nothing
+#    e0 = nothing
+#
+#
+#    for nit = 1:maxnit
+#
+#       # the LBFGS two loop
+#       q = -Fn
+#       for ii = (nit-1):-1:(nit-memory)
+#          a[i] = rho[i] * dot(s[i], q)
+#          q -= a[i] * y[i]
+#       end
+#       z = H0 *q
+#       for ii = (nit-memory):(nit-1)
+#          b = rho[i] * dot(y[i], z)
+#          z += s[i] * (a[i] - b)
+#       end
+#
+#       # determine step length
+#       # steplengths = (dr**2).sum(1)**0.5
+#       # longest_step = np.max(steplengths)
+#       if longest_step >= maxstep
+#          dr *= maxstep / longest_step
+#       end
+#
+#       # redistribute
+#       xnew = g(x + damping * h * z, P)
+#
+#       # return force
+#       Pnew = precon_prep!(P, xnew)
+#       Fnew, Rnew, ndE = f(xnew, Pnew, nit)
+#
+#       numdE += ndE
+#
+#       x, Fn, Rn, P = xnew, Fnew, Rnew, Pnew
+#       push!(xout, x)
+#       push!(log, numE, numdE, Rn) # residual, store history
+#
+#       if verbose >= 2
+#          dt = Dates.format(now(), "HH:MM")
+#          @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+#       end
+#       if verbose >= 4
+#          dt = Dates.format(now(), "HH:MM")
+#          strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+#          write(file, strlog)
+#          flush(file)
+#       end
+#       if Rn <= tol
+#          if verbose >= 1
+#             println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
+#          end
+#          if verbose >= 4
+#             strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+#             write(file, strlog)
+#             close(file)
+#          end
+#          return xout, log
+#       end
+#    end
+#
+#    if verbose >= 1
+#       println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
+#    end
+#    if verbose >= 4
+#       strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(method)", "$(maxnit)")
+#       write(file, strlog)
+#    end
+#
+#    if verbose >= 4
+#       close(file)
+#    end
+#    return xout, log
+# end
