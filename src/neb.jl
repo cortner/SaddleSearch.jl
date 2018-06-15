@@ -22,8 +22,8 @@ function run!{T}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Vector{T})
                method = "$(typeof(method))",
                verbose = verbose)
 
-   x = set_ref!(x, xout[end])
-   return x, log
+   x_return = verbose < 4 ? set_ref!(x, xout[end]) : [set_ref!(x, xout_n) for xout_n in xout]
+   return x_return, log
 end
 
 

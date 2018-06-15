@@ -331,12 +331,12 @@ end
 ### Parameters:
 * `h` : step length
 """
-@with_kw type LBFGS
-   hmax::Float64 = 1e-1
-   memory::Int = 10
-   damping::Float64
-   alphaguess::
-end
+# @with_kw type LBFGS
+#    hmax::Float64 = 1e-1
+#    memory::Int = 10
+#    damping::Float64
+#    alphaguess::
+# end
 
 # function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
 #                   verbose = 1,
