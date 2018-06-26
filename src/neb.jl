@@ -14,7 +14,7 @@ function run!{T}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Vector{T})
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   xout, log = odesolve(solver(method),
+   xout, Fout, tout, log = odesolve(solver(method),
                (x_, P_, nit) -> forces(precon_scheme, x, x_, dE,
                                        direction(length(x), nit), k, interp),
                ref(x), log;
@@ -23,7 +23,7 @@ function run!{T}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Vector{T})
                verbose = verbose)
 
    x_return = verbose < 4 ? set_ref!(x, xout[end]) : [set_ref!(x, xout_n) for xout_n in xout]
-   return x_return, log
+   return x_return, Fout, tout, log
 end
 
 
@@ -31,7 +31,7 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
                   direction, k::Float64, interp::Int)
    @unpack precon, precon_prep! = precon_scheme
    x = set_ref!(x, xref)
-   dxds = copy(x)
+   dxds = deepcopy(x)
    precon = precon_prep!(precon, x)
    Np = size(precon, 1); N = length(x)
    P(i) = precon[mod(i-1,Np)+1, 1]
@@ -64,9 +64,10 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
    dE0 = [dE0_temp[i] for i in direction]
 
    dE0⟂ = proj_grad(precon_scheme, P, dE0, dxds)
+   dE0⟂[1] = zeros(dE0⟂[1]); dE0⟂[end] = zeros(dE0⟂[1])
    F = forcing(precon_scheme, precon, dE0⟂-Fk)
 
    res = maxres(precon_scheme, P, dE0⟂)
 
-   return F, res, N
+   return F, res, N, dxds
 end

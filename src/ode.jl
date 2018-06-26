@@ -25,17 +25,19 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
    x = copy(x0)
    P = precon_prep!(P, x)
 
-   xout = []
+   xout = []; Fout = []; tout = []
 
    numdE, numE = 0, 0
 
    # initialise variables
    x = g(x, P)
    P = precon_prep!(P, x)
-   Fn, Rn, ndE = f(x, P, 0)
+   Fn, Rn, ndE, tn = f(x, P, 0)
    numdE += ndE
 
    push!(xout, x)
+   push!(Fout, Fn)
+   push!(tout, tn)
    push!(log, numE, numdE, Rn)
 
    if verbose >= 2
@@ -57,7 +59,7 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
          write(file, strlog)
          close(file)
       end
-      return xout, log
+      return xout, Fout, tout, log
    end
 
    for nit = 1:maxnit
@@ -66,12 +68,14 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
 
       # return force
       Pnew = precon_prep!(P, xnew)
-      Fnew, Rnew, ndE = f(xnew, Pnew, nit)
+      Fnew, Rnew, ndE, tnew = f(xnew, Pnew, nit)
 
       numdE += ndE
 
-      x, Fn, Rn, P = xnew, Fnew, Rnew, Pnew
+      x, Fn, Rn, P, tn = xnew, Fnew, Rnew, Pnew, tnew
       push!(xout, x)
+      push!(Fout, Fn)
+      push!(tout, tn)
       push!(log, numE, numdE, Rn) # residual, store history
 
       if verbose >= 2
@@ -93,7 +97,7 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
             write(file, strlog)
             close(file)
          end
-         return xout, log
+         return xout, Fout, tout, log
       end
    end
 
@@ -108,7 +112,7 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
    if verbose >= 4
       close(file)
    end
-   return xout, log
+   return xout, Fout, tout, log
 end
 
 
@@ -152,17 +156,19 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    x = copy(x0)
    P = precon_prep!(P, x)
 
-   xout = []
+   xout = []; Fout = []; tout = []
 
    numdE, numE = 0, 0
 
    # computation of the initial step
    x = g(x, P)
    P = precon_prep!(P, x)
-   Fn, Rn, ndE = f(x, P, 0)
+   Fn, Rn, ndE, tn = f(x, P, 0)
    numdE += ndE
 
    push!(xout, x)
+   push!(Fout, Fn)
+   push!(tout, tn)
    push!(log, numE, numdE, Rn)
 
    if verbose >= 2
@@ -184,7 +190,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
          write(file, strlog)
          close(file)
       end
-      return xout, log
+      return xout, Fout, tout, log
    end
 
    r = norm(Fn ./ max.(abs.(x), threshold), Inf) + realmin(Float64)
@@ -197,7 +203,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                                 # of `f`
                                 # but it seems to make the evolution slower; need more testing!
       Pnew = precon_prep!(P, xnew)
-      Fnew, Rnew, ndE = f(xnew, Pnew, nit)
+      Fnew, Rnew, ndE, tnew = f(xnew, Pnew, nit)
 
       numdE += ndE
 
@@ -233,15 +239,18 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
          error("SADDLESEARCH: invalid `extrapolate` parameter")
       end
       if isnan(h_ls) || (h_ls < hmin)
+         @show(h_ls)
          h_ls = Inf
       end
       # or from the error estimate
       h_err = h * 0.5 * sqrt(rtol/err)
 
       if accept
-         x, Fn, Rn, P = xnew, Fnew, Rnew, Pnew
+         x, Fn, Rn, P, tn = xnew, Fnew, Rnew, Pnew, tnew
 
          push!(xout, x)
+         push!(Fout, Fn)
+         push!(tout, tn)
          push!(log, numE, numdE, Rn)
 
          if verbose >= 2
@@ -263,7 +272,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                write(file, strlog)
                close(file)
             end
-            return xout, log
+            return xout, Fout, tout, log
          end
 
          # Compute a new step size.
@@ -307,7 +316,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
              write(file, strlog)
              close(file)
          end
-         return xout, log
+         return xout, Fout, tout, log
       end
    end
 
@@ -322,7 +331,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    if verbose >= 4
       close(file)
    end
-   return xout, log
+   return xout, Fout, tout, log
 end
 
 """

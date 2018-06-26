@@ -53,7 +53,7 @@ function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon_scheme)
    @unpack precon, precon_prep!, = precon_scheme
 
    x = set_ref!(x, xref)
-   t = copy(x)
+   t = deepcopy(x)
 
    precon = precon_prep!(precon, x)
    Np = length(precon);
@@ -100,15 +100,17 @@ along the path is preconditioned independently.
 @with_kw type localPrecon
    precon = I
    precon_prep! = (P, x) -> P
+   distance = (P, x1, x2) -> norm(P, x2 - x1)
 end
 
 @with_kw type globalPrecon
    precon = I
    precon_prep! = (P, x) -> P
+   distance = (P, x1, x2) -> norm(x2 - x1)
 end
 
-dist(precon_scheme::localPrecon, P, x, i) = norm(0.5*(P(i)+P(i+1)), x[i+1]-x[i])
-dist(precon_scheme::globalPrecon, P, x, i) = norm(x[i+1]-x[i])
+dist(precon_scheme::localPrecon, P, x, i) = precon_scheme.distance(0.5*(P(i)+P(i+1)), x[i], x[i+1])
+dist(precon_scheme::globalPrecon, P, x, i) = precon_scheme.distance(x[i], x[i+1])
 
 point_norm(precon_scheme::localPrecon, P, dxds) = [ 1; [norm(P(i), dxds[i])
                                                     for i=2:length(dxds)-1]; 1 ]
