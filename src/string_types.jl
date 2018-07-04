@@ -63,6 +63,13 @@ $(neb_string_shared_docs)
    @neb_string_params
 end
 
+@with_kw type LBFGSString
+   hmax::Float64 = 1e-1
+   memory::Int = 10
+   # ------ shared parameters ------
+   @neb_string_params
+end
+
 
 """
 `StaticNEB`: the most basic NEB variant, integrating potential gradient
@@ -104,6 +111,14 @@ $(neb_string_shared_docs)
    @neb_string_params
 end
 
+@with_kw type LBFGSNEB
+   hmax::Float64 = 1e-1
+   memory::Int = 10
+   @neb_params
+   # ------ shared parameters ------
+   @neb_string_params
+end
+
 function String(step, args...; kwargs...)
    if step == :static
       return StaticString(args...; kwargs...)
@@ -126,5 +141,7 @@ end
 
 solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold)
+solver(method::LBFGSString) = LBFGS(method.hmax, method.memory)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold)
+solver(method::LBFGSNEB) = LBFGS(method.hmax, method.memory)

@@ -25,19 +25,17 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
    x = copy(x0)
    P = precon_prep!(P, x)
 
-   xout = []; Fout = []; tout = []
+   xout = [];
 
    numdE, numE = 0, 0
 
    # initialise variables
    x = g(x, P)
    P = precon_prep!(P, x)
-   Fn, Rn, ndE, tn = f(x, P, 0)
+   Fn, Rn, ndE = f(x, P, 0)
    numdE += ndE
 
    push!(xout, x)
-   push!(Fout, Fn)
-   push!(tout, tn)
    push!(log, numE, numdE, Rn)
 
    if verbose >= 2
@@ -59,7 +57,7 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
          write(file, strlog)
          close(file)
       end
-      return xout, Fout, tout, log
+      return xout, log
    end
 
    for nit = 1:maxnit
@@ -68,14 +66,12 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
 
       # return force
       Pnew = precon_prep!(P, xnew)
-      Fnew, Rnew, ndE, tnew = f(xnew, Pnew, nit)
+      Fnew, Rnew, ndE = f(xnew, Pnew, nit)
 
       numdE += ndE
 
-      x, Fn, Rn, P, tn = xnew, Fnew, Rnew, Pnew, tnew
+      x, Fn, Rn, P = xnew, Fnew, Rnew, Pnew
       push!(xout, x)
-      push!(Fout, Fn)
-      push!(tout, tn)
       push!(log, numE, numdE, Rn) # residual, store history
 
       if verbose >= 2
@@ -97,7 +93,7 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
             write(file, strlog)
             close(file)
          end
-         return xout, Fout, tout, log
+         return xout, log
       end
    end
 
@@ -112,7 +108,7 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
    if verbose >= 4
       close(file)
    end
-   return xout, Fout, tout, log
+   return xout, log
 end
 
 
@@ -156,19 +152,17 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    x = copy(x0)
    P = precon_prep!(P, x)
 
-   xout = []; Fout = []; tout = []
+   xout = [];
 
    numdE, numE = 0, 0
 
    # computation of the initial step
    x = g(x, P)
    P = precon_prep!(P, x)
-   Fn, Rn, ndE, tn = f(x, P, 0)
+   Fn, Rn, ndE = f(x, P, 0)
    numdE += ndE
 
    push!(xout, x)
-   push!(Fout, Fn)
-   push!(tout, tn)
    push!(log, numE, numdE, Rn)
 
    if verbose >= 2
@@ -190,7 +184,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
          write(file, strlog)
          close(file)
       end
-      return xout, Fout, tout, log
+      return xout, log
    end
 
    r = norm(Fn ./ max.(abs.(x), threshold), Inf) + realmin(Float64)
@@ -203,7 +197,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                                 # of `f`
                                 # but it seems to make the evolution slower; need more testing!
       Pnew = precon_prep!(P, xnew)
-      Fnew, Rnew, ndE, tnew = f(xnew, Pnew, nit)
+      Fnew, Rnew, ndE = f(xnew, Pnew, nit)
 
       numdE += ndE
 
@@ -246,11 +240,9 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
       h_err = h * 0.5 * sqrt(rtol/err)
 
       if accept
-         x, Fn, Rn, P, tn = xnew, Fnew, Rnew, Pnew, tnew
+         x, Fn, Rn, P  = xnew, Fnew, Rnew, Pnew
 
          push!(xout, x)
-         push!(Fout, Fn)
-         push!(tout, tn)
          push!(log, numE, numdE, Rn)
 
          if verbose >= 2
@@ -272,7 +264,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                write(file, strlog)
                close(file)
             end
-            return xout, Fout, tout, log
+            return xout, log
          end
 
          # Compute a new step size.
@@ -316,7 +308,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
              write(file, strlog)
              close(file)
          end
-         return xout, Fout, tout, log
+         return xout, log
       end
    end
 
@@ -331,8 +323,10 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    if verbose >= 4
       close(file)
    end
-   return xout, Fout, tout, log
+   return xout, log
 end
+
+
 
 """
 `Euler`: simple Euler method ODE solver with fixed step length.
@@ -340,151 +334,168 @@ end
 ### Parameters:
 * `h` : step length
 """
-# @with_kw type LBFGS
-#    hmax::Float64 = 1e-1
-#    memory::Int = 10
-#    damping::Float64
-#    alphaguess::
-# end
-#
-# function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
-#                   verbose = 1,
-#                   g=(x, P)->x, tol=1e-4, maxnit=100,
-#                   P = I, precon_prep! = (P, x) -> P,
-#                   method = "Static" )
-#
-#    @unpack hmax, memory = solver
-#
-#    if verbose >= 4
-#        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
-#        file = open("log_$(dt).txt", "w")
-#    end
-#
-#    x = copy(x0)
-#    P = precon_prep!(P, x)
-#
-#    xout = []
-#
-#    numdE, numE = 0, 0
-#
-#    # initialise variables
-#    x = g(x, P)
-#    P = precon_prep!(P, x)
-#    Fn, Rn, ndE = f(x, P, 0)
-#    numdE += ndE
-#
-#    push!(xout, x)
-#    push!(log, numE, numdE, Rn)
-#
-#    if verbose >= 2
-#       dt = Dates.format(now(), "HH:MM")
-#       @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
-#    end
-#    if verbose >= 4
-#       dt = Dates.format(now(), "HH:MM")
-#       strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
-#       write(file, strlog)
-#       flush(file)
-#    end
-#    if Rn <= tol
-#       if verbose >= 1
-#          println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations.")
-#       end
-#       if verbose >= 4
-#          strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
-#          write(file, strlog)
-#          close(file)
-#       end
-#       return xout, log
-#    end
-#
-#    # initialise algorithm specific parameters
-#    H0 = 1 ./ alphaguess
-#    s = []
-#    y = []
-#    rho = []
-#
-#    r0 = nothing
-#    F0 = nothing
-#    e0 = nothing
-#
-#
-#    for nit = 1:maxnit
-#       a = zeros(nit)
-#       # the LBFGS two loop
-#       q = -Fn
-#       for ii = (nit-1):-1:(nit-memory)
-#          a[i] = rho[i] * dot(s[i], q)
-#          q -= a[i] * y[i]
-#       end
-#       z = H0 * q
-#       for ii = (nit-memory):(nit-1)
-#          b = rho[i] * dot(y[i], z)
-#          z += s[i] * (a[i] - b)
-#          # h += s[i] * (a[i] - b)
-#       end
-#
-#       # p = reshape(z, (length(z)÷3, 3)) # TODO: do I need this?
-#       p = reshape(h, (length(z)÷3, 3)) # TODO: do I need this?
-#
-#       #####
-#
-#       g = -Fn
-#
-#       # determine step length according to hmax
-#       longest_step = maximum(p, 1)
-#       if longest_step >= hmax
-#          p *= hmax / longest_step
-#       end
-#
-#       # p *= damping
-#
-#       # redistribute
-#       xnew = g(x + damping * h * z, P)
-#
-#       # return force
-#       Pnew = precon_prep!(P, xnew)
-#       Fnew, Rnew, ndE = f(xnew, Pnew, nit)
-#
-#       numdE += ndE
-#
-#       x, Fn, Rn, P = xnew, Fnew, Rnew, Pnew
-#       push!(xout, x)
-#       push!(log, numE, numdE, Rn) # residual, store history
-#
-#       if verbose >= 2
-#          dt = Dates.format(now(), "HH:MM")
-#          @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
-#       end
-#       if verbose >= 4
-#          dt = Dates.format(now(), "HH:MM")
-#          strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
-#          write(file, strlog)
-#          flush(file)
-#       end
-#       if Rn <= tol
-#          if verbose >= 1
-#             println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
-#          end
-#          if verbose >= 4
-#             strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
-#             write(file, strlog)
-#             close(file)
-#          end
-#          return xout, log
-#       end
-#    end
-#
-#    if verbose >= 1
-#       println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
-#    end
-#    if verbose >= 4
-#       strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(method)", "$(maxnit)")
-#       write(file, strlog)
-#    end
-#
-#    if verbose >= 4
-#       close(file)
-#    end
-#    return xout, log
-# end
+@with_kw type LBFGS
+   hmax::Float64 = 1e-1
+   memory::Int = 10
+   # damping::Float64 = 1.0
+   # alphaguess::1.0
+end
+
+function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
+                  verbose = 1,
+                  g=(x, P)->x, tol=1e-4, maxnit=100, alphaguess = 70.0,
+                  P = alphaguess * I, precon_prep! = (P, x) -> P,
+                  method = "Static" )
+
+   @unpack hmax, memory = solver
+
+   if verbose >= 4
+       dt = Dates.format(now(), "d-m-yyyy_HH:MM")
+       file = open("log_$(dt).txt", "w")
+   end
+
+   x = copy(x0)
+   P = precon_prep!(P, x)
+
+   xout = []
+
+   numdE, numE = 0, 0
+
+   # initialise variables
+   x = g(x, P)
+   P = precon_prep!(P, x)
+   Fn, Rn, ndE = f(x, P, 0)
+   numdE += ndE
+
+   push!(xout, x)
+   push!(log, numE, numdE, Rn)
+
+   if verbose >= 2
+      dt = Dates.format(now(), "HH:MM")
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+   end
+   if verbose >= 4
+      dt = Dates.format(now(), "HH:MM")
+      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+      write(file, strlog)
+      flush(file)
+   end
+   if Rn <= tol
+      if verbose >= 1
+         println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations.")
+      end
+      if verbose >= 4
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+         write(file, strlog)
+         close(file)
+      end
+      return xout, log
+   end
+
+   # initialise algorithm specific parameters
+   P0 = P
+   s = Vector{Float64}[]
+   y = Vector{Float64}[]
+   rho = Float64[]
+
+   # initialise
+   x0 = x
+   F0 = Fn
+   rho0 = 1.0
+
+   for nit = 1:maxnit
+
+      if nit > 1     # this replaced  def update(self, r, f, r0, f0)
+         s0 = x - x0
+         push!(s, s0)
+         y0 = F0 - Fn
+         push!(y, y0)
+         rho0 = 1.0 / dot(y0, s0)
+         push!(rho, rho0)
+         if length(s) > memory
+            s = s[2:end]
+            y = y[2:end]
+            rho = rho[2:end]
+         end
+      end
+
+      a = zeros(length(s))
+      # the LBFGS two loop
+      q = Fn
+      for ii = length(s):-1:1  # (nit-1):-1:(nit-memory)
+         # a[i] = rho[i] * np.dot(s[i], q)
+         # q -= a[i] * y[i]
+         a[ii] = rho[ii] * dot(s[ii], q)
+         q -= a[ii] * y[ii]
+      end
+      z = P0 \ q
+      for ii = 1:length(s)   # (nit-memory):(nit-1)
+         # b = rho[i] * np.dot(y[i], z)
+         # z += s[i] * (a[i] - b)
+         b = rho[ii] * dot(y[ii], z)
+         z += s[ii] * (a[ii] - b)
+         # h += s[i] * (a[i] - b)
+      end
+
+      # p = reshape(h, (length(z)÷3, 3)) # TODO: do I need this?
+      p = z
+
+      # STANDARD BFGS STEP WOULD BE
+      #  r ← r + p
+      # # now rescale it to make sure the step is no longer than hmax
+      # determine step length according to hmax
+      longest_step = norm(p, Inf)
+      if longest_step >= hmax
+         p *= hmax / longest_step
+      end
+
+      # store the previous configuration (for the BFGS upate)
+      x0, F0, rho0 = x, Fn, rho
+
+      # step + redistribute
+      x = g(x + p, P)
+
+      # recompute new preconditioner and force
+      P = precon_prep!(P, x)
+      Fn, Rn, ndE = f(x, P, nit)
+      numdE += ndE
+
+      push!(xout, x)
+      push!(log, numE, numdE, Rn) # residual, store history
+
+      if verbose >= 2
+         dt = Dates.format(now(), "HH:MM")
+         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+      end
+      if verbose >= 4
+         dt = Dates.format(now(), "HH:MM")
+         strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+         write(file, strlog)
+         flush(file)
+      end
+      if Rn <= tol
+         if verbose >= 1
+            println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
+         end
+         if verbose >= 4
+            strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+            write(file, strlog)
+            close(file)
+         end
+         return xout, log
+      end
+   end
+
+   if verbose >= 1
+      println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
+   end
+   if verbose >= 4
+      strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(method)", "$(maxnit)")
+      write(file, strlog)
+   end
+
+   if verbose >= 4
+      close(file)
+   end
+   return xout, log
+end

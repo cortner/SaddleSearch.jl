@@ -1,5 +1,5 @@
 
-function run!{T}(method::Union{ODEString, StaticString}, E, dE, x0::Vector{T})
+function run!{T}(method::Union{ODEString, StaticString, LBFGSString}, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack tol, maxnit, precon_scheme, path_traverse, verbose = method
    @unpack direction = path_traverse
@@ -14,7 +14,7 @@ function run!{T}(method::Union{ODEString, StaticString}, E, dE, x0::Vector{T})
       @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   xout, Fout, tout, log = odesolve(solver(method),
+   xout, log = odesolve(solver(method),
                (x_, P_, nit) -> forces(precon_scheme, x, x_, dE,
                                        direction(length(x), nit)),
                 ref(x), log;
@@ -24,7 +24,7 @@ function run!{T}(method::Union{ODEString, StaticString}, E, dE, x0::Vector{T})
                 verbose = verbose )
 
    x_return = verbose < 4 ? set_ref!(x, xout[end]) : [set_ref!(x, xout_n) for xout_n in xout]
-   return x_return, Fout, tout, log
+   return x_return, log
 end
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
@@ -57,5 +57,5 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
 
    res = maxres(precon_scheme, P, dE0⟂)
 
-   return F, res, length(param), dxds
+   return F, res, length(param)
 end
