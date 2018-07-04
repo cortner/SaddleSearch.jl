@@ -346,7 +346,7 @@ end
 #    damping::Float64
 #    alphaguess::
 # end
-
+#
 # function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
 #                   verbose = 1,
 #                   g=(x, P)->x, tol=1e-4, maxnit=100,
@@ -410,25 +410,34 @@ end
 #
 #
 #    for nit = 1:maxnit
-#
+#       a = zeros(nit)
 #       # the LBFGS two loop
 #       q = -Fn
 #       for ii = (nit-1):-1:(nit-memory)
 #          a[i] = rho[i] * dot(s[i], q)
 #          q -= a[i] * y[i]
 #       end
-#       z = H0 *q
+#       z = H0 * q
 #       for ii = (nit-memory):(nit-1)
 #          b = rho[i] * dot(y[i], z)
 #          z += s[i] * (a[i] - b)
+#          # h += s[i] * (a[i] - b)
 #       end
 #
-#       # determine step length
-#       # steplengths = (dr**2).sum(1)**0.5
-#       # longest_step = np.max(steplengths)
-#       if longest_step >= maxstep
-#          dr *= maxstep / longest_step
+#       # p = reshape(z, (length(z)÷3, 3)) # TODO: do I need this?
+#       p = reshape(h, (length(z)÷3, 3)) # TODO: do I need this?
+#
+#       #####
+#
+#       g = -Fn
+#
+#       # determine step length according to hmax
+#       longest_step = maximum(p, 1)
+#       if longest_step >= hmax
+#          p *= hmax / longest_step
 #       end
+#
+#       # p *= damping
 #
 #       # redistribute
 #       xnew = g(x + damping * h * z, P)
