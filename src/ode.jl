@@ -421,7 +421,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
 
       a = zeros(length(s))
       # the LBFGS two loop
-      q = Fn
+      q = - Fn
       for ii = length(s):-1:1  # (nit-1):-1:(nit-memory)
          # a[i] = rho[i] * np.dot(s[i], q)
          # q -= a[i] * y[i]
@@ -434,7 +434,6 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
          # z += s[i] * (a[i] - b)
          b = rho[ii] * dot(y[ii], z)
          z += s[ii] * (a[ii] - b)
-         # h += s[i] * (a[i] - b)
       end
 
       # p = reshape(h, (length(z)÷3, 3)) # TODO: do I need this?
@@ -453,7 +452,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
       x0, F0, rho0 = x, Fn, rho
 
       # step + redistribute
-      x = g(x + p, P)
+      x = g(x - p, P)
 
       # recompute new preconditioner and force
       P = precon_prep!(P, x)
