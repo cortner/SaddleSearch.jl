@@ -137,7 +137,7 @@ precon = x->[copy(precond(V, xn)) for xn in x]
 # PATHx, PATHlog = run!(path, E, dE, x)
 # @test PATHlog[:maxres][end] <= path.tol
 
-path = SaddleSearch.LBFGSNEB(hmax = 0.03, k=0.01, interp=3, tol = tol, maxnit = 60,
+path = SaddleSearch.LBFGSNEB(hmax = 0.03, k=0.01, interp=3, tol = tol, maxnit = 70,
                         precon_scheme = preconI, path_traverse = serial(),
                         verbose = 2)
 PATHx, PATHlog = run!(path, E, dE, x)

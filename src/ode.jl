@@ -335,8 +335,8 @@ end
 * `h` : step length
 """
 @with_kw type LBFGS
-   hmax::Float64 = 1e-1
-   memory::Int = 10
+   hmax::Float64 = 0.04
+   memory::Int = 100
    # damping::Float64 = 1.0
    # alphaguess::1.0
 end
@@ -437,7 +437,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
       end
 
       # p = reshape(h, (length(z)÷3, 3)) # TODO: do I need this?
-      p = z
+      p = - z
 
       # STANDARD BFGS STEP WOULD BE
       #  r ← r + p
@@ -452,7 +452,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
       x0, F0, rho0 = x, Fn, rho
 
       # step + redistribute
-      x = g(x - p, P)
+      x = g(x + p, P)
 
       # recompute new preconditioner and force
       P = precon_prep!(P, x)

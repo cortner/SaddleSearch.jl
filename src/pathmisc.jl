@@ -120,8 +120,8 @@ point_norm(precon_scheme::globalPrecon, P, dxds) = [norm(dxds[i]) for i=1:length
 proj_grad(precon_scheme::localPrecon, P, ∇E, dxds) = -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
 proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds) = ref(-[∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)])
 
-forcing(precon_scheme::localPrecon, P, ∇E⟂) = return ref(∇E⟂)
-forcing(precon_scheme::globalPrecon, P, ∇E⟂) = ref(P) \ ∇E⟂
+forcing(precon_scheme::localPrecon, P, neg∇E⟂) = return ref(neg∇E⟂)
+forcing(precon_scheme::globalPrecon, P, neg∇E⟂) = ref(P) \ neg∇E⟂
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
     return - [ [zeros(dxds[1])];
