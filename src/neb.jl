@@ -1,7 +1,8 @@
 
 function run!{T}(method::Union{ODENEB, StaticNEB, LBFGSNEB}, E, dE, x0::Vector{T})
    # read all the parameters
-   @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, verbose = method
+   @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, fixed_ends,
+            verbose = method
    @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
@@ -16,7 +17,7 @@ function run!{T}(method::Union{ODENEB, StaticNEB, LBFGSNEB}, E, dE, x0::Vector{T
 
    xout, log = odesolve(solver(method),
                (x_, P_, nit) -> forces(precon_scheme, x, x_, dE,
-                                       direction(length(x), nit), k, interp),
+                                       direction(length(x), nit), k, interp, fixed_ends),
                ref(x), log;
                tol = tol, maxnit=maxnit,
                method = "$(typeof(method))",
@@ -28,7 +29,7 @@ end
 
 
 function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
-                  direction, k::Float64, interp::Int)
+                  direction, k::Float64, interp::Int, fixed_ends::Bool)
    @unpack precon, precon_prep! = precon_scheme
    x = set_ref!(x, xref)
    dxds = deepcopy(x)
@@ -60,14 +61,21 @@ function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
 
    Fk = elastic_force(precon_scheme, P, k*N*N, dxds, d²xds²)
 
-   dE0_temp = [dE(x[i]) for i in direction]
+   dE0_temp = []
+   if !fixed_ends
+      dE0_temp = [dE(x[i]) for i in direction]
+      cost = N
+   else
+      dE0_temp = [[zeros(x[1])]; [dE(x[i]) for i in direction[2:end-1]];
+                  [zeros(x[1])]]
+      cost = N - 2
+   end
    dE0 = [dE0_temp[i] for i in direction]
 
    dE0⟂ = proj_grad(precon_scheme, P, dE0, dxds)
-   dE0⟂[1] = zeros(dE0⟂[1]); dE0⟂[end] = zeros(dE0⟂[1])
    F = forcing(precon_scheme, precon, dE0⟂-Fk)
 
    res = maxres(precon_scheme, P, dE0⟂)
 
-   return F, res, N
+   return F, res, cost
 end

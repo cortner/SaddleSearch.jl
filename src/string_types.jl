@@ -15,6 +15,7 @@ neb_string_shared_docs =  """
    maxnit::Int = 1000
    precon_scheme = localPrecon()
    path_traverse = serial()
+   fixed_ends = false
    verbose::Int = 2
 end
 
