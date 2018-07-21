@@ -233,7 +233,6 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
          error("SADDLESEARCH: invalid `extrapolate` parameter")
       end
       if isnan(h_ls) || (h_ls < hmin)
-         @show(h_ls)
          h_ls = Inf
       end
       # or from the error estimate
@@ -345,7 +344,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
                   verbose = 1,
                   g=(x, P)->x, tol=1e-4, maxnit=100, alphaguess = 70.0,
                   P = alphaguess * I, precon_prep! = (P, x) -> P,
-                  method = "Static" )
+                  method = "LBFGS" )
 
    @unpack hmax, memory = solver
 

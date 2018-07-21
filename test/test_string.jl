@@ -2,7 +2,7 @@ tol = 2e-2
 tolP = 1e-3
 maxnit = 2000
 
-# @testset "String with ODE" begin
+@testset "String with ODE" begin
 
 preconI = SaddleSearch.localPrecon(precon = [I], precon_prep! = (P, x) -> P)
 
@@ -108,7 +108,7 @@ path = StaticNEB(0.001, 0.01, 3, tol, maxnit, preconI, serial(), false, 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENEB(reltol=1e-2, k=0.00001, interp=1, tol = tol, maxnit = maxnit,
+path = ODENEB(reltol=1e-2, k=0.00001, interp=3, tol = tol, maxnit = maxnit,
                         precon_scheme = preconI, path_traverse = serial(),
                         verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
@@ -131,16 +131,16 @@ path = StaticNEB(1.0, 0.001, 3, tolP, maxnit, preconP, serial(), false, 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENEB(reltol=1e-2, k=0.001, interp=1, tol = tolP, maxnit = maxnit,
+path = ODENEB(reltol=1e-2, k=0.001, interp=3, tol = tolP, maxnit = maxnit,
                         precon_scheme = preconP, path_traverse = serial(),
                         verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-# path = SaddleSearch.LBFGSNEB(hmax = 0.03, k=0.01, interp=3, tol = tol, maxnit = 70,
-#                         precon_scheme = preconI, path_traverse = serial(),
-#                         verbose = 2)
-# PATHx, PATHlog = run!(path, E, dE, x)
-# @test PATHlog[:maxres][end] <= path.tol
+path = SaddleSearch.LBFGSNEB(hmax = 0.03, k=0.00001, interp=3, tol = tol, maxnit = 300,
+                        precon_scheme = preconI, path_traverse = serial(),
+                        verbose = 2)
+PATHx, PATHlog = run!(path, E, dE, x)
+@test PATHlog[:maxres][end] <= path.tol
 
-# end
+end
