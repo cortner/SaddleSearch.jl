@@ -337,16 +337,16 @@ end
    hmax::Float64 = 0.04
    memory::Int = 100
    # damping::Float64 = 1.0
-   # alphaguess::1.0
+   alphaguess::Float64 = 70.0
 end
 
 function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
                   verbose = 1,
-                  g=(x, P)->x, tol=1e-4, maxnit=100, alphaguess = 70.0,
-                  P = alphaguess * I, precon_prep! = (P, x) -> P,
+                  g=(x, P)->x, tol=1e-4, maxnit=100,
+                  P = I, precon_prep! = (P, x) -> P,
                   method = "LBFGS" )
 
-   @unpack hmax, memory = solver
+   @unpack hmax, memory, alphaguess = solver
 
    if verbose >= 4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
@@ -363,7 +363,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
    # initialise variables
    x = g(x, P)
    P = precon_prep!(P, x)
-   Fn, Rn, ndE = f(x, P, 0)
+   Fn, Rn, ndE = f(x, 0)
    numdE += ndE
 
    push!(xout, x)
@@ -392,7 +392,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
    end
 
    # initialise algorithm specific parameters
-   P0 = P
+   P0 = alphaguess * I
    s = Vector{Float64}[]
    y = Vector{Float64}[]
    rho = Float64[]
@@ -427,7 +427,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
          a[ii] = rho[ii] * dot(s[ii], q)
          q -= a[ii] * y[ii]
       end
-      z = P0 \ q
+      z = P0 \ q #TODO: fix this
       for ii = 1:length(s)   # (nit-memory):(nit-1)
          # b = rho[i] * np.dot(y[i], z)
          # z += s[i] * (a[i] - b)

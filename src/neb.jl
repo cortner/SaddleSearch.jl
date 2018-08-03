@@ -16,10 +16,11 @@ function run!{T}(method::Union{ODENEB, StaticNEB, LBFGSNEB}, E, dE, x0::Vector{T
    end
 
    xout, log = odesolve(solver(method),
-               (x_, P_, nit) -> forces(precon_scheme, x, x_, dE,
+               (x_, P_, nit) -> forces(P_, x, x_, dE, precon_scheme,
                                        direction(length(x), nit), k, interp, fixed_ends),
                ref(x), log;
                tol = tol, maxnit=maxnit,
+               P = precon, precon_prep! = precon_prep!,
                method = "$(typeof(method))",
                verbose = verbose)
 
@@ -28,12 +29,12 @@ function run!{T}(method::Union{ODENEB, StaticNEB, LBFGSNEB}, E, dE, x0::Vector{T
 end
 
 
-function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
+function forces{T}(precon, x::Vector{T}, xref::Vector{Float64}, dE, precon_scheme,
                   direction, k::Float64, interp::Int, fixed_ends::Bool)
-   @unpack precon, precon_prep! = precon_scheme
+   # @unpack precon, precon_prep! = precon_scheme
    x = set_ref!(x, xref)
    dxds = deepcopy(x)
-   precon = precon_prep!(precon, x)
+   # precon = precon_prep!(precon, x)
    Np = size(precon, 1); N = length(x)
    P(i) = precon[mod(i-1,Np)+1, 1]
    P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]

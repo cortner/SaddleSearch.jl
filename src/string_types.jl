@@ -67,6 +67,7 @@ end
 @with_kw type LBFGSString
    hmax::Float64 = 1e-1
    memory::Int = 10
+   alphaguess::Float64 = 70.0
    # ------ shared parameters ------
    @neb_string_params
 end
@@ -115,6 +116,7 @@ end
 @with_kw type LBFGSNEB
    hmax::Float64 = 1e-1
    memory::Int = 10
+   alphaguess::Float64 = 70.0
    @neb_params
    # ------ shared parameters ------
    @neb_string_params
@@ -142,7 +144,7 @@ end
 
 solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold)
-solver(method::LBFGSString) = LBFGS(method.hmax, method.memory)
+solver(method::LBFGSString) = LBFGS(method.hmax, method.memory, method.alphaguess)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold)
-solver(method::LBFGSNEB) = LBFGS(method.hmax, method.memory)
+solver(method::LBFGSNEB) = LBFGS(method.hmax, method.memory, method.alphaguess)

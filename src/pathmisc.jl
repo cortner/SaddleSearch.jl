@@ -49,13 +49,13 @@ function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=l
 end
 
 
-function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon_scheme)
-   @unpack precon, precon_prep!, = precon_scheme
+function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon, precon_scheme)
+   # @unpack precon, precon_prep!, = precon_scheme
 
    x = set_ref!(x, xref)
    t = deepcopy(x)
 
-   precon = precon_prep!(precon, x)
+   # precon = precon_prep!(precon, x)
    Np = length(precon);
    function P(i) return precon[mod(i-1,Np)+1, 1]; end
    function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end

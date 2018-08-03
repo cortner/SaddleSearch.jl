@@ -1,7 +1,8 @@
 
-function run!{T}(method::Union{ODEString, StaticString, LBFGSString}, E, dE, x0::Vector{T})
+function run!{T}(method::Union{ODEString, StaticString}, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack tol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
+   @unpack precon, precon_prep! = precon_scheme
    @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
@@ -15,11 +16,12 @@ function run!{T}(method::Union{ODEString, StaticString, LBFGSString}, E, dE, x0:
    end
 
    xout, log = odesolve(solver(method),
-               (x_, P_, nit) -> forces(precon_scheme, x, x_, dE,
+               (x_, P_, nit) -> forces(P_, x, x_, dE, precon_scheme,
                                        direction(length(x), nit), fixed_ends),
                 ref(x), log;
-                g = (x_, P_) -> redistribute(x_, x, precon_scheme),
+                g = (x_, P_) -> redistribute(x_, x, P_, precon_scheme),
                 tol = tol, maxnit=maxnit,
+                P = precon, precon_prep! = precon_prep!,
                 method = "$(typeof(method))",
                 verbose = verbose )
 
@@ -27,13 +29,43 @@ function run!{T}(method::Union{ODEString, StaticString, LBFGSString}, E, dE, x0:
    return x_return, log
 end
 
-function forces{T}(precon_scheme, x::Vector{T}, xref::Vector{Float64}, dE,
-                  direction, fixed_ends::Bool)
+function run!{T}(method::LBFGSString, E, dE, x0::Vector{T})
+   # read all the parameters
+   @unpack tol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
    @unpack precon, precon_prep! = precon_scheme
+   @unpack direction = path_traverse
+   # initialise variables
+   x = copy(x0)
+   nit = 0
+   numdE, numE = 0, 0
+   log = PathLog()
+   # and just start looping
+   if verbose >= 2
+      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+      @printf("SADDLESEARCH: ------|-----|-----------------\n")
+   end
+
+   xout, log = odesolve(solver(method),
+               (x_, nit) -> forces([I], x, x_, dE, localPrecon(),
+                                       direction(length(x), nit), fixed_ends),
+                ref(x), log;
+                g = (x_, P_) -> redistribute(x_, x, P_, precon_scheme),
+                tol = tol, maxnit=maxnit,
+                P = precon, precon_prep! = precon_prep!,
+                method = "$(typeof(method))",
+                verbose = verbose )
+
+   x_return = verbose < 4 ? set_ref!(x, xout[end]) : [set_ref!(x, xout_n) for xout_n in xout]
+   return x_return, log
+end
+
+function forces{T}(precon, x::Vector{T}, xref::Vector{Float64}, dE,
+                  precon_scheme, direction, fixed_ends::Bool)
+   # @unpack precon, precon_prep! = precon_scheme
 
    x = set_ref!(x, xref)
    dxds = deepcopy(x)
-   precon = precon_prep!(precon, x)
+   # precon = precon_prep!(precon, x)
    Np = size(precon, 1)
    P(i) = precon[mod(i-1,Np)+1, 1]
    P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
