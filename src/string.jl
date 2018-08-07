@@ -32,7 +32,7 @@ end
 function run!{T}(method::LBFGSString, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack tol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
-   @unpack precon, precon_prep! = precon_scheme
+   @unpack precon, precon_prep!, precon_solve = precon_scheme
    @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
@@ -52,6 +52,7 @@ function run!{T}(method::LBFGSString, E, dE, x0::Vector{T})
                 g = (x_, P_) -> redistribute(x_, x, P_, precon_scheme),
                 tol = tol, maxnit=maxnit,
                 P = precon, precon_prep! = precon_prep!,
+                precon_solve = precon_solve,
                 method = "$(typeof(method))",
                 verbose = verbose )
 

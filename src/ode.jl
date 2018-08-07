@@ -343,10 +343,11 @@ end
 function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
                   verbose = 1,
                   g=(x, P)->x, tol=1e-4, maxnit=100,
-                  P = I, precon_prep! = (P, x) -> P,
+                  P = solver.alphaguess * I, precon_prep! = (P, x) -> P,
+                  precon_solve = (q, P) -> P \ q,
                   method = "LBFGS" )
 
-   @unpack hmax, memory, alphaguess = solver
+   @unpack hmax, memory = solver
 
    if verbose >= 4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
@@ -392,7 +393,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
    end
 
    # initialise algorithm specific parameters
-   P0 = alphaguess * I
+   P0 = P #alphaguess * I
    s = Vector{Float64}[]
    y = Vector{Float64}[]
    rho = Float64[]
@@ -427,7 +428,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
          a[ii] = rho[ii] * dot(s[ii], q)
          q -= a[ii] * y[ii]
       end
-      z = P0 \ q #TODO: fix this
+      z = precon_solve(q, P)#P0 \ q #TODO: fix this
       for ii = 1:length(s)   # (nit-memory):(nit-1)
          # b = rho[i] * np.dot(y[i], z)
          # z += s[i] * (a[i] - b)

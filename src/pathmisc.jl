@@ -100,12 +100,14 @@ along the path is preconditioned independently.
 @with_kw type localPrecon
    precon = I
    precon_prep! = (P, x) -> P
+   precon_solve = (x, P) -> P \ x
    distance = (P, x1, x2) -> norm(P, x2 - x1)
 end
 
 @with_kw type globalPrecon
    precon = I
    precon_prep! = (P, x) -> P
+   precon_solve = (x, P) -> P \ x
    distance = (P, x1, x2) -> norm(x2 - x1)
 end
 
