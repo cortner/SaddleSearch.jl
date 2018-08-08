@@ -456,7 +456,7 @@ function odesolve(solver::LBFGS, f, x0::Vector{Float64}, log::IterationLog;
 
       # recompute new preconditioner and force
       P = precon_prep!(P, x)
-      Fn, Rn, ndE = f(x, P, nit)
+      Fn, Rn, ndE = f(x, nit)
       numdE += ndE
 
       push!(xout, x)

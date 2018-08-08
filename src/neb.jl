@@ -3,6 +3,7 @@ function run!{T}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Vector{T})
    # read all the parameters
    @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, fixed_ends,
             verbose = method
+   @unpack precon, precon_prep! = precon_scheme
    @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
