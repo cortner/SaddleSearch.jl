@@ -24,11 +24,11 @@ path = ODEString(reltol=0.1, tol = tol, maxnit = maxnit,
 PATHx, PATHlog = SaddleSearch.run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = StaticNEB(0.0007, 0.0002, 1, tol, maxnit, preconI, serial(), false, 1)
+path = StaticNEB(0.0007, 0.0002, 3, tol, maxnit, preconI, serial(), false, 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENEB(reltol=1e-2, k=0.0002, interp=1, tol = tol, maxnit = maxnit,
+path = ODENEB(reltol=1e-2, k=0.0002, interp=3, tol = tol, maxnit = maxnit,
                         precon_scheme = preconI, path_traverse = serial(),
                         verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
@@ -57,7 +57,7 @@ path = StaticNEB(0.07, 0.1, 3, tol, maxnit, preconI, serial(), false, 1)
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-path = ODENEB(reltol=1e-1, k=0.1, interp=1, tol = tol, maxnit = maxnit,
+path = ODENEB(reltol=1e-1, k=0.1, interp=3, tol = tol, maxnit = maxnit,
                         precon_scheme = preconI, path_traverse = serial(),
                         verbose = 1)
 PATHx, PATHlog = run!(path, E, dE, x)
