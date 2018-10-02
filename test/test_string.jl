@@ -138,12 +138,4 @@ path = ODENEB(reltol=1e-2, k=0.001, interp=3, tol = tolP, maxnit = maxnit,
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-preconLBFGS = SaddleSearch.localPrecon(precon = 70.0*I)
-path = SaddleSearch.LBFGSNEB(hmax = 0.03, k=0.00001, interp=3, tol = tol,
-                        maxnit = 300, precon_scheme = preconLBFGS,
-                        path_traverse = serial(),
-                        verbose = 2)
-PATHx, PATHlog = run!(path, E, dE, x)
-@test PATHlog[:maxres][end] <= path.tol
-
 end
