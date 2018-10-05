@@ -89,9 +89,8 @@ heading2("Vacancy migration potential")
 V = LJVacancy2D(R = 3.1)
 x = ic_path(V, :min, 9)
 E, dE = objective(V)
-x0 = deepcopy(x)
-P0 = [copy(precond(V, xn)) for xn in x]
-precon = xref->[copy(precond(V, xn)) for xn in SaddleSearch.set_ref!(x0, xref)]
+
+precon = x->[copy(precond(V, xn)) for xn in x]
 
 path = StaticString(0.001, tol, maxnit, preconI, serial(), false, 1)
 PATHx, PATHlog = run!(path, E, dE, x)
@@ -115,7 +114,7 @@ path = ODENEB(reltol=1e-2, k=0.00001, interp=3, tol = tol, maxnit = maxnit,
 PATHx, PATHlog = run!(path, E, dE, x)
 @test PATHlog[:maxres][end] <= path.tol
 
-preconP = SaddleSearch.localPrecon(precon = P0,
+preconP = SaddleSearch.localPrecon(precon = precon(x),
             precon_prep! = (P, x) -> precon(x))
 
 path = StaticString(1.55, tolP, maxnit, preconP, serial(), false, 1)

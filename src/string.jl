@@ -6,6 +6,7 @@ function run!{T}(method::Union{ODEString, StaticString}, E, dE, x0::Vector{T})
    @unpack direction = path_traverse
    # initialise variables
    x = copy(x0)
+   xref = deepcopy(x0)
    nit = 0
    numdE, numE = 0, 0
    log = PathLog()
@@ -16,12 +17,13 @@ function run!{T}(method::Union{ODEString, StaticString}, E, dE, x0::Vector{T})
    end
 
    xout, log = odesolve(solver(method),
-               (x_, P_, nit) -> forces(P_, x, x_, dE, precon_scheme,
+               (X, P, nit) -> forces(P, x, X, dE, precon_scheme,
                                        direction(length(x), nit), fixed_ends),
                 ref(x), log;
-                g = (x_, P_) -> redistribute(x_, x, P_, precon_scheme),
+                g = (X, P) -> redistribute(X, x, P, precon_scheme),
                 tol = tol, maxnit=maxnit,
-                P = precon, precon_prep! = precon_prep!,
+                P = precon,
+                precon_prep! = (P, X) -> precon_prep!(P, set_ref!(xref, X)),
                 method = "$(typeof(method))",
                 verbose = verbose )
 
@@ -29,13 +31,12 @@ function run!{T}(method::Union{ODEString, StaticString}, E, dE, x0::Vector{T})
    return x_return, log
 end
 
-function forces{T}(precon, x::Vector{T}, xref::Vector{Float64}, dE,
+function forces{T}(precon, x::Vector{T}, X::Vector{Float64}, dE,
                   precon_scheme, direction, fixed_ends::Bool)
-   # @unpack precon, precon_prep! = precon_scheme
 
-   x = set_ref!(x, xref)
+   x = set_ref!(x, X)
    dxds = deepcopy(x)
-   # precon = precon_prep!(precon, x)
+
    Np = size(precon, 1)
    P(i) = precon[mod(i-1,Np)+1, 1]
    P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]

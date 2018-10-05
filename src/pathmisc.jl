@@ -49,13 +49,11 @@ function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=l
 end
 
 
-function redistribute{T}(xref::Vector{Float64}, x::Vector{T}, precon, precon_scheme)
-   # @unpack precon, precon_prep!, = precon_scheme
+function redistribute{T}(X::Vector{Float64}, x::Vector{T}, precon, precon_scheme)
 
-   x = set_ref!(x, xref)
+   x = set_ref!(x, X)
    t = deepcopy(x)
 
-   # precon = precon_prep!(precon, x)
    Np = length(precon);
    function P(i) return precon[mod(i-1,Np)+1, 1]; end
    function P(i, j) return precon[mod(i-1,Np)+1, mod(j-1,Np)+1]; end
@@ -100,14 +98,12 @@ along the path is preconditioned independently.
 @with_kw type localPrecon
    precon = I
    precon_prep! = (P, x) -> P
-   precon_solve = (x, P) -> P \ x
    distance = (P, x1, x2) -> norm(P, x2 - x1)
 end
 
 @with_kw type globalPrecon
    precon = I
    precon_prep! = (P, x) -> P
-   precon_solve = (x, P) -> P \ x
    distance = (P, x1, x2) -> norm(x2 - x1)
 end
 
