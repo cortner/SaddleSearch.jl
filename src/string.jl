@@ -31,11 +31,10 @@ end
 
 function forces{T}(precon, x::Vector{T}, xref::Vector{Float64}, dE,
                   precon_scheme, direction, fixed_ends::Bool)
-   # @unpack precon, precon_prep! = precon_scheme
 
    x = set_ref!(x, xref)
    dxds = deepcopy(x)
-   # precon = precon_prep!(precon, x)
+
    Np = size(precon, 1)
    P(i) = precon[mod(i-1,Np)+1, 1]
    P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
