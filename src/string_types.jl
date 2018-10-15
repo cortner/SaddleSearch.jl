@@ -1,20 +1,44 @@
+
 export StaticString, ODEString, StaticNEB, ODENEB
+
+neb_string_shared_docs =  """
+### Shared Parameters
+* `tol` : residual tolerance
+* `maxnit` : maximum number of iterations
+* `precon_scheme` : preconditioner scheme (localPrecon(), globalPrecon())
+* `path_traverse` : how to travserse path to compute energy (serial(), palindrome())
+* `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration, 3:file log)
+"""
 
 @def neb_string_params begin
    tol::Float64 = 1e-5
    maxnit::Int = 1000
    precon_scheme = localPrecon()
    path_traverse = serial()
+   fixed_ends = false
    verbose::Int = 2
 end
 
+neb_only_docs = """
+### NEB only Parameters:
+* `k` : spring constant
+* `interp` : degree of interpolant (1: central differences, >1: splines of degree interp)
+"""
 @def neb_params begin
    k::Float64 = 0.1
    interp = 1
 end
 
 
+"""
+`StaticString`: the most basic string variant, integrating potential gradient
+flow with a fixed step-size.
 
+### Parameters:
+* `alpha` : Euler method integration step length
+
+$(neb_string_shared_docs)
+"""
 @with_kw type StaticString
    alpha::Float64
    # ------ shared parameters ------
@@ -22,6 +46,16 @@ end
 end
 
 
+"""
+`ODEString`: string method with adaptive ODE step size selection.
+
+### Parameters:
+* `reltol` : ode solver relative tolerance
+* `threshold` : threshold for error estimate
+* `a0` : initial step, if a0 is not passed then use a default
+
+$(neb_string_shared_docs)
+"""
 @with_kw type ODEString
    reltol::Float64  # please think about reducing it to one tol parameter `odetol`
    threshold::Float64 = 1.0   # threshold for error estimate; we want to get rid of this
@@ -30,7 +64,17 @@ end
    @neb_string_params
 end
 
+"""
+`StaticNEB`: the most basic NEB variant, integrating potential gradient
+flow with a fixed step-size.
 
+### Parameters:
+* `alpha` : Euler method integration step length
+
+$(neb_only_docs)
+
+$(neb_string_shared_docs)
+"""
 @with_kw type StaticNEB
    alpha::Float64
    @neb_params
@@ -39,6 +83,18 @@ end
 end
 
 
+"""
+`ODEString`: NEB method with adaptive ODE step size selection.
+
+### Parameters:
+* `reltol` : ode solver relative tolerance
+* `threshold` : threshold for error estimate
+* `a0` : initial step, if a0 is not passed then use a default
+
+$(neb_only_docs)
+
+$(neb_string_shared_docs)
+"""
 @with_kw type ODENEB
    reltol::Float64  # please think about reducing it to one tol parameter `odetol`
    threshold::Float64 = 1.0   # threshold for error estimate; we want to get rid of this
@@ -72,10 +128,3 @@ solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold)
-
-
-# TODO:
-#  - write 3 test problems: muller, double-well and 2D vacancy
-#  - get those 4 methods to run in your current implementation with and without precon
-#  - rewrite and cleanup using above types
-#  - delete all code that is not needed anymore

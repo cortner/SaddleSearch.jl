@@ -1,15 +1,9 @@
 
 """
-`StaticString`: a preconditioning variant of the string method.
+`Euler`: simple Euler method ODE solver with fixed step length.
 
 ### Parameters:
-* 'precon_scheme' : preconditioning method
-* `alpha` : step length
-* `refine_points` : number of points allowed in refinement region, negative for no refinement of path
-* `ls_cond` : true/false whether to perform linesearch during the minimisation step
-* `tol_res` : residual tolerance
-* `maxnit` : maximum number of iterations
-* `verbose` : how much information to print (0: none, 1:end of iteration, 2:each iteration)
+* `h` : step length
 """
 @with_kw type Euler
    h::Float64 = 1e-1
@@ -31,7 +25,7 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
    x = copy(x0)
    P = precon_prep!(P, x)
 
-   xout = []
+   xout = [];
 
    numdE, numE = 0, 0
 
@@ -118,20 +112,29 @@ function odesolve(solver::Euler, f, x0::Vector{Float64}, log::IterationLog;
 end
 
 
+"""
+`ODE12r`: adaptive ODE solver, uses 1st and 2nd order approximations to estimate local error and find a new step length
 
+### Parameters:
+* `rtol` : relative tolerance
+* `threshold` : threshold for error estimate
+* `C1` : sufficient contraction parameter
+* `C2` : residual growth control (Inf means there is no control)
+* `hmin` : minimal allowed step size
+* `maxF` : terminate if |Fn| > maxF * |F0|
+* `extrapolate` : extrapolation style (3 seems the most robust)
+"""
 
 
 @with_kw type ODE12r
-   rtol::Float64 = 1e-1    # ode solver parameter
-   threshold::Float64 = 1.0   # threshold for error estimate; we want to get rid of this
-   C1::Float64 = 1e-2      # sufficientcontraction parameter
-   C2::Float64 = 2.0       # residual growth control (Inf means there is no control)
-   hmin::Float64 = 1e-10   # minimal allowed step size
-   maxF::Float64 = 1e3     # terminate if |Fn| > maxF * |F0|
-   extrapolate::Int = 3    # extrapolation style (3 seems the most robust)
+   rtol::Float64 = 1e-1
+   threshold::Float64 = 1.0
+   C1::Float64 = 1e-2
+   C2::Float64 = 2.0
+   hmin::Float64 = 1e-10
+   maxF::Float64 = 1e3
+   extrapolate::Int = 3
 end
-
-
 
 function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
                   verbose = 1,
@@ -149,7 +152,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
    x = copy(x0)
    P = precon_prep!(P, x)
 
-   xout = []
+   xout = [];
 
    numdE, numE = 0, 0
 
@@ -236,7 +239,7 @@ function odesolve(solver::ODE12r, f, x0::Vector{Float64}, log::IterationLog;
       h_err = h * 0.5 * sqrt(rtol/err)
 
       if accept
-         x, Fn, Rn, P = xnew, Fnew, Rnew, Pnew
+         x, Fn, Rn, P  = xnew, Fnew, Rnew, Pnew
 
          push!(xout, x)
          push!(log, numE, numdE, Rn)

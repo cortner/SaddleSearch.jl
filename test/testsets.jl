@@ -67,12 +67,15 @@ function ic_dimer(V::MullerPotential, case=:near)
    error("unknown initial condition")
 end
 
-function ic_path(V::MullerPotential, case=:near)
+function ic_path(V::MullerPotential, case=:near, Nimgs=7)
    if case == :near
-      return [-0.5; 1.5],  [0.7; .0]
+      x0 = [-0.5; 1.5]; x1 = [0.7; .0]
    elseif case == :far
-      return [-1.0; 0.5], [0.7; .5]
+      x0 = [-1.0; 0.5]; x1 = [0.7; .5]
+   else
+      error("unknown initial condition")
    end
+   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
 end
 
 
@@ -103,17 +106,18 @@ function ic_dimer(V::DoubleWell, case=:near)
    error("unknown initial condition")
 end
 
-function ic_path(V::DoubleWell, case=:nothing)
+function ic_path(V::DoubleWell, case=:nothing, Nimgs=7)
    d = size(V.A,1)-1
-
    if case == :near
       x0 = [1.0; 0.2/sqrt(d) * ones(d)]
-      return x0, - x0
+      x1 = - x0
    elseif case ==:far
       x0 = [0.8; 0.4/sqrt(d) * ones(d)]
-      return x0, - x0
+      x1 = -x0
+   else
+      error("unknown initial condition")
    end
-   error("unknown initial condition")
+   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
 end
 
 
@@ -166,11 +170,12 @@ function ic_dimer(V::LJcluster, case=:near)
 end
 
 
-function ic_path(V::LJcluster)
+function ic_path(V::LJcluster, Nimgs=7)
    R = lj_refconfig()
    r1 = [R[5]; R[4]; R[3]; R[2]; R[7]; R[6]; R[1]]
    r2 = [R[5]; R[3]; R[1]; R[2]; R[7]; R[6]; R[4]]
-   return V.ρ_min * r1, V.ρ_min * r2
+   x0 = V.ρ_min * r1; x1 = V.ρ_min * r2
+   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
 end
 
 precond(V::LJcluster, r) = LJaux.exp_precond(reshape(r, 2, length(r) ÷ 2))
@@ -307,7 +312,7 @@ function ic_dimer(V::LJVacancy2D, case=:near)
    return x0, v0
 end
 
-function ic_path(V::LJVacancy2D, case=:near)
+function ic_path(V::LJVacancy2D, case=:near, Nimgs=7)
    X0 = copy(V.Xref); X1 = copy(V.Xref)
    if case == :near
       X0[:,1] *= .1; X1[:,1] *= .9
@@ -318,7 +323,8 @@ function ic_path(V::LJVacancy2D, case=:near)
    else
       error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
    end
-   return X0[:, V.Ifree][:], X1[:, V.Ifree][:]
+   x0 = X0[:, V.Ifree][:]; x1 = X1[:, V.Ifree][:]
+   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
 end
 
 function pos2dofs(V::LJVacancy2D, P::AbstractMatrix)
@@ -387,7 +393,7 @@ function energy(V::MorseIsland, r)
    Rfree = reshape(r, (length(V.Ifree),3))
    Rfix = V.Xref[V.Ifix, :]
 
-   R = zeros(np,3)
+   R = zeros(typeof(r[1]), np, 3)
    R[V.Ifree, :] = Rfree
    R[V.Ifix,: ]= Rfix
 
@@ -434,7 +440,7 @@ function gradient(V::MorseIsland, r)
    Rfree = reshape(r, (length(V.Ifree),3))
    Rfix = V.Xref[V.Ifix, :]
 
-   R = zeros(np,3)
+   R = zeros(typeof(r[1]), np, 3)
    R[V.Ifree, :] = Rfree
    R[V.Ifix,: ]= Rfix
    # R = reshape(r, (np,3))
@@ -442,92 +448,92 @@ function gradient(V::MorseIsland, r)
    I = zeros(Int, np, 3)
    I[:] = 1:nd
 
-    for i=1:np, j=i+1:np
-        if (R[i,3]>zfix || R[j,3]>zfix)
-            Ii, Ij = I[i,:], I[j,:]
-            rel = [R[i,k]-R[j,k] for k=1:3]
-            [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
-            r2sqrt = norm(rel)
+   for i=1:np, j=i+1:np
+      if (R[i,3]>zfix || R[j,3]>zfix)
+         Ii, Ij = I[i,:], I[j,:]
+         rel = [R[i,k]-R[j,k] for k=1:3]
+         [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
+         r2sqrt = norm(rel)
 
-            # if r2sqrt < rc
-                e = exp( -a*(r2sqrt - r0) )
+         # if r2sqrt < rc
+         e = exp( -a*(r2sqrt - r0) )
 
-                # force
-                ff = (e*e - e) / r2sqrt
-                df = ff .* rel
-                if R[i,3] > zfix; F[Ii] += df; end
-                if R[j,3] > zfix; F[Ij] -= df; end
-                # [f[k][i] += df[k] for k=1:3]
-                # [f[k][j] -= df[k] for k=1:3]
-            # end
-        end
-    end
+         # force
+         ff = (e*e - e) / r2sqrt
+         df = ff .* rel
+         if R[i,3] > zfix; F[Ii] += df; end
+         if R[j,3] > zfix; F[Ij] -= df; end
+         # [f[k][i] += df[k] for k=1:3]
+         # [f[k][j] -= df[k] for k=1:3]
+         # end
+      end
+   end
 
    # F = cat(1, f...)
    F *= - 2 * a * aa
-   return F
+   return F[I[V.Ifree,:][:]]
 end
 
 function precond(V::MorseIsland, r)
-    aa = 0.7102
-    a = 1.6047
-    r0 = 2.8970
-    rc = 9.5
-    c = 2.74412
+   aa = 0.7102
+   a = 1.6047
+   r0 = 2.8970
+   rc = 9.5
+   c = 2.74412
 
-    np = 343; nd = np*3
+   np = 343; nd = np*3
 
-    e = exp(-a*(rc-r0))
-    ecut = e*e - 2*e
+   e = exp(-a*(rc-r0))
+   ecut = e*e - 2*e
 
-    box = [7*c 4*c*sqrt(3)]
+   box = [7*c 4*c*sqrt(3)]
 
-    # atoms below zfix are fixed
-    zfix = 6.7212
+   # atoms below zfix are fixed
+   zfix = 6.7212
 
-    Rfree = reshape(r, (length(V.Ifree),3))
-    Rfix = V.Xref[V.Ifix, :]
+   Rfree = reshape(r, (length(V.Ifree),3))
+   Rfix = V.Xref[V.Ifix, :]
 
-    R = zeros(np,3)
-    R[V.Ifree, :] = Rfree
-    R[V.Ifix,: ]= Rfix
+   R = zeros(typeof(r[1]), np, 3)
+   R[V.Ifree, :] = Rfree
+   R[V.Ifix,: ]= Rfix
 
-    # R = reshape(r, (np,3))
-    P = zeros(nd, nd)
-    I = zeros(Int, np, 3)
-    I[:] = 1:nd
-    for i=1:np, j=i+1:np
-        if (R[i,3]>zfix && R[j,3]>zfix)
-            Ii, Ij = I[i,:], I[j,:]
-            rel = [R[i,k]-R[j,k] for k=1:3]
-            [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
-            r2sqrt = norm(rel)
+   # R = reshape(r, (np,3))
+   P = zeros(nd, nd)
+   I = zeros(Int, np, 3)
+   I[:] = 1:nd
+   for i=1:np, j=i+1:np
+      if (R[i,3]>zfix && R[j,3]>zfix)
+         Ii, Ij = I[i,:], I[j,:]
+         rel = [R[i,k]-R[j,k] for k=1:3]
+         [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
+         r2sqrt = norm(rel)
 
-            # if r2sqrt < rc
-                e = exp( -a*(r2sqrt - r0) )
-                ddf = 4 * aa * a * a * e * e * eye(3)
+         # if r2sqrt < rc
+         e = exp( -a*(r2sqrt - r0) )
+         ddf = 4 * aa * a * a * e * e * eye(3)
 
-                P[Ii, Ij] -= ddf
-                P[Ij, Ii] -= ddf
-                P[Ii, Ii] += ddf
-                P[Ij, Ij] += ddf
+         P[Ii, Ij] -= ddf
+         P[Ij, Ii] -= ddf
+         P[Ii, Ii] += ddf
+         P[Ij, Ij] += ddf
 
-            # end
-        end
-    end
+         # end
+      end
+   end
 
-    Q = P[I[V.Ifree,:][:], I[V.Ifree,:][:]]
-   return sparse(Q) + 0.001 * speye(length(I[:,V.Ifree]))
+   Q = P[I[V.Ifree,:][:], I[V.Ifree,:][:]]
+   return sparse(Q) + 0.001 * speye(size(Q,1))
 end
 
-function ic_path(V::MorseIsland)
+function ic_path(V::MorseIsland, Nimgs=7)
    data = joinpath(Pkg.dir("SaddleSearch"), "data") * "/"
    X0 = readdlm(data*"morse_island_min01a.dat")
    x0 = X0[V.Ifree, :][:]
    X1 = readdlm(data*"morse_island_min02a.dat")
    x1 = X1[V.Ifree, :][:]
 
-   return X0, X1
+   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
 end
 
 end
