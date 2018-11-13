@@ -219,7 +219,6 @@ function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
       if extrapolate == 1       # F(xn + h Fn) ⋅ Fn ~ 0
          h_ls = h * norm(Fn)^2 / dot(Fn, y)
       elseif extrapolate == 2   # F(Xn + h Fn) ⋅ F{n+1} ~ 0
-         # h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
          h_ls = h * dot(Fn, Fnew) / (dot(Fn, y) + 1e-10)
       elseif extrapolate == 3   # min | F(Xn + h Fn) |
          h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
