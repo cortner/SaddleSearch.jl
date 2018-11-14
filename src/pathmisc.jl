@@ -1,4 +1,31 @@
 using Dierckx
+# -------------- Vectors and Paths  -----------------
+
+export Path
+
+struct Path{T, NI}
+   x::Vector{T}
+   valNI::Type{Val{NI}}
+end
+Path(x::Vector) = Path(x,Val{length(x)})
+
+function Base.vec{T}(x::Vector{T})
+   return cat(1, x...)
+end
+
+function Base.convert{T, NI}(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat})
+   return [ X[(n-1)*(length(X)÷NI)+1 : n*(length(X)÷NI)] for n=1:NI]
+end
+
+ref{T}(x::Vector{T}) = cat(1, x...)
+ref{T}(A::Array{Array{T,2},2}) = cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
+
+function set_ref!{T}(x::Vector{T}, X::Vector{Float64})
+   Nimg = length(x); Nref = length(X) ÷ Nimg
+   xfull = reshape(X, Nref, Nimg)
+   x = [ xfull[:, n] for n = 1:Nimg ]
+   return x
+end
 
 export serial, palindrome
 
@@ -49,9 +76,9 @@ function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=l
 end
 
 
-function redistribute{T}(X::Vector{Float64}, x::Vector{T}, precon, precon_scheme)
+function redistribute{T,NI}(X::Vector{Float64}, path_type::Type{Path{T,NI}}, precon, precon_scheme)
 
-   x = set_ref!(x, X)
+   x = convert(path_type, X)
    t = deepcopy(x)
 
    Np = length(precon);
@@ -61,7 +88,7 @@ function redistribute{T}(X::Vector{Float64}, x::Vector{T}, precon, precon_scheme
    ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
    parametrise!(t, x, ds)
 
-   return ref(x)
+   return vec(x)
 end
 
 
@@ -116,10 +143,10 @@ point_norm(precon_scheme::globalPrecon, P, dxds) = [norm(dxds[i]) for i=1:length
 
 
 proj_grad(precon_scheme::localPrecon, P, ∇E, dxds) = -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
-proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds) = ref(-[∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)])
+proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds) = vec(-[∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)])
 
-forcing(precon_scheme::localPrecon, P, neg∇E⟂) = return ref(neg∇E⟂)
-forcing(precon_scheme::globalPrecon, P, neg∇E⟂) = ref(P) \ neg∇E⟂
+forcing(precon_scheme::localPrecon, P, neg∇E⟂) = return vec(neg∇E⟂)
+forcing(precon_scheme::globalPrecon, P, neg∇E⟂) = vec(P) \ neg∇E⟂
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
     return - [ [zeros(dxds[1])];
@@ -127,7 +154,7 @@ function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
                [zeros(dxds[1])] ]
 end
 function elastic_force(precon_scheme::globalPrecon, P, κ, dxds, d²xds²)
-    return ref(-[ [zeros(dxds[1])];
+    return vec(-[ [zeros(dxds[1])];
                κ*[dot(d²xds²[i], dxds[i]) * dxds[i] for i=2:N-1];
                [zeros(dxds[1])] ])
 end
@@ -135,27 +162,3 @@ end
 maxres(precon_scheme::localPrecon, P, ∇E⟂) =  maximum([norm(P(i)*∇E⟂[i],Inf)
                                                 for i = 1:length(∇E⟂)])
 maxres(precon_scheme::globalPrecon, P, ∇E⟂) = vecnorm(∇E⟂, Inf)
-
-struct Path{T, NI}
-   x::Vector{T}
-   valNI::Type{Val{NI}}
-end
-Path(x::Vector) = Path(x,Val{length(x)})
-
-function Base.vec{T, NI}(x::Path{T, NI})
-   return cat(1, x...)
-end
-
-function Base.convert{T, NI}(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat})
-   return [ X[(n-1)*(length(X)÷NI)+1 : n*(length(X)÷NI)] for n=1:NI]
-end
-
-ref{T}(x::Vector{T}) = cat(1, x...)
-ref{T}(A::Array{Array{T,2},2}) = cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
-
-function set_ref!{T}(x::Vector{T}, X::Vector{Float64})
-   Nimg = length(x); Nref = length(X) ÷ Nimg
-   xfull = reshape(X, Nref, Nimg)
-   x = [ xfull[:, n] for n = 1:Nimg ]
-   return x
-end

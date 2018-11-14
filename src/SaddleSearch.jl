@@ -26,11 +26,11 @@ include("superlineardimer.jl")
 # ============ Sting type methods ===================
 include("string_types.jl")
 
+include("pathmisc.jl")
+
 include("string.jl")
 
 include("neb.jl")
-
-include("pathmisc.jl")
 
 
 end # module
