@@ -136,12 +136,20 @@ maxres(precon_scheme::localPrecon, P, ∇E⟂) =  maximum([norm(P(i)*∇E⟂[i],
                                                 for i = 1:length(∇E⟂)])
 maxres(precon_scheme::globalPrecon, P, ∇E⟂) = vecnorm(∇E⟂, Inf)
 
-# abstract type Path{T} <: AbstractVector{T} end
+struct Path{T, NI}
+   x::Vector{T}
+   valNI::Type{Val{NI}}
+end
+Path(x::Vector) = Path(x,Val{length(x)})
 
-# function Base.vec{Vector{float64}}(x::Path{T})
-#    X = Vector(length(x)*length(x[1]))
-#    X = cat(1, x...)
-# end
+function Base.vec{T, NI}(x::Path{T, NI})
+   return cat(1, x...)
+end
+
+function Base.convert{T, NI}(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat})
+   return [ X[(n-1)*(length(X)÷NI)+1 : n*(length(X)÷NI)] for n=1:NI]
+end
+
 ref{T}(x::Vector{T}) = cat(1, x...)
 ref{T}(A::Array{Array{T,2},2}) = cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
 
