@@ -82,5 +82,5 @@ function forces{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, d
 
    res = maxres(precon_scheme, P, dE0⟂)
 
-   return F, res, cost
+   return F, res, cost, (X, Y) -> sum(point_dot(precon_scheme, convert(path_type, X), P, convert(path_type, Y)))
 end

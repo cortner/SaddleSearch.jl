@@ -159,7 +159,7 @@ function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
    # computation of the initial step
    X = g(X, P)
    P = precon_prep!(P, X)
-   Fn, Rn, ndE = f(X, P, 0)
+   Fn, Rn, ndE, _ = f(X, P, 0)
    numdE += ndE
 
    push!(Xout, X)
@@ -197,7 +197,7 @@ function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
                                 # of `f`
                                 # but it seems to make the evolution slower; need more testing!
       Pnew = precon_prep!(P, Xnew)
-      Fnew, Rnew, ndE = f(Xnew, Pnew, nit)
+      Fnew, Rnew, ndE, dot_P = f(Xnew, Pnew, nit)
 
       numdE += ndE
 
@@ -217,11 +217,11 @@ function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
       # the next step-size, from a line-search-like construction
       y = Fn - Fnew
       if extrapolate == 1       # F(xn + h Fn) ⋅ Fn ~ 0
-         h_ls = h * norm(Fn)^2 / dot(Fn, y)
+         h_ls = h * dot_P(Fn, Fn) / dot_P(Fn, y)
       elseif extrapolate == 2   # F(Xn + h Fn) ⋅ F{n+1} ~ 0
-         h_ls = h * dot(Fn, Fnew) / (dot(Fn, y) + 1e-10)
+         h_ls = h * dot_P(Fn, Fnew) / (dot_P(Fn, y) + 1e-10)
       elseif extrapolate == 3   # min | F(Xn + h Fn) |
-         h_ls = h * dot(Fn, y) / (norm(y)^2 + 1e-10)
+         h_ls = h * dot_P(Fn, y) / (dot_P(y, y) + 1e-10)
       else
          @printf("SADDLESEARCH: invalid `extrapolate` parameter")
          if verbose >= 4
