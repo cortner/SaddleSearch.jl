@@ -13,15 +13,14 @@ function run!{T,NI}(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI
    numdE, numE = 0, 0
    log = PathLog()
    # and just start looping
-   if verbose >= 2
-      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: ------|-----|-----------------\n")
+   if verbose >= 4
+       dt = Dates.format(now(), "d-m-yyyy_HH:MM")
+       file = open("log_$(dt).txt", "w")
    end
-
    xout, log = odesolve(solver(method),
                (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
                                        direction(NI, nit), fixed_ends),
-                vec(x), log;
+                vec(x), log, file;
                 g = (X, P) -> redistribute(X, typeof(x0), P, precon_scheme),
                 tol = tol, maxnit=maxnit,
                 P = precon,

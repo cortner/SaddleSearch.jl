@@ -17,16 +17,6 @@ function Base.convert{T, NI}(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat})
    return [ X[(n-1)*(length(X)÷NI)+1 : n*(length(X)÷NI)] for n=1:NI]
 end
 
-ref{T}(x::Vector{T}) = cat(1, x...)
-ref{T}(A::Array{Array{T,2},2}) = cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
-
-function set_ref!{T}(x::Vector{T}, X::Vector{Float64})
-   Nimg = length(x); Nref = length(X) ÷ Nimg
-   xfull = reshape(X, Nref, Nimg)
-   x = [ xfull[:, n] for n = 1:Nimg ]
-   return x
-end
-
 export serial, palindrome
 
 
@@ -116,10 +106,6 @@ along the path is preconditioned independently.
 * `forcing` : reference vector of preconditioned forces along path
 * `elastic_force` : Hooke's law elastic focres along path
 * `maxres` : residual error
-
-### Shared Functions:
-* `ref` : return long vector of values
-* `set_ref!` : update values of path list from path vector
 """
 
 @with_kw type localPrecon

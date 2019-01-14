@@ -15,14 +15,20 @@ function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
    log = PathLog()
    # and just start looping
    if verbose >= 2
-      @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
-      @printf("SADDLESEARCH: ------|-----|-----------------\n")
+       @printf("SADDLESEARCH:         k  =  %1.2e        <- parameters\n", k)
    end
 
+   if verbose >= 4
+       dt = Dates.format(now(), "d-m-yyyy_HH:MM")
+       file = open("log_$(dt).txt", "w")
+       strlog = @sprintf("SADDLESEARCH:         k  =  %1.2e        <- parameters\n", k)
+       write(file, strlog)
+       flush(file)
+   end
    xout, log = odesolve(solver(method),
                (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
                                        direction(NI, nit), k, interp, fixed_ends),
-               vec(x), log;
+               vec(x), log, file;
                tol = tol, maxnit=maxnit,
                P = precon,
                precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),

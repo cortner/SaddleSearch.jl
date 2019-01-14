@@ -9,17 +9,25 @@
    h::Float64 = 1e-1
 end
 
-function odesolve(solver::Euler, f, X0::Vector{Float64}, log::IterationLog;
+function odesolve(solver::Euler, f, X0::Vector{Float64}, log::IterationLog, file;
                   verbose = 1,
                   g=(X, P)->X, tol=1e-4, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
                   method = "Static" )
 
    @unpack h = solver
+   if verbose >= 2
+       @printf("SADDLESEARCH:         h  =  %1.2e        <- parameters\n", h)
+       @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+       @printf("SADDLESEARCH: ------|-----|-----------------\n")
+   end
 
    if verbose >= 4
-       dt = Dates.format(now(), "d-m-yyyy_HH:MM")
-       file = open("log_$(dt).txt", "w")
+       strlog = @sprintf("SADDLESEARCH:         h  =  %1.2e        <- parameters
+SADDLESEARCH:  time | nit |  sup|∇E|_∞
+SADDLESEARCH: ------|-----|-----------------\n", h)
+       write(file, strlog)
+       flush(file)
    end
 
    X = copy(X0)
@@ -136,17 +144,27 @@ end
    extrapolate::Int = 3
 end
 
-function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
+function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog, file;
                   verbose = 1,
                   g=(X, P)->X, tol=1e-4, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
                   method = "ODE" )
 
    @unpack threshold, rtol, C1, C2, hmin, extrapolate = solver
+   if verbose >= 2
+       @printf("SADDLESEARCH:      rtol  =  %1.2e        <- parameters\n", rtol)
+       @printf("SADDLESEARCH: threshold  =  %1.2e        <- parameters\n", threshold)
+       @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+       @printf("SADDLESEARCH: ------|-----|-----------------\n")
+   end
 
    if verbose >= 4
-       dt = Dates.format(now(), "d-m-yyyy_HH:MM")
-       file = open("log_$(dt).txt", "w")
+       strlog = @sprintf("SADDLESEARCH:      rtol  =  %1.2e        <- parameters
+SADDLESEARCH: threshold  =  %1.2e        <- parameters
+SADDLESEARCH:  time | nit |  sup|∇E|_∞
+SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
+       write(file, strlog)
+       flush(file)
    end
 
    X = copy(X0)
@@ -273,10 +291,9 @@ function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
             println("SADDLESEARCH:               herr = $(h_err)")
          end
          if verbose >= 4
-            strlog = @sprintf("SADDLESEARCH:      accept: new h = %s, |F| = %s\n
-                               SADDLESEARCH:                hls = %s\n
-                               SADDLESEARCH:               herr = %s\n",
-                               "$h", "$(Rn)", "$(h_ls)", "$(h_err)")
+            strlog = @sprintf("SADDLESEARCH:      accept: new h = %s, |F| = %s
+SADDLESEARCH:                hls = %s
+SADDLESEARCH:               herr = %s\n", "$h", "$(Rn)", "$(h_ls)", "$(h_err)")
             write(file, strlog)
             flush(file)
          end
@@ -289,11 +306,10 @@ function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
             println("SADDLESEARCH:        |Fnew|/|Fold| = $(Rnew/Rn)")
          end
          if verbose >= 4
-            strlog = @sprintf("SADDLESEARCH:      reject: new h = %s\n
-                               SADDLESEARCH:               |Fnew| = %s\n
-                               SADDLESEARCH:               |Fold| = %s\n
-                               SADDLESEARCH:        |Fnew|/|Fold| = %s\n",
-                               "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn)")
+            strlog = @sprintf("SADDLESEARCH:      reject: new h = %s
+SADDLESEARCH:               |Fnew| = %s
+SADDLESEARCH:               |Fold| = %s
+SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn)")
             write(file, strlog)
             flush(file)
          end
