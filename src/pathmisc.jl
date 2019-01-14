@@ -137,8 +137,8 @@ end
 dist(precon_scheme::localPrecon, P, x, i) = precon_scheme.distance(0.5*(P(i)+P(i+1)), x[i], x[i+1])
 dist(precon_scheme::globalPrecon, P, x, i) = precon_scheme.distance(x[i], x[i+1])
 
-point_dot(precon_scheme::localPrecon, x, P, y) = [dot(x[i], P(i), y[i]) for i=1:length(x)]
-point_dot(precon_scheme::globalPrecon, x, P, y) = [dot(x[i], y[i]) for i=1:length(x)]
+dot_P(precon_scheme::localPrecon, x, P, y) = sum([dot(x[i], P(i), y[i]) for i=1:length(x)])
+dot_P(precon_scheme::globalPrecon, x, P, y) = sum([dot(x[i], y[i]) for i=1:length(x)])
 
 point_norm(precon_scheme::localPrecon, P, dxds) = [ 1; [norm(P(i), dxds[i])
                                                     for i=2:length(dxds)-1]; 1 ]
