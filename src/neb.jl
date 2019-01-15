@@ -17,7 +17,7 @@ function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
    if verbose >= 2
        @printf("SADDLESEARCH:         k  =  %1.2e        <- parameters\n", k)
    end
-
+   file = []
    if verbose >= 4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
        file = open("log_$(dt).txt", "w")

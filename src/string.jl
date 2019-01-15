@@ -13,6 +13,7 @@ function run!{T,NI}(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI
    numdE, numE = 0, 0
    log = PathLog()
    # and just start looping
+   file =[]
    if verbose >= 4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
        file = open("log_$(dt).txt", "w")
