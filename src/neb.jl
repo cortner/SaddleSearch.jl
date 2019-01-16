@@ -25,7 +25,7 @@ function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
        write(file, strlog)
        flush(file)
    end
-   xout, log = odesolve(solver(method),
+   xout, log, alpha = odesolve(solver(method),
                (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
                                        direction(NI, nit), k, interp, fixed_ends),
                vec(x), log, file;
@@ -36,7 +36,7 @@ function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
                verbose = verbose)
 
    x_return = verbose < 4 ? convert(typeof(x0), xout[end]) : [convert(typeof(x0), xout_n) for xout_n in xout]
-   return x_return, log
+   return x_return, log, alpha
 end
 
 function forces{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, precon_scheme,

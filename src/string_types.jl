@@ -125,6 +125,6 @@ function NEB(step, args...; kwargs...)
 end
 
 solver(method::StaticString) = Euler(h=method.alpha)
-solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold)
+solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
 solver(method::StaticNEB) = Euler(h=method.alpha)
-solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold)
+solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)

@@ -65,7 +65,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
          write(file, strlog)
          close(file)
       end
-      return Xout, log
+      return Xout, log, h
    end
 
    for nit = 1:maxnit
@@ -101,7 +101,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
             write(file, strlog)
             close(file)
          end
-         return Xout, log
+         return Xout, log, h
       end
    end
 
@@ -116,7 +116,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    if verbose >= 4
       close(file)
    end
-   return Xout, log
+   return Xout, log, h
 end
 
 
@@ -139,6 +139,7 @@ end
    threshold::Float64 = 1.0
    C1::Float64 = 1e-2
    C2::Float64 = 2.0
+   h = nothing
    hmin::Float64 = 1e-10
    maxF::Float64 = 1e3
    extrapolate::Int = 3
@@ -150,7 +151,7 @@ function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog, fil
                   P = I, precon_prep! = (P, X) -> P,
                   method = "ODE" )
 
-   @unpack threshold, rtol, C1, C2, hmin, extrapolate = solver
+   @unpack threshold, rtol, C1, C2, h, hmin, extrapolate = solver
    if verbose >= 2
        @printf("SADDLESEARCH:      rtol  =  %1.2e        <- parameters\n", rtol)
        @printf("SADDLESEARCH: threshold  =  %1.2e        <- parameters\n", threshold)
@@ -202,12 +203,14 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
          write(file, strlog)
          close(file)
       end
-      return Xout, log
+      return Xout, log, h
    end
 
    r = norm(Fn ./ max.(abs.(X), threshold), Inf) + realmin(Float64)
-   h = 0.5 * rtol^(1/2) / r
-   h = max(h, hmin)
+   if h == nothing
+      h = 0.5 * rtol^(1/2) / r
+      h = max(h, hmin)
+   end
 
    for nit = 1:maxnit
 
@@ -280,7 +283,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
                write(file, strlog)
                close(file)
             end
-            return Xout, log
+            return Xout, log, h
          end
 
          # Compute a new step size.
@@ -322,7 +325,7 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
              write(file, strlog)
              close(file)
          end
-         return Xout, log
+         return Xout, log, h
       end
    end
 
@@ -337,5 +340,5 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
    if verbose >= 4
       close(file)
    end
-   return Xout, log
+   return Xout, log, h
 end
