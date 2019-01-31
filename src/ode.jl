@@ -40,7 +40,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    # initialise variables
    X = g(X, P)
    P = precon_prep!(P, X)
-   Fn, Rn, ndE = f(X, P, 0)
+   Fn, Rn, ndE, _ = f(X, P, 0)
    numdE += ndE
 
    push!(Xout, X)
@@ -74,7 +74,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
 
       # return force
       Pnew = precon_prep!(P, Xnew)
-      Fnew, Rnew, ndE = f(Xnew, Pnew, nit)
+      Fnew, Rnew, ndE, _ = f(Xnew, Pnew, nit)
 
       numdE += ndE
 
