@@ -11,6 +11,7 @@ include("misc.jl")
 # some line-search related methods
 include("linesearch.jl")
 
+# numerical ode dolvers
 include("ode.jl")
 
 # =========== Walker-type saddle search methods ============
@@ -24,12 +25,16 @@ include("superlineardimer.jl")
 
 
 # ============ Sting type methods ===================
+# string, neb type definitions
 include("string_types.jl")
 
+# path manipulation: linear algebra in the path's framework
 include("pathmisc.jl")
 
+# string method
 include("string.jl")
 
+# NEB method
 include("neb.jl")
 
 

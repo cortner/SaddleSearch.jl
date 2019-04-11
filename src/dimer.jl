@@ -230,7 +230,7 @@ function dimer_ode(z, dE, P, precon_prep!, len)
    p_trans = - (P \ dE0) + 2.0 * dot(v, dE0) * v
    p_rot = - (P \ Hv) + dot(Hv, v) * v
    F = [p_trans; p_rot]
-   return F, norm(F, Inf), 2
+   return F, norm(F, Inf), 2, dot
 end
 
 function dimer_project(z, P, precon_prep!)
@@ -266,6 +266,7 @@ function run!(method::ODEDimer, E, dE, x0::Vector, v0::Vector)
                         F,
                         z0,   # initial condition
                         log,  # store iteration information in this log
+                        [],
                         g = G,
                         maxnit = maxnumdE,
                         tol = min(tol_trans, tol_rot))

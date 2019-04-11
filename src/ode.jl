@@ -43,9 +43,10 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    Fn, Rn, ndE, _ = f(X, P, 0)
    numdE += ndE
 
-   push!(Xout, X)
-   push!(log, numE, numdE, Rn)
+   push!(Xout, X) # store X
+   push!(log, numE, numdE, Rn) # residual, store history
 
+   # logging
    if verbose >= 2
       dt = Dates.format(now(), "HH:MM")
       @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
@@ -79,9 +80,10 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       numdE += ndE
 
       X, Fn, Rn, P = Xnew, Fnew, Rnew, Pnew
-      push!(Xout, X)
+      push!(Xout, X) # store X
       push!(log, numE, numdE, Rn) # residual, store history
 
+      # logging
       if verbose >= 2
          dt = Dates.format(now(), "HH:MM")
          @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
@@ -105,6 +107,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       end
    end
 
+   # logging
    if verbose >= 1
       println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
    end
@@ -128,6 +131,7 @@ end
 * `threshold` : threshold for error estimate
 * `C1` : sufficient contraction parameter
 * `C2` : residual growth control (Inf means there is no control)
+* `h` : step size, if nothing is passed, an estimate is used based on ODE12
 * `hmin` : minimal allowed step size
 * `maxF` : terminate if |Fn| > maxF * |F0|
 * `extrapolate` : extrapolation style (3 seems the most robust)
@@ -175,7 +179,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
 
    numdE, numE = 0, 0
 
-   # computation of the initial step
+   # initialise variables
    X = g(X, P)
    P = precon_prep!(P, X)
    Fn, Rn, ndE, _ = f(X, P, 0)
@@ -184,6 +188,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
    push!(Xout, X)
    push!(log, numE, numdE, Rn)
 
+   # logging
    if verbose >= 2
       dt = Dates.format(now(), "HH:MM")
       @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
@@ -206,6 +211,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
       return Xout, log, h
    end
 
+   # computation of the initial step
    r = norm(Fn ./ max.(abs.(X), threshold), Inf) + realmin(Float64)
    if h == nothing
       h = 0.5 * rtol^(1/2) / r
@@ -213,10 +219,11 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
    end
 
    for nit = 1:maxnit
-
+      # redistribute
       Xnew = g(X + h * Fn, P)   # that way it implicitly becomes part
                                 # of `f`
                                 # but it seems to make the evolution slower; need more testing!
+      # return force
       Pnew = precon_prep!(P, Xnew)
       Fnew, Rnew, ndE, dot_P = f(Xnew, Pnew, nit)
 
@@ -226,6 +233,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
       e = 0.5 * h * (Fnew - Fn)
       err = norm(e ./ max.(maximum([abs.(X) abs.(Xnew)],2), threshold), Inf) + realmin(Float64)
 
+      # accept step if residual is sufficient decreased
       if (   ( Rnew <= Rn * (1 - C1 * h) )         # contraction
           || ( Rnew <= Rn * C2 && err <= rtol ) )  # moderate growth + error control
          accept = true
@@ -261,9 +269,10 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
       if accept
          X, Fn, Rn, P  = Xnew, Fnew, Rnew, Pnew
 
-         push!(Xout, X)
-         push!(log, numE, numdE, Rn)
+         push!(Xout, X) # store X
+         push!(log, numE, numdE, Rn) # residual, store history
 
+         # logging
          if verbose >= 2
             dt = Dates.format(now(), "HH:MM")
             @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
@@ -288,6 +297,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
 
          # Compute a new step size.
          h = max(0.25 * h, min(4*h, h_err, h_ls))
+         # log step-size analytic results
          if verbose >= 3
             println("SADDLESEARCH:      accept: new h = $h, |F| = $(Rn)")
             println("SADDLESEARCH:                hls = $(h_ls)")
@@ -301,7 +311,9 @@ SADDLESEARCH:               herr = %s\n", "$h", "$(Rn)", "$(h_ls)", "$(h_err)")
             flush(file)
          end
       else
+         # compute new step size
          h = max(0.1 * h, min(0.25 * h, h_err, h_ls))
+         # log step-size analytic results
          if verbose >= 3
             println("SADDLESEARCH:      reject: new h = $h")
             println("SADDLESEARCH:               |Fnew| = $(Rnew)")
@@ -318,6 +330,7 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
          end
       end
 
+      # error message if step size is too small
       if abs(h) <= hmin
          warn("SADDLESEARCH: Step size $h too small at nit = $nit.");
          if verbose >= 4
@@ -329,6 +342,7 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
       end
    end
 
+   # logging
    if verbose >= 1
       println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
    end

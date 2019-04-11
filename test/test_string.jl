@@ -59,7 +59,7 @@ PATHx, PATHlog, _ = run!(path, E, dE, Path(x))
 
 path = ODENEB(reltol=1e-1, k=0.1, interp=3, tol = tol, maxnit = maxnit,
                         precon_scheme = preconI, path_traverse = serial(),
-                        verbose = 3)
+                        verbose = 1)
 PATHx, PATHlog, _ = run!(path, E, dE, Path(x))
 @test PATHlog[:maxres][end] <= path.tol
 

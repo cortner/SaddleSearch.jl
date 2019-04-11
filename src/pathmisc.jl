@@ -9,10 +9,12 @@ struct Path{T, NI}
 end
 Path(x::Vector) = Path(x,Val{length(x)})
 
+# vectorise an object of type Path
 function Base.vec{T}(x::Vector{T})
    return cat(1, x...)
 end
 
+# convert an object of type Path to type Vector
 function Base.convert{T, NI}(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat})
    return [ X[(n-1)*(length(X)÷NI)+1 : n*(length(X)÷NI)] for n=1:NI]
 end
@@ -47,17 +49,21 @@ end
 """
 parametrisation functions of paths for String/NEB-type methods
 """
+# interpolate and reparametrise path
 function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x)))
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
 
+   # cubic splines interpolation
    S = [Spline1D(param, [x[i][j] for i=1:length(x)], w = ones(length(x)), k = 3, bc = "error") for j=1:length(x[1])]
 
+   # reparametrise
    xref = [[Sj(s) for s in parametrisation] for Sj in S ]
    dxdsref = [[derivative(Sj, s) for s in parametrisation] for Sj in S]
    d²xds² = [[derivative(Sj, s, nu=2) for Sj in S] for s in parametrisation]
 
+   # return parametrised variables
    x_ = cat(2, xref...)
    dxds_ = cat(2, dxdsref...)
    [x[i] = x_[i,:] for i=1:length(x)]
@@ -65,7 +71,7 @@ function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=l
    return d²xds²
 end
 
-
+# distribute images uniformly with respect to P
 function redistribute{T,NI}(X::Vector{Float64}, path_type::Type{Path{T,NI}}, precon, precon_scheme)
 
    x = convert(path_type, X)
@@ -98,9 +104,11 @@ along the path is preconditioned independently.
 ### Parameters:
 * `precon` : preconditioner
 * `precon_prep!` : update function for preconditioner
+* `distance` : distance metric
 
 ### Functionality:
 * `dist` : distance of neighbouring images along path
+* `dot_P` : preconditioned dot product of associated images in two paths x, y
 * `point_norm` : local P-norm
 * `proj_grad` : projected gradient
 * `forcing` : reference vector of preconditioned forces along path
