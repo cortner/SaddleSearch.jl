@@ -9,7 +9,8 @@
    h::Float64 = 1e-1
 end
 
-function odesolve(solver::Euler, f, X0::Vector{Float64}, log::IterationLog, file;
+function odesolve(solver::Euler, f, X0::Vector{Float64}, log::IterationLog;
+                  file = nothing,
                   verbose = 1,
                   g=(X, P)->X, tol=1e-4, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
@@ -22,7 +23,7 @@ function odesolve(solver::Euler, f, X0::Vector{Float64}, log::IterationLog, file
        @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   if verbose >= 4
+   if verbose >= 4 && file!=nothing
        strlog = @sprintf("SADDLESEARCH:         h  =  %1.2e        <- parameters
 SADDLESEARCH:  time | nit |  sup|∇E|_∞
 SADDLESEARCH: ------|-----|-----------------\n", h)
@@ -51,7 +52,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       dt = Dates.format(now(), "HH:MM")
       @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
    end
-   if verbose >= 4
+   if verbose >= 4 && file!=nothing
       dt = Dates.format(now(), "HH:MM")
       strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
       write(file, strlog)
@@ -61,7 +62,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       if verbose >= 1
          println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations.")
       end
-      if verbose >= 4
+      if verbose >= 4 && file!=nothing
          strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
          write(file, strlog)
          close(file)
@@ -88,7 +89,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
          dt = Dates.format(now(), "HH:MM")
          @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
       end
-      if verbose >= 4
+      if verbose >= 4 && file!=nothing
          dt = Dates.format(now(), "HH:MM")
          strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
          write(file, strlog)
@@ -98,7 +99,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
          if verbose >= 1
             println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
          end
-         if verbose >= 4
+         if verbose >= 4 && file!=nothing
             strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
             write(file, strlog)
             close(file)
@@ -111,12 +112,12 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    if verbose >= 1
       println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
    end
-   if verbose >= 4
+   if verbose >= 4 && file!=nothing
       strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(method)", "$(maxnit)")
       write(file, strlog)
    end
 
-   if verbose >= 4
+   if verbose >= 4 && file!=nothing
       close(file)
    end
    return Xout, log, h
@@ -149,7 +150,8 @@ end
    extrapolate::Int = 3
 end
 
-function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog, file;
+function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
+                  file = nothing,
                   verbose = 1,
                   g=(X, P)->X, tol=1e-4, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
@@ -163,7 +165,7 @@ function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog, fil
        @printf("SADDLESEARCH: ------|-----|-----------------\n")
    end
 
-   if verbose >= 4
+   if verbose >= 4 && file!=nothing
        strlog = @sprintf("SADDLESEARCH:      rtol  =  %1.2e        <- parameters
 SADDLESEARCH: threshold  =  %1.2e        <- parameters
 SADDLESEARCH:  time | nit |  sup|∇E|_∞
@@ -193,7 +195,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
       dt = Dates.format(now(), "HH:MM")
       @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
    end
-   if verbose >= 4
+   if verbose >= 4 && file!=nothing
       dt = Dates.format(now(), "HH:MM")
       strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
       write(file, strlog)
@@ -203,7 +205,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
       if verbose >= 1
          println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations.")
       end
-      if verbose >= 4
+      if verbose >= 4 && file!=nothing
          strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
          write(file, strlog)
          close(file)
@@ -253,7 +255,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
          h_ls = h * dot_P(Fn, y) / (dot_P(y, y) + 1e-10)
       else
          @printf("SADDLESEARCH: invalid `extrapolate` parameter")
-         if verbose >= 4
+         if verbose >= 4 && file!=nothing
              strlog = @sprintf("SADDLESEARCH: invalid `extrapolate` parameter")
              write(file, strlog)
              close(file)
@@ -277,7 +279,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
             dt = Dates.format(now(), "HH:MM")
             @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
          end
-         if verbose >= 4
+         if verbose >= 4 && file!=nothing
             dt = Dates.format(now(), "HH:MM")
             strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
             write(file, strlog)
@@ -287,7 +289,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
             if verbose >= 1
                println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
             end
-            if verbose >= 4
+            if verbose >= 4 && file!=nothing
                strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
                write(file, strlog)
                close(file)
@@ -303,7 +305,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
             println("SADDLESEARCH:                hls = $(h_ls)")
             println("SADDLESEARCH:               herr = $(h_err)")
          end
-         if verbose >= 4
+         if verbose >= 4 && file!=nothing
             strlog = @sprintf("SADDLESEARCH:      accept: new h = %s, |F| = %s
 SADDLESEARCH:                hls = %s
 SADDLESEARCH:               herr = %s\n", "$h", "$(Rn)", "$(h_ls)", "$(h_err)")
@@ -320,7 +322,7 @@ SADDLESEARCH:               herr = %s\n", "$h", "$(Rn)", "$(h_ls)", "$(h_err)")
             println("SADDLESEARCH:               |Fold| = $(Rn)")
             println("SADDLESEARCH:        |Fnew|/|Fold| = $(Rnew/Rn)")
          end
-         if verbose >= 4
+         if verbose >= 4 && file!=nothing
             strlog = @sprintf("SADDLESEARCH:      reject: new h = %s
 SADDLESEARCH:               |Fnew| = %s
 SADDLESEARCH:               |Fold| = %s
@@ -333,7 +335,7 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
       # error message if step size is too small
       if abs(h) <= hmin
          warn("SADDLESEARCH: Step size $h too small at nit = $nit.");
-         if verbose >= 4
+         if verbose >= 4 && file!=nothing
              strlog = @sprintf("SADDLESEARCH: Step size %s too small at nit = %s.\n", "$h", "$nit")
              write(file, strlog)
              close(file)
@@ -346,12 +348,12 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
    if verbose >= 1
       println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
    end
-   if verbose >= 4
+   if verbose >= 4 && file!=nothing
       strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(method)", "$(maxnit)")
       write(file, strlog)
    end
 
-   if verbose >= 4
+   if verbose >= 4 && file!=nothing
       close(file)
    end
    return Xout, log, h

@@ -26,7 +26,7 @@ function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
    xout, log, alpha = odesolve(solver(method),
                (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
                                        direction(NI, nit), k, interp, fixed_ends),
-               vec(x), log, file;
+               vec(x), log; file = file,
                tol = tol, maxnit=maxnit,
                P = precon,
                precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),

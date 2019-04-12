@@ -266,7 +266,6 @@ function run!(method::ODEDimer, E, dE, x0::Vector, v0::Vector)
                         F,
                         z0,   # initial condition
                         log,  # store iteration information in this log
-                        [],
                         g = G,
                         maxnit = maxnumdE,
                         tol = min(tol_trans, tol_rot))

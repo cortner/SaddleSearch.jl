@@ -19,7 +19,7 @@ function run!{T,NI}(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI
    xout, log, alpha = odesolve(solver(method),
                (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
                                        direction(NI, nit), fixed_ends),
-                vec(x), log, file;
+                vec(x), log; file = file,
                 g = (X, P) -> redistribute(X, typeof(x0), P, precon_scheme),
                 tol = tol, maxnit=maxnit,
                 P = precon,
