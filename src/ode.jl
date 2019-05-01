@@ -358,3 +358,159 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
    end
    return Xout, log, h
 end
+
+@with_kw type momentum_descent
+   h::Float64 = 1e-1
+   b::Float64
+   finite_diff = central_accel
+end
+
+function odesolve(solver::momentum_descent, f, X0::Vector{Float64},
+                  log::IterationLog;
+                  file = nothing,
+                  verbose = 1,
+                  g=(X, P)->X, tol=1e-4, maxnit=100,
+                  P = I, precon_prep! = (P, X) -> P,
+                  method = "Static" )
+
+   @unpack h, b, finite_diff = solver
+   if verbose >= 2
+       @printf("SADDLESEARCH:         h  =  %1.2e        <- parameters\n", h)
+       @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+       @printf("SADDLESEARCH: ------|-----|-----------------\n")
+   end
+
+   if verbose >= 4 && file!=nothing
+       strlog = @sprintf("SADDLESEARCH:         h  =  %1.2e        <- parameters
+SADDLESEARCH:  time | nit |  sup|∇E|_∞
+SADDLESEARCH: ------|-----|-----------------\n", h)
+       write(file, strlog)
+       flush(file)
+   end
+
+   X = copy(X0)
+   P = precon_prep!(P, X)
+
+   Xout = [];
+
+   numdE, numE = 0, 0
+
+   # initialise variables
+   X = g(X, P)
+   P = precon_prep!(P, X)
+   Fn, Rn, ndE, _ = f(X, P, 0)
+   numdE += ndE
+
+   push!(Xout, X) # store X
+   push!(log, numE, numdE, Rn) # residual, store history
+
+   # logging
+   if verbose >= 2
+      dt = Dates.format(now(), "HH:MM")
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+   end
+   if verbose >= 4 && file!=nothing
+      dt = Dates.format(now(), "HH:MM")
+      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+      write(file, strlog)
+      flush(file)
+   end
+   if Rn <= tol
+      if verbose >= 1
+         println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations.")
+      end
+      if verbose >= 4 && file!=nothing
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+         write(file, strlog)
+         close(file)
+      end
+      return Xout, log, h
+   end
+
+   Xnew = g(X + h * Fn, P)
+
+   # return force
+   Pnew = precon_prep!(P, Xnew)
+   Fnew, Rnew, ndE, _ = f(Xnew, Pnew, 1)
+
+   numdE += ndE
+
+   X, Fn, Rn, P = Xnew, Fnew, Rnew, Pnew
+   push!(Xout, X) # store X
+   push!(log, numE, numdE, Rn) # residual, store history
+
+   # logging
+   if verbose >= 2
+      dt = Dates.format(now(), "HH:MM")
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+   end
+   if verbose >= 4 && file!=nothing
+      dt = Dates.format(now(), "HH:MM")
+      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+      write(file, strlog)
+      flush(file)
+   end
+   if Rn <= tol
+      if verbose >= 1
+         println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
+      end
+      if verbose >= 4 && file!=nothing
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+         write(file, strlog)
+         close(file)
+      end
+      return Xout, log, h
+   end
+
+   for nit = 2:maxnit
+      # redistribute
+      Xnew = finite_diff(Xout, Fn, P, h, b)
+
+      # return force
+      Pnew = precon_prep!(P, Xnew)
+      Fnew, Rnew, ndE, _ = f(Xnew, Pnew, nit)
+
+      numdE += ndE
+
+      X, Fn, Rn, P = Xnew, Fnew, Rnew, Pnew
+      push!(Xout, X) # store X
+      push!(log, numE, numdE, Rn) # residual, store history
+
+      # logging
+      if verbose >= 2
+         dt = Dates.format(now(), "HH:MM")
+         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+      end
+      if verbose >= 4 && file!=nothing
+         dt = Dates.format(now(), "HH:MM")
+         strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+         write(file, strlog)
+         flush(file)
+      end
+      if Rn <= tol
+         if verbose >= 1
+            println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
+         end
+         if verbose >= 4 && file!=nothing
+            strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+            write(file, strlog)
+            close(file)
+         end
+         return Xout, log, h
+      end
+   end
+
+   # logging
+   if verbose >= 1
+      println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
+   end
+   if verbose >= 4 && file!=nothing
+      strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(method)", "$(maxnit)")
+      write(file, strlog)
+   end
+
+   if verbose >= 4 && file!=nothing
+      close(file)
+   end
+   return Xout, log, h
+end
