@@ -1,5 +1,5 @@
 
-function run!{T,NI}(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI})
+function run!{T,NI}(method::Union{ODEString, StaticString, AccelString}, E, dE, x0::Path{T,NI})
    # read all the parameters
    @unpack tol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
    @unpack precon, precon_prep! = precon_scheme

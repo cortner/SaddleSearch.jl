@@ -1,5 +1,5 @@
 
-export StaticString, ODEString, StaticNEB, ODENEB
+export StaticString, ODEString, StaticNEB, ODENEB, AccelString
 
 neb_string_shared_docs =  """
 ### Shared Parameters
@@ -66,6 +66,24 @@ $(neb_string_shared_docs)
 end
 
 """
+`AccelString`: string method using momentum descent to accelerate energy minimisation
+
+### Parameters:
+* `a0` : initial step, if a0 is not passed then use a default
+* `b` : momentum term damping coefficient
+* `finite_diff_scheme` : choice of discretisation of dumped wave equation
+
+$(neb_string_shared_docs)
+"""
+@with_kw type AccelString
+   a0 = nothing      # if a0 is not passed then use a default
+   b = nothing      # if b is not passed then optimal value is used
+   finite_diff_scheme = central_accel
+   # ------ shared parameters ------
+   @neb_string_params
+end
+
+"""
 `StaticNEB`: the most basic NEB variant, integrating potential gradient
 flow with a fixed step-size.
 
@@ -110,6 +128,8 @@ function String(step, args...; kwargs...)
       return StaticString(args...; kwargs...)
   elseif step == :ode
       return ODEString(args...; kwargs...)
+   elseif step == :accel
+       return AccelString(args...; kwargs...)
    else
       error("`String`: unknown step selection mechanism $(step)")
    end
@@ -127,5 +147,6 @@ end
 
 solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
+solver(method::AccelString) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)

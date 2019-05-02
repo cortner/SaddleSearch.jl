@@ -371,7 +371,7 @@ function odesolve(solver::momentum_descent, f, X0::Vector{Float64},
                   verbose = 1,
                   g=(X, P)->X, tol=1e-4, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
-                  method = "Static" )
+                  method = "Momentum Descent" )
 
    @unpack h, b, finite_diff = solver
    if verbose >= 2
@@ -442,20 +442,20 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    # logging
    if verbose >= 2
       dt = Dates.format(now(), "HH:MM")
-      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 1, Rn)
    end
    if verbose >= 4 && file!=nothing
       dt = Dates.format(now(), "HH:MM")
-      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 1, Rn)
       write(file, strlog)
       flush(file)
    end
    if Rn <= tol
       if verbose >= 1
-         println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
+         println("SADDLESEARCH: $(method) terminates succesfully after 1 Euler iteration.")
       end
       if verbose >= 4 && file!=nothing
-         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after 1 Euler iteration.\n", "$(method)")
          write(file, strlog)
          close(file)
       end
