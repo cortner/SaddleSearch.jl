@@ -1,5 +1,5 @@
 
-export StaticString, ODEString, StaticNEB, ODENEB, AccelString
+export StaticString, ODEString, AccelString, StaticNEB, ODENEB, AccelNEB
 
 neb_string_shared_docs =  """
 ### Shared Parameters
@@ -66,7 +66,7 @@ $(neb_string_shared_docs)
 end
 
 """
-`AccelString`: string method using momentum descent to accelerate energy minimisation
+`AccelString`: string method using momentum descent to accelerate energy minimisation.
 
 ### Parameters:
 * `a0` : initial step, if a0 is not passed then use a default
@@ -123,10 +123,31 @@ $(neb_string_shared_docs)
    @neb_string_params
 end
 
+"""
+`AccelNEB`: NEB method, using momentum descent to accelerate energy minimisation.
+
+### Parameters:
+* `a0` : initial step, if a0 is not passed then use a default
+* `b` : momentum term damping coefficient
+* `finite_diff_scheme` : choice of discretisation of dumped wave equation
+
+$(neb_only_docs)
+
+$(neb_string_shared_docs)
+"""
+@with_kw type AccelNEB
+   a0 = nothing      # if a0 is not passed then use a default
+   b = nothing      # if b is not passed then optimal value is used
+   finite_diff_scheme = central_accel
+   @neb_params
+   # ------ shared parameters ------
+   @neb_string_params
+end
+
 function String(step, args...; kwargs...)
    if step == :static
       return StaticString(args...; kwargs...)
-  elseif step == :ode
+   elseif step == :ode
       return ODEString(args...; kwargs...)
    elseif step == :accel
        return AccelString(args...; kwargs...)
@@ -138,8 +159,10 @@ end
 function NEB(step, args...; kwargs...)
    if step == :static
       return StaticNEB(args...; kwargs...)
-  elseif step == :ode
+   elseif step == :ode
       return ODENEB(args...; kwargs...)
+   elseif step == :accel
+       return AccelNEB(args...; kwargs...)
    else
       error("`NEB`: unknown step selection mechanism $(step)")
    end
@@ -150,3 +173,4 @@ solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshol
 solver(method::AccelString) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
+solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
