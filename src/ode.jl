@@ -464,7 +464,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
 
    for nit = 2:maxnit
       # redistribute
-      Xnew = finite_diff(Xout, Fn, P, h, b)
+      Xnew = g(finite_diff(Xout, Fn, P, h, b), P)
 
       # return force
       Pnew = precon_prep!(P, Xnew)
