@@ -361,7 +361,7 @@ end
 
 @with_kw type momentum_descent
    h::Float64 = 1e-1
-   b::Float64
+   # b::Float64
    finite_diff = central_accel
 end
 
@@ -373,7 +373,10 @@ function odesolve(solver::momentum_descent, f, X0::Vector{Float64},
                   P = I, precon_prep! = (P, X) -> P,
                   method = "Momentum Descent" )
 
-   @unpack h, b, finite_diff = solver
+   # @unpack h, b, finite_diff = solver
+   @unpack h, finite_diff = solver
+
+
    if verbose >= 2
        @printf("SADDLESEARCH:         h  =  %1.2e        <- parameters\n", h)
        @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
