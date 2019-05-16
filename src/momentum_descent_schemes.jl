@@ -2,9 +2,9 @@
 forward differences
 xⁿ⁺¹ = (2-hb)xⁿ + (hb-1)xⁿ⁻¹ - h²∇E(xⁿ)
 """
-function forward_accel(X, Fend, P, λ, b)
-   h = 1.0; it = 1; it_max = 50
-   while (it<=it_max && !forward_criterion(λ*h*h, b*h))
+function forward_accel(X, Fend, P, Λ, b)
+   h = 1.0; it = 1; it_max = 100
+   while (it<=it_max && !minimum([forward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
        it+=1
    end
@@ -15,9 +15,9 @@ end
 backward differences
 (1+hb)xⁿ⁺¹ = (2+hb)xⁿ - xⁿ⁻¹ - h²∇E(xⁿ)
 """
-function backward_accel(X, Fend, P, λ, b)
-   h = 1.0; it = 1; it_max = 50
-   while (it<=it_max && !backward_criterion(λ*h*h, b*h))
+function backward_accel(X, Fend, P, Λ, b)
+   h = 1.0; it = 1; it_max = 100
+   while (it<=it_max && !minimum([backward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
        it+=1
    end
@@ -29,8 +29,8 @@ central differences
 (2+hb)xⁿ⁺¹ = 4xⁿ + (hb-2)xⁿ⁻¹ - 2h²∇E(xⁿ)
 """
 function central_accel(X, Fend, P, λ, b)
-   h = 1.0; it = 1; it_max = 50
-   while (it<=it_max && !central_criterion(λ*h*h, b*h))
+   h = 1.0; it = 1; it_max = 100
+   while (it<=it_max && !minimum([central_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
        it+=1
    end

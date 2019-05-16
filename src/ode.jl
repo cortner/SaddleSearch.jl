@@ -465,19 +465,40 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       return Xout, log, h
    end
 
+   dFn = -df(X, P)
+   Λ, _ = eig(dFn)
+   b_bound, _ = findmax(abs(imag(Λ[real(Λ).>1.5]))./(sqrt(real(Λ[real(Λ).>1.5]))))
+   b_all = []
+   f_all = []
+   for i=1:length(Λ[real(Λ).>1.5])
+       fb, bb = stability(Λ[real(Λ).>1.5][i])
+       if bb > b_bound
+         push!(b_all, bb)
+         push!(f_all, bb)
+       end
+   end
+
+   _, i_optimal = findmin(f_all)
+   b = b_all[i_optimal]
+
+   # h = 1.0; it = 1; it_max = 100
+   # while (it<=it_max && !minimum([soft_backward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
+   #     h = h/2
+   #     it+=1
+   # end
+
+
    for nit = 2:maxnit
-      dFn = -df(X, P)
-      @show(dFn[1])
-      Λrmax, _ = eigs(dFn, which = :LR)
-      λ = Λrmax[findmax(real(Λrmax))[2]]
+
+      # Λrmax, _ = eigs(dFn, which = :LR)
+      # λ = Λrmax[findmax(real(Λrmax))[2]]
       # Λrmin, _ = eigs(dFn, which = :SR)
       # λrmin = Λrmin[findmin(real(Λrmin))[2]]
       # Λimax, _ = eigs(dFn, which = :LI)
       # λimax = Λimax[findmax(real(Λimax))[2]]
 
-      _, b = stability(λ)
       # redistribute
-      Xnew = g(finite_diff(Xout, Fn, PI, λ, b), PI)
+      Xnew = g(finite_diff(Xout, Fn, PI, Λ, b), PI)
 
       # return force
       Pnew = precon_prep!(P, Xnew)
