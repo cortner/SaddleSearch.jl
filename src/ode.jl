@@ -365,7 +365,7 @@ end
    finite_diff = central_accel
 end
 
-function odesolve(solver::momentum_descent, f, X0::Vector{Float64},
+function odesolve(solver::momentum_descent, f, df, X0::Vector{Float64},
                   log::IterationLog;
                   file = nothing,
                   verbose = 1,
@@ -397,11 +397,11 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    Xout = [];
 
    numdE, numE = 0, 0
-
+   PI = (P, x) -> [I]
    # initialise variables
-   X = g(X, P)
+   X = g(X, PI)
    P = precon_prep!(P, X)
-   Fn, Rn, ndE, _ = f(X, P, 0)
+   Fn, Rn, ndE, _ = f(X, PI, 0)
    numdE += ndE
 
    push!(Xout, X) # store X
@@ -430,11 +430,11 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       return Xout, log, h
    end
 
-   Xnew = g(X + h * Fn, P)
+   Xnew = g(X + h * Fn, PI)
 
    # return force
    Pnew = precon_prep!(P, Xnew)
-   Fnew, Rnew, ndE, _ = f(Xnew, Pnew, 1)
+   Fnew, Rnew, ndE, _ = f(Xnew, PI, 1)
 
    numdE += ndE
 
@@ -466,12 +466,22 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    end
 
    for nit = 2:maxnit
+      dFn = -df(X, P)
+      @show(dFn[1])
+      Λrmax, _ = eigs(dFn, which = :LR)
+      λ = Λrmax[findmax(real(Λrmax))[2]]
+      # Λrmin, _ = eigs(dFn, which = :SR)
+      # λrmin = Λrmin[findmin(real(Λrmin))[2]]
+      # Λimax, _ = eigs(dFn, which = :LI)
+      # λimax = Λimax[findmax(real(Λimax))[2]]
+
+      _, b = stability(λ)
       # redistribute
-      Xnew = g(finite_diff(Xout, Fn, P, h, b), P)
+      Xnew = g(finite_diff(Xout, Fn, PI, λ, b), PI)
 
       # return force
       Pnew = precon_prep!(P, Xnew)
-      Fnew, Rnew, ndE, _ = f(Xnew, Pnew, nit)
+      Fnew, Rnew, ndE, _ = f(Xnew, PI, nit)
 
       numdE += ndE
 
