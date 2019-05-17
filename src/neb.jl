@@ -1,5 +1,5 @@
 
-function run!{T,NI}(method::Union{ODENEB, StaticNEB, AccelNEB}, E, dE, x0::Path{T,NI})
+function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
    # read all the parameters
    @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, fixed_ends,
             verbose = method
@@ -61,8 +61,9 @@ function run!{T,NI}(method::AccelNEB, E, dE, x0::Path{T,NI})
        write(file, strlog)
        flush(file)
    end
+   preconI = SaddleSearch.localPrecon(precon = [I], precon_prep! = (P, x) -> P)
    xout, log, alpha = odesolve(solver(method),
-               (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
+               (X, P, nit) -> forces([I], typeof(x0), X, dE, preconI,
                                        direction(NI, nit), k, interp, fixed_ends),
                (X, P) -> jacobian(P, typeof(x0), X, dE, k),
                vec(x), log; file = file,

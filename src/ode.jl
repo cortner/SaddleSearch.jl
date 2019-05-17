@@ -467,7 +467,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
 
    dFn = -df(X, P)
    Λ, _ = eig(dFn)
-   b_bound, _ = findmax(abs(imag(Λ[real(Λ).>1.5]))./(sqrt(real(Λ[real(Λ).>1.5]))))
+   b_bound, _ = findmax(abs.(imag(Λ[real(Λ).>1.5]))./(sqrt(real(Λ[real(Λ).>1.5]))))
    b_all = []
    f_all = []
    for i=1:length(Λ[real(Λ).>1.5])
@@ -480,6 +480,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
 
    _, i_optimal = findmin(f_all)
    b = b_all[i_optimal]
+   @show(b)
 
    # h = 1.0; it = 1; it_max = 100
    # while (it<=it_max && !minimum([soft_backward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))

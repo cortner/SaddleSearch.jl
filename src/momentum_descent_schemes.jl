@@ -28,7 +28,7 @@ end
 central differences
 (2+hb)xⁿ⁺¹ = 4xⁿ + (hb-2)xⁿ⁻¹ - 2h²∇E(xⁿ)
 """
-function central_accel(X, Fend, P, λ, b)
+function central_accel(X, Fend, P, Λ, b)
    h = 1.0; it = 1; it_max = 100
    while (it<=it_max && !minimum([central_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
