@@ -467,19 +467,22 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
 
    dFn = -df(X, P)
    Λ, _ = eig(dFn)
-   b_bound, _ = findmax(abs.(imag(Λ[real(Λ).>1.5]))./(sqrt(real(Λ[real(Λ).>1.5]))))
-   b_all = []
-   f_all = []
-   for i=1:length(Λ[real(Λ).>1.5])
-       fb, bb = stability(Λ[real(Λ).>1.5][i])
-       if bb > b_bound
-         push!(b_all, bb)
-         push!(f_all, bb)
-       end
-   end
+   λmax  = Λ[findmax(real(Λ))[2]]
+   _, b = stability(λmax)
+   # b_bound, _ = findmax(abs.(imag(Λ[real(Λ).>0.]))./(sqrt.(real(Λ[real(Λ).>0.]))))
+   # b_all = []
+   # f_all = []
+   # for i=1:length(Λ[real(Λ).>1.5])
+   #     fb, bb = stability(Λ[real(Λ).>1.5][i])
+   #     if bb > b_bound
+   #       push!(b_all, bb)
+   #       push!(f_all, bb)
+   #     end
+   # end
 
-   _, i_optimal = findmin(f_all)
-   b = b_all[i_optimal]
+   # _, i_optimal = findmin(f_all)
+   # b = b_all[i_optimal]
+   b = b*.5
    @show(b)
 
    # h = 1.0; it = 1; it_max = 100
@@ -497,7 +500,27 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       # λrmin = Λrmin[findmin(real(Λrmin))[2]]
       # Λimax, _ = eigs(dFn, which = :LI)
       # λimax = Λimax[findmax(real(Λimax))[2]]
-
+      if mod(nit, 50) == 0
+         dFn = -df(X, P)
+         Λ, _ = eig(dFn)
+         λmax  = Λ[findmax(real(Λ))[2]]
+         _, b = stability(λmax)
+         # b_bound, _ = findmax(abs.(imag(Λ[real(Λ).>1.5]))./(sqrt.(real(Λ[real(Λ).>1.5]))))
+         # b_all = []
+         # f_all = []
+         # for i=1:length(Λ[real(Λ).>1.5])
+         #     fb, bb = stability(Λ[real(Λ).>1.5][i])
+         #     if bb > b_bound
+         #       push!(b_all, bb)
+         #       push!(f_all, bb)
+         #     end
+         # end
+         #
+         # _, i_optimal = findmin(f_all)
+         # b = b_all[i_optimal]
+         b = b*.5
+         @show(b)
+      end
       # redistribute
       Xnew = g(finite_diff(Xout, Fn, PI, Λ, b), PI)
 
