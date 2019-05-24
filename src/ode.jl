@@ -397,11 +397,10 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    Xout = [];
 
    numdE, numE = 0, 0
-   PI = (P, x) -> [I]
    # initialise variables
-   X = g(X, PI)
+   X = g(X, P)
    P = precon_prep!(P, X)
-   Fn, Rn, ndE, _ = f(X, PI, 0)
+   Fn, Rn, ndE, _ = f(X, P, 0)
    numdE += ndE
 
    push!(Xout, X) # store X
@@ -430,11 +429,11 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       return Xout, log, h
    end
 
-   Xnew = g(X + h * Fn, PI)
+   Xnew = g(X + h * Fn, P)
 
    # return force
    Pnew = precon_prep!(P, Xnew)
-   Fnew, Rnew, ndE, _ = f(Xnew, PI, 1)
+   Fnew, Rnew, ndE, _ = f(Xnew, Pnew, 1)
 
    numdE += ndE
 
@@ -485,13 +484,6 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    b = b*.5
    @show(b)
 
-   # h = 1.0; it = 1; it_max = 100
-   # while (it<=it_max && !minimum([soft_backward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
-   #     h = h/2
-   #     it+=1
-   # end
-
-
    for nit = 2:maxnit
 
       # Λrmax, _ = eigs(dFn, which = :LR)
@@ -522,11 +514,11 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
          @show(b)
       end
       # redistribute
-      Xnew = g(finite_diff(Xout, Fn, PI, Λ, b), PI)
+      Xnew = g(finite_diff(Xout, Fn, Λ, b), P)
 
       # return force
       Pnew = precon_prep!(P, Xnew)
-      Fnew, Rnew, ndE, _ = f(Xnew, PI, nit)
+      Fnew, Rnew, ndE, _ = f(Xnew, Pnew, nit)
 
       numdE += ndE
 

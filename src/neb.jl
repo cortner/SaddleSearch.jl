@@ -37,7 +37,7 @@ function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
    return x_return, log, alpha
 end
 
-function run!{T,NI}(method::AccelNEB, E, dE, x0::Path{T,NI})
+function run!{T,NI}(method::AccelNEB, E, dE, ddE, x0::Path{T,NI})
    # read all the parameters
    @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, fixed_ends,
             verbose = method
@@ -61,11 +61,11 @@ function run!{T,NI}(method::AccelNEB, E, dE, x0::Path{T,NI})
        write(file, strlog)
        flush(file)
    end
-   preconI = SaddleSearch.localPrecon(precon = [I], precon_prep! = (P, x) -> P)
+
    xout, log, alpha = odesolve(solver(method),
-               (X, P, nit) -> forces([I], typeof(x0), X, dE, preconI,
+               (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
                                        direction(NI, nit), k, interp, fixed_ends),
-               (X, P) -> jacobian(P, typeof(x0), X, dE, k),
+               (X, P) -> jacobian(P, typeof(x0), X, dE, ddE, k),
                vec(x), log; file = file,
                tol = tol, maxnit=maxnit,
                P = precon,
@@ -136,7 +136,7 @@ function forces{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, d
 end
 
 function jacobian{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64},
-   dE, k::Float64)
+   dE, ddE, k::Float64)
    x = convert(path_type, X)
 
    # preconditioner
@@ -144,12 +144,20 @@ function jacobian{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64},
    P(i) = precon[mod(i-1,Np)+1, 1]
    P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
 
+   hessian = ddE.precon; hessian_prep! = ddE.precon_prep!
+   hessian = hessian_prep!(hessian, x)
+   H(i) = hessian[mod(i-1,Np)+1, 1]
+   H(i, j) = hessian[mod(i-1,Np)+1, mod(j-1,Np)+1]
+
    N = length(x); M = length(x[1])
    O = zeros(M, M); J = fill(O,(N, N))
-
-   [J[n,n-1] = ∂Fⁿ⁻(x, n, dE) + ∂Sⁿ⁻(k, x, n) for n=2:N-1]
-   [J[n,n] = δFⁿ(x, n, P) + ∂Sⁿ(k, x, n) for n=1:N]
-   [J[n,n+1] = ∂Fⁿ⁺(x, n, dE) + ∂Sⁿ⁺(k, x, n) for n=2:N-1]
+   [J[n,n-1] = ∂Fⁿ⁻(x, n, dE, P) + ∂Sⁿ⁻(k, x, n) for n=2:N-1]
+   if Np==1 && P(1)==I
+      [J[n,n] = δFⁿ(x, n, H, H) + ∂Sⁿ(k, x, n) for n=1:N]
+   else
+      [J[n,n] = δFⁿ(x, n, H, n -> I) + ∂Sⁿ(k, x, n) for n=1:N]
+   end
+   [J[n,n+1] = ∂Fⁿ⁺(x, n, dE, P) + ∂Sⁿ⁺(k, x, n) for n=2:N-1]
 
    return ref(J)
 end

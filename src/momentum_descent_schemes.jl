@@ -2,7 +2,7 @@
 forward differences
 xⁿ⁺¹ = (2-hb)xⁿ + (hb-1)xⁿ⁻¹ - h²∇E(xⁿ)
 """
-function forward_accel(X, Fend, P, Λ, b)
+function forward_accel(X, Fend, Λ, b)
    h = 1.0; it = 1; it_max = 100
    while (it<=it_max && !minimum([forward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
@@ -15,7 +15,7 @@ end
 backward differences
 (1+hb)xⁿ⁺¹ = (2+hb)xⁿ - xⁿ⁻¹ - h²∇E(xⁿ)
 """
-function backward_accel(X, Fend, P, Λ, b)
+function backward_accel(X, Fend, Λ, b)
    h = 1.0; it = 1; it_max = 100
    while (it<=it_max && !minimum([backward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
@@ -28,7 +28,7 @@ end
 central differences
 (2+hb)xⁿ⁺¹ = 4xⁿ + (hb-2)xⁿ⁻¹ - 2h²∇E(xⁿ)
 """
-function central_accel(X, Fend, P, Λ, b)
+function central_accel(X, Fend, Λ, b)
    h = 1.0; it = 1; it_max = 100
    while (it<=it_max && !minimum([central_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
@@ -95,12 +95,12 @@ length_n(x, n) = in(n,2:length(x)-1) ? norm(x[n+1] - x[n-1]) :
              error("l_n not defined for n<2 and n>N-1")
 t_n(x, n) = in(n,2:length(x)-1) ? (x[n+1] - x[n-1])/length_n(x, n) : zeros(x[n])
 
-F(x, n, ∇E) = - ∇E(x[n]) + dot(t_n(x, n), ∇E(x[n])) * t_n(x, n)
+F(x, n, ∇E, P) = - ∇E(x[n]) + dot(t_n(x, n), ∇E(x[n])) * P(n) * t_n(x, n)
 
-∂Fⁿ⁺(x, n, ∇E) = (1/length_n(x, n)) * ( dot(t_n(x, n), ∇E(x[n])) * (I - kron(t_n(x, n), t_n(x, n)')) - kron(t_n(x, n), F(x, n, ∇E)') )
-∂Fⁿ⁻(x, n, ∇E) = - ∂Fⁿ⁺(x, n, ∇E)
+∂Fⁿ⁺(x, n, ∇E, P) = (1/length_n(x, n)) * ( dot(t_n(x, n), ∇E(x[n])) * (I - kron(t_n(x, n), (P(n) * t_n(x, n))')) - kron(t_n(x, n), F(x, n, ∇E, P)') )
+∂Fⁿ⁻(x, n, ∇E, P) = - ∂Fⁿ⁺(x, n, ∇E, P)
 
-δFⁿ(x, n, P) = - (I - kron(t_n(x,n), t_n(x,n)')) * P(n)
+δFⁿ(x, n, ∇∇E, P⁻¹∇∇E) = - ( P⁻¹∇∇E(n) - kron(t_n(x,n), (∇∇E(n) * t_n(x, n))') )
 
 ∂Sⁿ(κ, x, n) = 2 * κ * kron(t_n(x, n), t_n(x, n)')
 
