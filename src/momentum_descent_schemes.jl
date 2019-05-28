@@ -91,26 +91,26 @@ function central_criterion(λh², hb)
 end
 
 
-length_n(x, n) = in(n,2:length(x)-1) ? norm(x[n+1] - x[n-1]) :
+length_n(x, n, P) = in(n,2:length(x)-1) ? norm(P(n), x[n+1] - x[n-1]) :
              error("l_n not defined for n<2 and n>N-1")
-t_n(x, n) = in(n,2:length(x)-1) ? (x[n+1] - x[n-1])/length_n(x, n) : zeros(x[n])
+t_n(x, n, P) = in(n,2:length(x)-1) ? (x[n+1] - x[n-1])/length_n(x, n, P) : zeros(x[n])
 
-F(x, n, ∇E, P) = - ∇E(x[n]) + dot(t_n(x, n), ∇E(x[n])) * P(n) * t_n(x, n)
+F(x, n, ∇E, P) = - ∇E(x[n]) + dot(t_n(x, n, P), ∇E(x[n])) * (P(n) * t_n(x, n, P))
 
-∂Fⁿ⁺(x, n, ∇E, P) = (1/length_n(x, n)) * ( dot(t_n(x, n), ∇E(x[n])) * (I - kron(t_n(x, n), (P(n) * t_n(x, n))')) - kron(t_n(x, n), F(x, n, ∇E, P)') )
+∂Fⁿ⁺(x, n, ∇E, P) = (1/length_n(x, n, P)) * ( dot(t_n(x, n, P), ∇E(x[n])) * (I - kron(t_n(x, n, P), (P(n) * t_n(x, n, P))')) - kron(t_n(x, n, P), F(x, n, ∇E, P)') )
 ∂Fⁿ⁻(x, n, ∇E, P) = - ∂Fⁿ⁺(x, n, ∇E, P)
 
-δFⁿ(x, n, ∇∇E, P⁻¹∇∇E) = - ( P⁻¹∇∇E(n) - kron(t_n(x,n), (∇∇E(n) * t_n(x, n))') )
+δFⁿ(x, n, ∇∇E, P, P⁻¹∇∇E) = - ( P⁻¹∇∇E(n) - kron(t_n(x, n, P), (∇∇E(n) * t_n(x, n, P))') )
 
-∂Sⁿ(κ, x, n) = 2 * κ * kron(t_n(x, n), t_n(x, n)')
+∂Sⁿ(κ, x, n, P) = 2 * κ * kron(t_n(x, n, P), t_n(x, n, P)')
 
-∂Sⁿ⁺(κ, x, n) = -κ * (kron(t_n(x, n), t_n(x, n)') +
-(1/length_n(x, n)) * kron( x[n+1]-2*x[n]+x[n-1] - dot((x[n+1]-2*x[n]+x[n-1]), t_n(x, n))*t_n(x, n), t_n(x, n)' ) +
-(1/length_n(x, n)) * dot(x[n+1]-2*x[n]+x[n-1], t_n(x, n)) * (I - kron(t_n(x,n), t_n(x,n)')))
+∂Sⁿ⁺(κ, x, n, P) = -κ * (kron(t_n(x, n, P), (P(n) * t_n(x, n, P))') +
+(1/length_n(x, n, P)) * kron( P(n)*(x[n+1]-2*x[n]+x[n-1]) - dot(P(n)*(x[n+1]-2*x[n]+x[n-1]), t_n(x, n, P))*t_n(x, n, P), (P(n)*t_n(x, n,P))' ) +
+(1/length_n(x, n, P)) * dot(P(n)*(x[n+1]-2*x[n]+x[n-1]), t_n(x, n, P)) * (I - kron(t_n(x, n, P), (P(n)*t_n(x, n, P))')))
 
-∂Sⁿ⁻(κ, x, n) = -κ * (kron(t_n(x, n), t_n(x, n)') -
-(1/length_n(x, n)) * kron( x[n+1]-2*x[n]+x[n-1] - dot((x[n+1]-2*x[n]+x[n-1]), t_n(x, n))*t_n(x, n), t_n(x, n)' ) -
-(1/length_n(x, n)) * dot(x[n+1]-2*x[n]+x[n-1], t_n(x, n)) * (I - kron(t_n(x,n), t_n(x,n)')))
+∂Sⁿ⁻(κ, x, n, P) = -κ * (kron(t_n(x, n, P), t_n(x, n, P)') -
+(1/length_n(x, n, P)) * kron( P(n)*(x[n+1]-2*x[n]+x[n-1]) - dot(P(n)*(x[n+1]-2*x[n]+x[n-1]), t_n(x, n, P))*t_n(x, n, P), (P(n)*t_n(x, n, P))' ) -
+(1/length_n(x, n, P)) * dot(P(n)*(x[n+1]-2*x[n]+x[n-1]), t_n(x, n, P)) * (I - kron(t_n(x, n, P), (P(n)*t_n(x, n, P))')))
 
 
 function ref{T}(A::Array{Array{T,2},2})
