@@ -128,9 +128,9 @@ function jacobian{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64},
    O = zeros(M, M); J = fill(O,(N, N))
    [J[n,n-1] = ∂Fⁿ⁻(x, n, dE, P) for n=2:N-1]
    if Np==1 && P(1)==I
-      [J[n,n] = δFⁿ(x, n, H, H) for n=1:N]
+      [J[n,n] = δFⁿ(x, n, H, P, H) for n=1:N]
    else
-      [J[n,n] = δFⁿ(x, n, H, n -> I) for n=1:N]
+      [J[n,n] = δFⁿ(x, n, H, P, n -> I) for n=1:N]
    end
    [J[n,n+1] = ∂Fⁿ⁺(x, n, dE, P) for n=2:N-1]
 
