@@ -2,39 +2,42 @@
 forward differences
 xⁿ⁺¹ = (2-hb)xⁿ + (hb-1)xⁿ⁻¹ - h²∇E(xⁿ)
 """
-function forward_accel(X, Fend, Λ, b)
+function forward_accel(X, Fend, Λ, b, canonical)
    h = 1.0; it = 1; it_max = 100
    while (it<=it_max && !minimum([forward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
        it+=1
    end
-    return X[end]*(2-h*b) + X[end-1]*(b*h-1) + h*h*Fend
+   H = canonical?h*h:h
+    return X[end]*(2-h*b) + X[end-1]*(b*h-1) + H*Fend
 end
 
 """
 backward differences
 (1+hb)xⁿ⁺¹ = (2+hb)xⁿ - xⁿ⁻¹ - h²∇E(xⁿ)
 """
-function backward_accel(X, Fend, Λ, b)
+function backward_accel(X, Fend, Λ, b, flag)
    h = 1.0; it = 1; it_max = 100
    while (it<=it_max && !minimum([backward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
        it+=1
    end
-    return X[end]*(2+h*b)/(1+h*b) + X[end-1]/(-1-h*b) + h*h*Fend/(b*h+1)
+   H = canonical?h*h:h
+    return X[end]*(2+h*b)/(1+h*b) + X[end-1]/(-1-h*b) + H*Fend/(b*h+1)
 end
 
 """
 central differences
 (2+hb)xⁿ⁺¹ = 4xⁿ + (hb-2)xⁿ⁻¹ - 2h²∇E(xⁿ)
 """
-function central_accel(X, Fend, Λ, b)
+function central_accel(X, Fend, Λ, b, flag)
    h = 1.0; it = 1; it_max = 100
    while (it<=it_max && !minimum([central_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
        h = h/2
        it+=1
    end
-    return (4*X[end] + X[end-1]*(b*h-2) + 2*h*h*Fend)/(2+b*h)
+   H = canonical?h*h:h
+    return (4*X[end] + X[end-1]*(b*h-2) + 2*H*Fend)/(2+b*h)
 end
 
 function objective(b, λ)

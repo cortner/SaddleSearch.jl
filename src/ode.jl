@@ -363,6 +363,7 @@ end
    h::Float64 = 1e-1
    # b::Float64
    finite_diff = central_accel
+   redistrib = :canonical
 end
 
 function odesolve(solver::momentum_descent, f, df, X0::Vector{Float64},
@@ -482,7 +483,11 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
          @show(b)
       end
       # redistribute
-      Xnew = g(finite_diff(Xout, Fn, Λ, b), P)
+      if redistrib = :canonical
+         Xnew = g(finite_diff(Xout, Fn, Λ, b, true), P)
+      elseif redristib = :dynamic
+         Xnew = finite_diff(Xout, g(X + h * Fn, P), Λ, b, false)
+      end
 
       # return force
       Pnew = precon_prep!(P, Xnew)
