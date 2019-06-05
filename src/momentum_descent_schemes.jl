@@ -1,43 +1,43 @@
 """
-forward differences
+Finite difference schemes used with momentum descent:
+* forward differences
 xⁿ⁺¹ = (2-hb)xⁿ + (hb-1)xⁿ⁻¹ - h²∇E(xⁿ)
-"""
-function forward_accel(X, Fend, Λ, b, canonical)
-   h = 1.0; it = 1; it_max = 100
-   while (it<=it_max && !minimum([forward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
-       h = h/2
-       it+=1
-   end
-   H = canonical?h*h:h
-    return X[end]*(2-h*b) + X[end-1]*(b*h-1) + H*Fend
-end
 
-"""
-backward differences
+* backward differences
 (1+hb)xⁿ⁺¹ = (2+hb)xⁿ - xⁿ⁻¹ - h²∇E(xⁿ)
-"""
-function backward_accel(X, Fend, Λ, b, flag)
-   h = 1.0; it = 1; it_max = 100
-   while (it<=it_max && !minimum([backward_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
-       h = h/2
-       it+=1
-   end
-   H = canonical?h*h:h
-    return X[end]*(2+h*b)/(1+h*b) + X[end-1]/(-1-h*b) + H*Fend/(b*h+1)
-end
 
-"""
-central differences
+* central differences
 (2+hb)xⁿ⁺¹ = 4xⁿ + (hb-2)xⁿ⁻¹ - 2h²∇E(xⁿ)
 """
-function central_accel(X, Fend, Λ, b, flag)
-   h = 1.0; it = 1; it_max = 100
-   while (it<=it_max && !minimum([central_criterion(λ*h*h, b*h) for λ in Λ[real(Λ).>0.5]]))
-       h = h/2
-       it+=1
-   end
+
+function finite_diff(scheme, X, Fend, b, h, canonical)
    H = canonical?h*h:h
-    return (4*X[end] + X[end-1]*(b*h-2) + 2*H*Fend)/(2+b*h)
+   if scheme == :forward
+      return X[end]*(2-h*b) + X[end-1]*(b*h-1) + H*Fend
+   elseif scheme == :backward
+      return X[end]*(2+h*b)/(1+h*b) + X[end-1]/(-1-h*b) + H*Fend/(b*h+1)
+   elseif scheme == :central
+       return (4*X[end] + X[end-1]*(b*h-2) + 2*H*Fend)/(2+b*h)
+   else
+      error("`momentum descent`: unknown finite differences scheme $(scheme)")
+   end
+end
+
+function criterion(scheme, λh², hb)
+   cond_p = nothing; cond_m = nothing;
+   if scheme == :forward
+      cond_p = abs(2-hb-λh² + sqrt(complex(hb*hb + (λh²)^2 - 4λh² + λh²*hb))) <2
+      cond_m = abs(2-hb-λh² - sqrt(complex(hb*hb + (λh²)^2 - 4λh² + λh²*hb))) <2
+   elseif scheme == :backward
+      cond_p = abs((2+hb-λh² + sqrt(complex((2+hb-λh²)^2-4(1+hb)))) / (1+hb)) <2
+      cond_m = abs((2+hb-λh² - sqrt(complex((2+hb-λh²)^2-4(1+hb)))) / (1+hb)) <2
+   elseif scheme == :central
+      cond_p = abs((2-λh² + sqrt(complex( (2-λh²)^2 - 4 + hb*hb ))) / (2+hb)) <1
+      cond_m = abs((2-λh² - sqrt(complex( (2-λh²)^2 - 4 + hb*hb ))) / (2+hb)) <1
+   else
+      error("`momentum descent`: unknown finite differences scheme $(scheme)")
+   end
+   return cond_p && cond_m
 end
 
 function objective(b, λ)

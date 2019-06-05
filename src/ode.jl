@@ -361,8 +361,8 @@ end
 
 @with_kw type momentum_descent
    h::Float64 = 1e-1
-   # b::Float64
-   finite_diff = central_accel
+   b = 1e-1
+   fd_scheme = :central
    redistrib = :canonical
 end
 
@@ -375,7 +375,7 @@ function odesolve(solver::momentum_descent, f, df, X0::Vector{Float64},
                   method = "Momentum Descent" )
 
    # @unpack h, b, finite_diff = solver
-   @unpack h, finite_diff = solver
+   @unpack h, b, fd_scheme, redistrib= solver
 
 
    if verbose >= 2
@@ -465,28 +465,44 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       return Xout, log, h
    end
 
-   dFn = -df(X, P)
-   Λ, _ = eig(dFn)
-   λmax  = Λ[findmax(real(Λ))[2]]
-   _, b = stability(λmax)
-   b = b*.5
-   @show(b)
+   if b == nothing
+      dFn = -df(X, P)
+      Λ, _ = eig(dFn)
+      λmax  = Λ[findmax(real(Λ))[2]]
+      _, b = stability(λmax)
+      b = b*.5
+
+      h = 1.0; it = 1; it_max = 100
+      while (it<=it_max && !minimum([criterion(fd_scheme, λ*h*h, b*h) for λ in Λ[real(Λ).>0.]]))
+         h = h/2
+         it+=1
+      end
+   end
+
+   @printf("b = %1.2e, h = %1.2e\n",b, h)
 
    for nit = 2:maxnit
-
-      if mod(nit, 50) == 0
-         dFn = -df(X, P)
-         Λ, _ = eig(dFn)
-         λmax  = Λ[findmax(real(Λ))[2]]
-         _, b = stability(λmax)
-         b = b*.5
-         @show(b)
-      end
+      # if b == nothing
+      #    if mod(nit, 50) == 0
+      #       dFn = -df(X, P)
+      #       Λ, _ = eig(dFn)
+      #       λmax  = Λ[findmax(real(Λ))[2]]
+      #       _, b = stability(λmax)
+      #       b = b*.5
+      #
+      #       h = 1.0; it = 1; it_max = 100
+      #       while (it<=it_max && !minimum([criterion(fd_scheme, λ*h*h, b*h) for λ in Λ[real(Λ).>0.]]))
+      #           h = h/2
+      #           it+=1
+      #       end
+      #       @printf("b = %1.2e, h = %1.2e\n",b, h)
+      #    end
+      # end
       # redistribute
-      if redistrib = :canonical
-         Xnew = g(finite_diff(Xout, Fn, Λ, b, true), P)
-      elseif redristib = :dynamic
-         Xnew = finite_diff(Xout, g(X + h * Fn, P), Λ, b, false)
+      if redistrib == :canonical
+         Xnew = g(finite_diff(fd_scheme, Xout, Fn, b, h, true), P)
+      elseif redristib == :dynamic
+         Xnew = finite_diff(fd_scheme, Xout, g(X + h * Fn, P), b, h, false)
       end
 
       # return force

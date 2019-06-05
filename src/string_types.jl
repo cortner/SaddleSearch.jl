@@ -77,8 +77,9 @@ $(neb_string_shared_docs)
 """
 @with_kw type AccelString
    a0 = nothing      # if a0 is not passed then use a default
-   # b = nothing      # if b is not passed then optimal value is used
-   finite_diff_scheme = central_accel
+   b = nothing      # if b is not passed then optimal value is used
+   finite_diff_scheme = :central
+   redistrib = :canonical
    # ------ shared parameters ------
    @neb_string_params
 end
@@ -137,8 +138,9 @@ $(neb_string_shared_docs)
 """
 @with_kw type AccelNEB
    a0 = nothing      # if a0 is not passed then use a default
-   # b = nothing      # if b is not passed then optimal value is used
-   finite_diff_scheme = central_accel
+   b = nothing     # if b is not passed then optimal value is used
+   finite_diff_scheme = :central
+   redistrib = :canonical
    @neb_params
    # ------ shared parameters ------
    @neb_string_params
@@ -171,10 +173,10 @@ end
 solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
 # solver(method::AccelString) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
-solver(method::AccelString) = momentum_descent(h=method.a0,
-finite_diff=method.finite_diff_scheme)
+solver(method::AccelString) = momentum_descent(h=method.a0, b=method.b,
+fd_scheme=method.finite_diff_scheme, redistrib=method.redistrib)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
 # solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
-solver(method::AccelNEB) = momentum_descent(h=method.a0,
-finite_diff=method.finite_diff_scheme)
+solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b,
+fd_scheme=method.finite_diff_scheme, redistrib=method.redistrib)
