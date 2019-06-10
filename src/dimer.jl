@@ -272,3 +272,33 @@ function run!(method::ODEDimer, E, dE, x0::Vector, v0::Vector)
    z = zout[end]
    return z[1:n], z[n+1:end], log
 end
+
+function run!(method::AccelDimer, E, dE, x0::Vector, v0::Vector)
+
+   # read all the parameters
+   @unpack tol_trans, tol_rot, maxnumdE, len,
+            precon_prep!, verbose, precon_rot, rescale_v, accel = method
+   P0=method.precon
+
+   # initial condition
+   n = length(x0)
+   z0 = [x0; v0]
+   # nonlinear system
+   F = (z, P, nit) -> dimer_ode(z, dE, P0, precon_prep!, len)
+   # projection (normalisation) step
+   G = (z, P) -> dimer_project(z, P0, precon_prep!)
+   # initialise a log
+   log = PathLog()
+
+   # run the ODE solver
+   zout, log = odesolve(accel,
+                        F,
+                        dF,
+                        z0,   # initial condition
+                        log,  # store iteration information in this log
+                        g = G,
+                        maxnit = maxnumdE,
+                        tol = min(tol_trans, tol_rot))
+   z = zout[end]
+   return z[1:n], z[n+1:end], log
+end
