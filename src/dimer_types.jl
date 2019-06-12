@@ -1,5 +1,5 @@
 
-export Dimer, StaticDimer, BBDimer, SuperlinearDimer, ODEDimer
+export Dimer, StaticDimer, BBDimer, SuperlinearDimer, ODEDimer, AccelDimer
 
 dimer_shared_docs =  """
 ### Shared Parameters
@@ -118,7 +118,10 @@ end
 end
 
 @with_kw type AccelDimer
-   ode::momentum_descent = momentum_descent()
+   a0::Float64 = 1e-1
+   b = nothing
+   fd_scheme = :central
+   redistrib = :canonical
    # ------ shared parameters ------
    @dimer_shared
 end

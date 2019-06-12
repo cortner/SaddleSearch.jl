@@ -115,16 +115,16 @@ F(x, n, ∇E, P) = - ∇E(x[n]) + dot(t_n(x, n, P), ∇E(x[n])) * (P(n) * t_n(x,
 (1/length_n(x, n, P)) * kron( P(n)*(x[n+1]-2*x[n]+x[n-1]) - dot(P(n)*(x[n+1]-2*x[n]+x[n-1]), t_n(x, n, P))*t_n(x, n, P), (P(n)*t_n(x, n, P))' ) -
 (1/length_n(x, n, P)) * dot(P(n)*(x[n+1]-2*x[n]+x[n-1]), t_n(x, n, P)) * (I - kron(t_n(x, n, P), (P(n)*t_n(x, n, P))')))
 
-∂ₓFˣ(x, v, Hv, P0) = -P0 + 2 * kron(Hv, v')
+∂ₓFˣ(x, v, P0) = -P0 + 2 * kron(P0*v, v')
 
-∂ᵥFˣ(x, v, ∇E0) = 2 * dot(∇E0, v) * (I, kron(v, v')) +
-                        2 * (kron(∇E0, v') - dot(∇E, v)*kron(v, v'))
+∂ᵥFˣ(x, v, ∇E0) = 2 * dot(∇E0, v) * (I - kron(v, v')) +
+                        2 * (kron(∇E0, v') - dot(∇E0, v)*kron(v, v'))
 
-∂ₓFᵛ(h, x, v, P0, Pv) = (- (Pv - P0) + kron((Pv * v), v') - kron(P0*v, v'))/h
+∂ₓFᵛ(x, v, h, P0, Pv) = (- (Pv - P0) + kron((Pv-P0) * v, v') )/h
 
-∂ᵥFᵛ(h, x, v, ∇E0, ∇Ev, P0, Pv) = -Pv + kron(v, (Pv*v)') +
-                           dot(v/h, Pv-P0)*(I-kron(v, v')) +
-                           kron((Pv-P0), v') - dot(v/h, ∇Ev-∇E0)*kron(v,v') +
+∂ᵥFᵛ(x, v, Hv, Pv) = -Pv + kron(v, (Pv*v)') +
+                           dot(v, Hv)*(I-2*kron(v, v')) +
+                           kron(Hv, v') +
                            kron(Pv*v, v') - (v'*Pv*v)*kron(v, v')
 
 function ref{T}(A::Array{Array{T,2},2})
