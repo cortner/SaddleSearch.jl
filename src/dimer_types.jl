@@ -117,6 +117,12 @@ end
    @dimer_shared
 end
 
+@with_kw type AccelDimer
+   ode::momentum_descent = momentum_descent()
+   # ------ shared parameters ------
+   @dimer_shared
+end
+
 
 function Dimer(step=:ode; kwargs...)
    if step == :sd
@@ -127,6 +133,8 @@ function Dimer(step=:ode; kwargs...)
       return SuperlinearDimer(; translation_method="CG", kwargs...)
    elseif step == :ode
       return ODEDimer(; kwargs...)
+  elseif step == :accel
+     return AccelDimer(; kwargs...)
    else
       error("`Dimer`: unknown step selection mechanism $(step)")
    end
