@@ -420,10 +420,10 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    end
    if Rn <= tol
       if verbose >= 1
-         println("SADDLESEARCH: $method terminates succesfully after $(nit) iterations.")
+         println("SADDLESEARCH: $method terminates succesfully after 0 iterations.")
       end
       if verbose >= 4 && file!=nothing
-         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after 0 iterations.\n", "$(method)")
          write(file, strlog)
          close(file)
       end
@@ -467,7 +467,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
 
    if b == nothing
       dFn = -df(X, P)
-      Λ, _ = eig(dFn)
+      Λ, _ = eig(full(dFn))
       λmax  = Λ[findmax(real(Λ))[2]]
       _, b = stability(λmax)
       b = b*.5
