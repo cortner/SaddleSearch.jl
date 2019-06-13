@@ -545,6 +545,8 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
              write(file, strlog)
              close(file)
          end
+         push!(Xout, X) # store X
+         push!(log, typemax(Int64), typemax(Int64), Rn) # residual, store history
          return Xout, log, h
       end
 
