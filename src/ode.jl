@@ -370,7 +370,7 @@ function odesolve(solver::momentum_descent, f, df, X0::Vector{Float64},
                   log::IterationLog;
                   file = nothing,
                   verbose = 1,
-                  g=(X, P)->X, tol=1e-4, maxnit=100,
+                  g=(X, P)->X, tol=1e-4, maxtol=1e3, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
                   method = "Momentum Descent" )
 
@@ -537,6 +537,17 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
          end
          return Xout, log, h
       end
+
+      if Rn >= maxtol
+         warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+         if verbose >= 4 && file!=nothing
+             strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
+             write(file, strlog)
+             close(file)
+         end
+         return Xout, log, h
+      end
+
    end
 
    # logging
