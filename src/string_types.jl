@@ -80,6 +80,7 @@ $(neb_string_shared_docs)
    b = nothing      # if b is not passed then optimal value is used
    finite_diff_scheme = :central
    redistrib = :canonical
+   maxtol::Float64 = 1e3
    # ------ shared parameters ------
    @neb_string_params
 end
@@ -141,6 +142,7 @@ $(neb_string_shared_docs)
    b = nothing     # if b is not passed then optimal value is used
    finite_diff_scheme = :central
    redistrib = :canonical
+   maxtol::Float64 = 1e3
    @neb_params
    # ------ shared parameters ------
    @neb_string_params

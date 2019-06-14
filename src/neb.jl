@@ -1,7 +1,7 @@
 
 function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
    # read all the parameters
-   @unpack k, interp, tol, maxnit, precon_scheme, path_traverse, fixed_ends,
+   @unpack k, interp, tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends,
             verbose = method
    @unpack precon, precon_prep! = precon_scheme
    @unpack direction = path_traverse
@@ -27,7 +27,7 @@ function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
                (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
                                        direction(NI, nit), k, interp, fixed_ends),
                vec(x), log; file = file,
-               tol = tol, maxnit=maxnit,
+               tol = tol, maxnit = maxnit, maxtol = maxtol, 
                P = precon,
                precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),
                method = "$(typeof(method))",
