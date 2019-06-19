@@ -268,6 +268,7 @@ function run!(method::ODEDimer, E, dE, x0::Vector, v0::Vector)
                         log,  # store iteration information in this log
                         g = G,
                         maxnit = maxnumdE,
+                        verbose = verbose,
                         tol = min(tol_trans, tol_rot))
    z = zout[end]
    return z[1:n], z[n+1:end], log
@@ -302,7 +303,8 @@ function run!(method::AccelDimer, E, dE, ddE, x0::Vector, v0::Vector)
    @unpack tol_trans, tol_rot, maxnumdE, len,
             precon_prep!, verbose, precon_rot, rescale_v,
             a0, b, fd_scheme, redistrib, = method
-   accel = momentum_descent(a0, b , fd_scheme, redistrib)
+   accel = momentum_descent(h = a0, b = b , fd_scheme = fd_scheme,
+                              redistrib = redistrib)
    P0=method.precon
 
    # initial condition

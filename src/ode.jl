@@ -364,6 +364,15 @@ end
    b = 1e-1
    fd_scheme = :central
    redistrib = :canonical
+   # adaptive first step
+   rtol::Float64 = 1e-1
+   threshold::Float64 = 1.0
+   C1::Float64 = 1e-2
+   C2::Float64 = 2.0
+   h0 = nothing
+   hmin::Float64 = 1e-10
+   maxF::Float64 = 1e3
+   extrapolate::Int = 3
 end
 
 function odesolve(solver::momentum_descent, f, df, X0::Vector{Float64},
@@ -375,7 +384,8 @@ function odesolve(solver::momentum_descent, f, df, X0::Vector{Float64},
                   method = "Momentum Descent" )
 
    # @unpack h, b, finite_diff = solver
-   @unpack h, b, fd_scheme, redistrib= solver
+   @unpack h, b, fd_scheme, redistrib,
+            threshold, rtol, C1, C2, h0, hmin, extrapolate = solver
 
 
    if verbose >= 2
@@ -430,7 +440,13 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       return Xout, log, h
    end
 
-   Xnew = g(X + h * Fn, P)
+   r = norm(Fn ./ max.(abs.(X), threshold), Inf) + realmin(Float64)
+   if h0 == nothing
+      h0 = 0.5 * rtol^(1/2) / r
+      h0 = max(h0, hmin)
+   end
+
+   Xnew = g(X + h0 * Fn, P)
 
    # return force
    Pnew = precon_prep!(P, Xnew)
@@ -478,8 +494,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
          it+=1
       end
    end
-
-   @printf("b = %1.2e, h = %1.2e\n",b, h)
+   @printf("b = %1.2e, h = %1.2e\n",b , h)
 
    for nit = 2:maxnit
       # if b == nothing
