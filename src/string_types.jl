@@ -14,6 +14,7 @@ neb_string_shared_docs =  """
 @def neb_string_params begin
    tol::Float64 = 1e-5
    maxnit::Int = 1000
+   maxtol::Float64 = 1e3
    precon_scheme = localPrecon()
    path_traverse = serial()
    fixed_ends = false
@@ -80,7 +81,6 @@ $(neb_string_shared_docs)
    b = nothing      # if b is not passed then optimal value is used
    finite_diff_scheme = :central
    redistrib = :canonical
-   maxtol::Float64 = 1e3
    # ------ shared parameters ------
    @neb_string_params
 end
@@ -142,7 +142,6 @@ $(neb_string_shared_docs)
    b = nothing     # if b is not passed then optimal value is used
    finite_diff_scheme = :central
    redistrib = :canonical
-   maxtol::Float64 = 1e3
    @neb_params
    # ------ shared parameters ------
    @neb_string_params

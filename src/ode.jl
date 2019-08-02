@@ -12,7 +12,7 @@ end
 function odesolve(solver::Euler, f, X0::Vector{Float64}, log::IterationLog;
                   file = nothing,
                   verbose = 1,
-                  g=(X, P)->X, tol=1e-4, maxnit=100,
+                  g=(X, P)->X, tol=1e-4, maxtol=1e3, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
                   method = "Static" )
 
@@ -153,7 +153,7 @@ end
 function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
                   file = nothing,
                   verbose = 1,
-                  g=(X, P)->X, tol=1e-4, maxnit=100,
+                  g=(X, P)->X, tol=1e-4, maxtol=1e3, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
                   method = "ODE" )
 
@@ -210,6 +210,17 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
          write(file, strlog)
          close(file)
       end
+      return Xout, log, h
+   end
+   if Rn >= maxtol
+      warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+      if verbose >= 4 && file!=nothing
+          strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
+          write(file, strlog)
+          close(file)
+      end
+      push!(Xout, X) # store X
+      push!(log, typemax(Int64), typemax(Int64), Rn) # residual, store history
       return Xout, log, h
    end
 
@@ -294,6 +305,18 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
                write(file, strlog)
                close(file)
             end
+            return Xout, log, h
+         end
+
+         if Rn >= maxtol
+            warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+            if verbose >= 4 && file!=nothing
+                strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
+                write(file, strlog)
+                close(file)
+            end
+            push!(Xout, X) # store X
+            push!(log, typemax(Int64), typemax(Int64), Rn) # residual, store history
             return Xout, log, h
          end
 

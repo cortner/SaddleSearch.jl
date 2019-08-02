@@ -1,7 +1,7 @@
 
 function run!{T,NI}(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI})
    # read all the parameters
-   @unpack tol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
+   @unpack tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
    @unpack precon, precon_prep! = precon_scheme
    @unpack direction = path_traverse
    # initialise variables
@@ -21,7 +21,7 @@ function run!{T,NI}(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI
                                        direction(NI, nit), fixed_ends),
                vec(x), log; file = file,
                g = (X, P) -> redistribute(X, typeof(x0), P, precon_scheme),
-               tol = tol, maxnit=maxnit,
+               tol = tol, maxtol = maxtol, maxnit=maxnit,
                P = precon,
                precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),
                method = "$(typeof(method))",
