@@ -80,6 +80,7 @@ $(neb_string_shared_docs)
    h = nothing      # if h is not passed then use a default
    a0 = nothing      # if a0 is not passed then use a default
    b = nothing      # if b is not passed then optimal value is used
+   reltol::Float64  # please think about reducing it to one tol parameter `odetol`
    finite_diff_scheme = :central
    redistrib = :canonical
    # ------ shared parameters ------
@@ -139,13 +140,15 @@ $(neb_only_docs)
 $(neb_string_shared_docs)
 """
 @with_kw type AccelNEB
-   a0 = nothing      # if a0 is not passed then use a default
-   b = nothing     # if b is not passed then optimal value is used
-   finite_diff_scheme = :central
-   redistrib = :canonical
-   @neb_params
-   # ------ shared parameters ------
-   @neb_string_params
+    h = nothing      # if h is not passed then use a default
+    a0 = nothing      # if a0 is not passed then use a default
+    b = nothing      # if b is not passed then optimal value is used
+    reltol::Float64  # please think about reducing it to one tol parameter `odetol`
+    finite_diff_scheme = :central
+    redistrib = :canonical
+    @neb_params
+    # ------ shared parameters ------
+    @neb_string_params
 end
 
 function String(step, args...; kwargs...)
@@ -175,10 +178,10 @@ end
 solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
 # solver(method::AccelString) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
-solver(method::AccelString) = momentum_descent(h=method.h, h0=method.a0, b=method.b,
+solver(method::AccelString) = momentum_descent(h=method.h, h0=method.a0, rtol=method.reltol, b=method.b,
 fd_scheme=method.finite_diff_scheme, redistrib=method.redistrib)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
 # solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
-solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b,
+solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b, rtol=method.reltol,
 fd_scheme=method.finite_diff_scheme, redistrib=method.redistrib)
