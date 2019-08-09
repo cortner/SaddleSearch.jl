@@ -12,7 +12,7 @@ end
 function odesolve(solver::Euler, f, X0::Vector{Float64}, log::IterationLog;
                   file = nothing,
                   verbose = 1,
-                  g=(X, P)->X, tol=1e-4, maxnit=100,
+                  g=(X, P)->X, tol=1e-4, maxtol=1e3, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
                   method = "Static" )
 
@@ -153,7 +153,7 @@ end
 function odesolve(solver::ODE12r, f, X0::Vector{Float64}, log::IterationLog;
                   file = nothing,
                   verbose = 1,
-                  g=(X, P)->X, tol=1e-4, maxnit=100,
+                  g=(X, P)->X, tol=1e-4, maxtol=1e3, maxnit=100,
                   P = I, precon_prep! = (P, X) -> P,
                   method = "ODE" )
 
@@ -210,6 +210,17 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
          write(file, strlog)
          close(file)
       end
+      return Xout, log, h
+   end
+   if Rn >= maxtol
+      warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+      if verbose >= 4 && file!=nothing
+          strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
+          write(file, strlog)
+          close(file)
+      end
+      push!(Xout, X) # store X
+      push!(log, typemax(Int64), typemax(Int64), Rn) # residual, store history
       return Xout, log, h
    end
 
@@ -297,6 +308,18 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
             return Xout, log, h
          end
 
+         if Rn >= maxtol
+            warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+            if verbose >= 4 && file!=nothing
+                strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
+                write(file, strlog)
+                close(file)
+            end
+            push!(Xout, X) # store X
+            push!(log, typemax(Int64), typemax(Int64), Rn) # residual, store history
+            return Xout, log, h
+         end
+
          # Compute a new step size.
          h = max(0.25 * h, min(4*h, h_err, h_ls))
          # log step-size analytic results
@@ -342,6 +365,229 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
          end
          return Xout, log, h
       end
+   end
+
+   # logging
+   if verbose >= 1
+      println("SADDLESEARCH: $(method) terminated unsuccesfully after $(maxnit) iterations.")
+   end
+   if verbose >= 4 && file!=nothing
+      strlog = @sprintf("SADDLESEARCH: %s terminated unsuccesfully after %s iterations.\n", "$(method)", "$(maxnit)")
+      write(file, strlog)
+   end
+
+   if verbose >= 4 && file!=nothing
+      close(file)
+   end
+   return Xout, log, h
+end
+
+@with_kw type momentum_descent
+   h::Float64 = 1e-1
+   b = 1e-1
+   fd_scheme = :central
+   redistrib = :canonical
+   # adaptive first step
+   rtol::Float64 = 1e-1
+   threshold::Float64 = 1.0
+   C1::Float64 = 1e-2
+   C2::Float64 = 2.0
+   h0 = nothing
+   hmin::Float64 = 1e-10
+   maxF::Float64 = 1e3
+   extrapolate::Int = 3
+end
+
+function odesolve(solver::momentum_descent, f, df, X0::Vector{Float64},
+                  log::IterationLog;
+                  file = nothing,
+                  verbose = 1,
+                  g=(X, P)->X, tol=1e-4, maxtol=1e3, maxnit=100,
+                  P = I, precon_prep! = (P, X) -> P,
+                  method = "Momentum Descent" )
+
+   # @unpack h, b, finite_diff = solver
+   @unpack h, b, fd_scheme, redistrib,
+            threshold, rtol, C1, C2, h0, hmin, extrapolate = solver
+
+
+   if verbose >= 2
+       @printf("SADDLESEARCH:         h  =  %1.2e        <- parameters\n", h)
+       @printf("SADDLESEARCH:  time | nit |  sup|∇E|_∞   \n")
+       @printf("SADDLESEARCH: ------|-----|-----------------\n")
+   end
+
+   if verbose >= 4 && file!=nothing
+       strlog = @sprintf("SADDLESEARCH:         h  =  %1.2e        <- parameters
+SADDLESEARCH:  time | nit |  sup|∇E|_∞
+SADDLESEARCH: ------|-----|-----------------\n", h)
+       write(file, strlog)
+       flush(file)
+   end
+
+   X = copy(X0)
+   P = precon_prep!(P, X)
+
+   Xout = [];
+
+   numdE, numE = 0, 0
+   # initialise variables
+   X = g(X, P)
+   P = precon_prep!(P, X)
+   Fn, Rn, ndE, _ = f(X, P, 0)
+   numdE += ndE
+
+   push!(Xout, X) # store X
+   push!(log, numE, numdE, Rn) # residual, store history
+
+   # logging
+   if verbose >= 2
+      dt = Dates.format(now(), "HH:MM")
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+   end
+   if verbose >= 4 && file!=nothing
+      dt = Dates.format(now(), "HH:MM")
+      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)
+      write(file, strlog)
+      flush(file)
+   end
+   if Rn <= tol
+      if verbose >= 1
+         println("SADDLESEARCH: $method terminates succesfully after 0 iterations.")
+      end
+      if verbose >= 4 && file!=nothing
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after 0 iterations.\n", "$(method)")
+         write(file, strlog)
+         close(file)
+      end
+      return Xout, log, h
+   end
+
+   r = norm(Fn ./ max.(abs.(X), threshold), Inf) + realmin(Float64)
+   if h0 == nothing
+      h0 = 0.5 * rtol^(1/2) / r
+      h0 = max(h0, hmin)
+   end
+
+   Xnew = g(X + h0 * Fn, P)
+
+   # return force
+   Pnew = precon_prep!(P, Xnew)
+   Fnew, Rnew, ndE, _ = f(Xnew, Pnew, 1)
+
+   numdE += ndE
+
+   X, Fn, Rn, P = Xnew, Fnew, Rnew, Pnew
+   push!(Xout, X) # store X
+   push!(log, numE, numdE, Rn) # residual, store history
+
+   # logging
+   if verbose >= 2
+      dt = Dates.format(now(), "HH:MM")
+      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 1, Rn)
+   end
+   if verbose >= 4 && file!=nothing
+      dt = Dates.format(now(), "HH:MM")
+      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 1, Rn)
+      write(file, strlog)
+      flush(file)
+   end
+   if Rn <= tol
+      if verbose >= 1
+         println("SADDLESEARCH: $(method) terminates succesfully after 1 Euler iteration.")
+      end
+      if verbose >= 4 && file!=nothing
+         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after 1 Euler iteration.\n", "$(method)")
+         write(file, strlog)
+         close(file)
+      end
+      return Xout, log, h
+   end
+
+   if b == nothing
+      dFn = -df(X, P)
+      Λ, _ = eig(full(dFn))
+      λmax  = Λ[findmax(real(Λ))[2]]
+      _, b = stability(λmax)
+      b = b*.5
+
+      h = 1.0; it = 1; it_max = 100
+      while (it<=it_max && !minimum([criterion(fd_scheme, λ*h*h, b*h) for λ in Λ[real(Λ).>0.]]))
+         h = h/2
+         it+=1
+      end
+   end
+   @printf("b = %1.2e, h = %1.2e\n",b , h)
+
+   for nit = 2:maxnit
+      # if b == nothing
+      #    if mod(nit, 50) == 0
+      #       dFn = -df(X, P)
+      #       Λ, _ = eig(dFn)
+      #       λmax  = Λ[findmax(real(Λ))[2]]
+      #       _, b = stability(λmax)
+      #       b = b*.5
+      #
+      #       h = 1.0; it = 1; it_max = 100
+      #       while (it<=it_max && !minimum([criterion(fd_scheme, λ*h*h, b*h) for λ in Λ[real(Λ).>0.]]))
+      #           h = h/2
+      #           it+=1
+      #       end
+      #       @printf("b = %1.2e, h = %1.2e\n",b, h)
+      #    end
+      # end
+      # redistribute
+      if redistrib == :canonical
+         Xnew = g(finite_diff(fd_scheme, Xout, Fn, b, h, true), P)
+      elseif redristib == :dynamic
+         Xnew = finite_diff(fd_scheme, Xout, g(X + h * Fn, P), b, h, false)
+      end
+
+      # return force
+      Pnew = precon_prep!(P, Xnew)
+      Fnew, Rnew, ndE, _ = f(Xnew, Pnew, nit)
+
+      numdE += ndE
+
+      X, Fn, Rn, P = Xnew, Fnew, Rnew, Pnew
+      push!(Xout, X) # store X
+      push!(log, numE, numdE, Rn) # residual, store history
+
+      # logging
+      if verbose >= 2
+         dt = Dates.format(now(), "HH:MM")
+         @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+      end
+      if verbose >= 4 && file!=nothing
+         dt = Dates.format(now(), "HH:MM")
+         strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+         write(file, strlog)
+         flush(file)
+      end
+      if Rn <= tol
+         if verbose >= 1
+            println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
+         end
+         if verbose >= 4 && file!=nothing
+            strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+            write(file, strlog)
+            close(file)
+         end
+         return Xout, log, h
+      end
+
+      if Rn >= maxtol
+         warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+         if verbose >= 4 && file!=nothing
+             strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
+             write(file, strlog)
+             close(file)
+         end
+         push!(Xout, X) # store X
+         push!(log, typemax(Int64), typemax(Int64), Rn) # residual, store history
+         return Xout, log, h
+      end
+
    end
 
    # logging

@@ -268,6 +268,65 @@ function run!(method::ODEDimer, E, dE, x0::Vector, v0::Vector)
                         log,  # store iteration information in this log
                         g = G,
                         maxnit = maxnumdE,
+                        verbose = verbose,
+                        tol = min(tol_trans, tol_rot))
+   z = zout[end]
+   return z[1:n], z[n+1:end], log
+end
+
+function dimer_jacobian(z, dE, ddE, P, precon_prep!, len)
+
+   n = length(z) ÷ 2
+   x, v = z[1:n], z[n+1:end]
+   P = precon_prep!(P, x)
+
+   # evaluate gradients, etc
+   dE0 = dE(x)
+   dEv = dE(x + len * v)
+   Hv = (dEv - dE0) / len
+   ddE0 = ddE(x)
+   ddEv = ddE(x + len * v)
+
+   Fxx = ∂ₓFˣ(x, v, ddE0)
+   Fxv = ∂ᵥFˣ(x, v, dE0)
+   Fvx = ∂ₓFᵛ(x, v, len, ddE0, ddEv)
+   Fvv = ∂ᵥFᵛ(x, v, Hv, ddEv)
+
+   dF = [Fxx Fxv; Fvx Fvv]
+
+   return dF
+end
+
+function run!(method::AccelDimer, E, dE, ddE, x0::Vector, v0::Vector)
+
+   # read all the parameters
+   @unpack tol_trans, tol_rot, maxnumdE, len,
+            precon_prep!, verbose, precon_rot, rescale_v,
+            a0, b, fd_scheme, redistrib, = method
+   accel = momentum_descent(h = a0, b = b , fd_scheme = fd_scheme,
+                              redistrib = redistrib)
+   P0=method.precon
+
+   # initial condition
+   n = length(x0)
+   z0 = [x0; v0]
+   # nonlinear system
+   F = (z, P, nit) -> dimer_ode(z, dE, P0, precon_prep!, len)
+   dF = (z, P) -> dimer_jacobian(z, dE, ddE, P0, precon_prep!, len)
+   # projection (normalisation) step
+   G = (z, P) -> dimer_project(z, P0, precon_prep!)
+   # initialise a log
+   log = PathLog()
+
+   # run the ODE solver
+   zout, log = odesolve(accel,
+                        F,
+                        dF,
+                        z0,   # initial condition
+                        log,  # store iteration information in this log
+                        verbose = verbose,
+                        g = G,
+                        maxnit = maxnumdE,
                         tol = min(tol_trans, tol_rot))
    z = zout[end]
    return z[1:n], z[n+1:end], log

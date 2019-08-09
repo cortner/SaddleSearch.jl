@@ -138,7 +138,6 @@ point_norm(precon_scheme::localPrecon, P, dxds) = [ 1; [norm(P(i), dxds[i])
                                                     for i=2:length(dxds)-1]; 1 ]
 point_norm(precon_scheme::globalPrecon, P, dxds) = [norm(dxds[i]) for i=1:length(dxds)]
 
-
 proj_grad(precon_scheme::localPrecon, P, ∇E, dxds) = -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
 proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds) = vec(-[∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)])
 

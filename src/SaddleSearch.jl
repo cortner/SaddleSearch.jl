@@ -31,6 +31,8 @@ include("string_types.jl")
 # path manipulation: linear algebra in the path's framework
 include("pathmisc.jl")
 
+include("momentum_descent_schemes.jl")
+
 # string method
 include("string.jl")
 

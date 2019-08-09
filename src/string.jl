@@ -1,7 +1,7 @@
 
 function run!{T,NI}(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI})
    # read all the parameters
-   @unpack tol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
+   @unpack tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
    @unpack precon, precon_prep! = precon_scheme
    @unpack direction = path_traverse
    # initialise variables
@@ -19,13 +19,47 @@ function run!{T,NI}(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI
    xout, log, alpha = odesolve(solver(method),
                (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
                                        direction(NI, nit), fixed_ends),
-                vec(x), log; file = file,
-                g = (X, P) -> redistribute(X, typeof(x0), P, precon_scheme),
-                tol = tol, maxnit=maxnit,
-                P = precon,
-                precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),
-                method = "$(typeof(method))",
-                verbose = verbose )
+               vec(x), log; file = file,
+               g = (X, P) -> redistribute(X, typeof(x0), P, precon_scheme),
+               tol = tol, maxtol = maxtol, maxnit=maxnit,
+               P = precon,
+               precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),
+               method = "$(typeof(method))",
+               verbose = verbose )
+
+   x_return = verbose < 4 ? convert(typeof(x0), xout[end]) : [convert(typeof(x0), xout_n) for xout_n in xout]
+   return x_return, log, alpha
+end
+
+function run!{T,NI}(method::AccelString, E, dE, ddE, x0::Path{T,NI})
+   # read all the parameters
+   @unpack tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
+   @unpack precon, precon_prep! = precon_scheme
+   @unpack direction = path_traverse
+   # initialise variables
+   x = x0.x
+
+   nit = 0
+   numdE, numE = 0, 0
+   log = PathLog()
+   # and just start looping
+   file =[]
+   if verbose >= 4
+       dt = Dates.format(now(), "d-m-yyyy_HH:MM")
+       file = open("log_$(dt).txt", "w")
+   end
+
+   xout, log, alpha = odesolve(solver(method),
+               (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
+                                       direction(NI, nit), fixed_ends),
+               (X, P) -> jacobian(P, typeof(x0), X, dE, ddE),
+               vec(x), log; file = file,
+               g = (X, P) -> redistribute(X, typeof(x0), P, precon_scheme),
+               tol = tol, maxtol = maxtol, maxnit = maxnit,
+               P = precon,
+               precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),
+               method = "$(typeof(method))",
+               verbose = verbose )
 
    x_return = verbose < 4 ? convert(typeof(x0), xout[end]) : [convert(typeof(x0), xout_n) for xout_n in xout]
    return x_return, log, alpha
@@ -73,4 +107,32 @@ function forces{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, d
    res = maxres(precon_scheme, P, dE0⟂)
 
    return F, res, cost, (X, Y) -> dot_P(precon_scheme, convert(path_type, X), P, convert(path_type, Y))
+end
+
+function jacobian{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64},
+   dE, ddE)
+
+   x = convert(path_type, X)
+
+   # preconditioner
+   Np = size(precon, 1)
+   P(i) = precon[mod(i-1,Np)+1, 1]
+   P(i, j) = precon[mod(i-1,Np)+1, mod(j-1,Np)+1]
+
+   hessian = ddE.precon; hessian_prep! = ddE.precon_prep!
+   hessian = hessian_prep!(hessian, x)
+   H(i) = hessian[mod(i-1,Np)+1, 1]
+   H(i, j) = hessian[mod(i-1,Np)+1, mod(j-1,Np)+1]
+
+   N = length(x); M = length(x[1])
+   O = zeros(M, M); J = fill(O,(N, N))
+   [J[n,n-1] = ∂Fⁿ⁻(x, n, dE, P) for n=2:N-1]
+   if Np==1 && P(1)==I
+      [J[n,n] = δFⁿ(x, n, H, P, H) for n=1:N]
+   else
+      [J[n,n] = δFⁿ(x, n, H, P, n -> I) for n=1:N]
+   end
+   [J[n,n+1] = ∂Fⁿ⁺(x, n, dE, P) for n=2:N-1]
+
+   return ref(J)
 end

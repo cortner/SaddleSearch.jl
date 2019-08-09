@@ -1,5 +1,5 @@
 
-export StaticString, ODEString, StaticNEB, ODENEB
+export StaticString, ODEString, AccelString, StaticNEB, ODENEB, AccelNEB
 
 neb_string_shared_docs =  """
 ### Shared Parameters
@@ -14,6 +14,7 @@ neb_string_shared_docs =  """
 @def neb_string_params begin
    tol::Float64 = 1e-5
    maxnit::Int = 1000
+   maxtol::Float64 = 1e3
    precon_scheme = localPrecon()
    path_traverse = serial()
    fixed_ends = false
@@ -66,6 +67,27 @@ $(neb_string_shared_docs)
 end
 
 """
+`AccelString`: string method using momentum descent to accelerate energy minimisation.
+
+### Parameters:
+* `a0` : initial step, if a0 is not passed then use a default
+* `b` : momentum term damping coefficient
+* `finite_diff_scheme` : choice of discretisation of dumped wave equation
+
+$(neb_string_shared_docs)
+"""
+@with_kw type AccelString
+   h = nothing      # if h is not passed then use a default
+   a0 = nothing      # if a0 is not passed then use a default
+   b = nothing      # if b is not passed then optimal value is used
+   reltol::Float64  # please think about reducing it to one tol parameter `odetol`
+   finite_diff_scheme = :central
+   redistrib = :canonical
+   # ------ shared parameters ------
+   @neb_string_params
+end
+
+"""
 `StaticNEB`: the most basic NEB variant, integrating potential gradient
 flow with a fixed step-size.
 
@@ -105,11 +127,37 @@ $(neb_string_shared_docs)
    @neb_string_params
 end
 
+"""
+`AccelNEB`: NEB method, using momentum descent to accelerate energy minimisation.
+
+### Parameters:
+* `a0` : initial step, if a0 is not passed then use a default
+* `b` : momentum term damping coefficient
+* `finite_diff_scheme` : choice of discretisation of dumped wave equation
+
+$(neb_only_docs)
+
+$(neb_string_shared_docs)
+"""
+@with_kw type AccelNEB
+    h = nothing      # if h is not passed then use a default
+    a0 = nothing      # if a0 is not passed then use a default
+    b = nothing      # if b is not passed then optimal value is used
+    reltol::Float64  # please think about reducing it to one tol parameter `odetol`
+    finite_diff_scheme = :central
+    redistrib = :canonical
+    @neb_params
+    # ------ shared parameters ------
+    @neb_string_params
+end
+
 function String(step, args...; kwargs...)
    if step == :static
       return StaticString(args...; kwargs...)
-  elseif step == :ode
+   elseif step == :ode
       return ODEString(args...; kwargs...)
+   elseif step == :accel
+       return AccelString(args...; kwargs...)
    else
       error("`String`: unknown step selection mechanism $(step)")
    end
@@ -118,8 +166,10 @@ end
 function NEB(step, args...; kwargs...)
    if step == :static
       return StaticNEB(args...; kwargs...)
-  elseif step == :ode
+   elseif step == :ode
       return ODENEB(args...; kwargs...)
+   elseif step == :accel
+       return AccelNEB(args...; kwargs...)
    else
       error("`NEB`: unknown step selection mechanism $(step)")
    end
@@ -127,5 +177,11 @@ end
 
 solver(method::StaticString) = Euler(h=method.alpha)
 solver(method::ODEString) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
+# solver(method::AccelString) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
+solver(method::AccelString) = momentum_descent(h=method.h, h0=method.a0, rtol=method.reltol, b=method.b,
+fd_scheme=method.finite_diff_scheme, redistrib=method.redistrib)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
+# solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
+solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b, rtol=method.reltol,
+fd_scheme=method.finite_diff_scheme, redistrib=method.redistrib)
