@@ -10,9 +10,9 @@ end
 Path(x::Vector) = Path(x,Val{length(x)})
 
 # vectorise an object of type Path
-function Base.vec(x::Vector{T}) where {T}
-   return cat(1, x...)
-end
+# function Base.vec(x::Vector{T}) where {T}
+#    return cat(1, x...)
+# end
 
 # convert an object of type Path to type Vector
 function Base.convert(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat}) where {T, NI <: Integer}
@@ -131,7 +131,7 @@ end
 dist(precon_scheme::localPrecon, P, x, i) = precon_scheme.distance(0.5*(P(i)+P(i+1)), x[i], x[i+1])
 dist(precon_scheme::globalPrecon, P, x, i) = precon_scheme.distance(x[i], x[i+1])
 
-dot_P(precon_scheme::localPrecon, x, P, y) = sum([dot(x[i], P(i), y[i]) for i=1:length(x)])
+dot_P(precon_scheme::localPrecon, x, P, y) = sum([dotP(x[i], P(i), y[i]) for i=1:length(x)])
 dot_P(precon_scheme::globalPrecon, x, P, y) = sum([dot(x[i], y[i]) for i=1:length(x)])
 
 point_norm(precon_scheme::localPrecon, P, dxds) = [ 1; [norm(P(i), dxds[i])
@@ -146,7 +146,7 @@ forcing(precon_scheme::globalPrecon, P, neg∇Eperp) = vec(P) \ neg∇Eperp
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
     return - [ [zeros(dxds[1])];
-               κ*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1];
+               κ*[dotP(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1];
                [zeros(dxds[1])] ]
 end
 function elastic_force(precon_scheme::globalPrecon, P, κ, dxds, d²xds²)
@@ -157,4 +157,4 @@ end
 
 maxres(precon_scheme::localPrecon, P, ∇Eperp) =  maximum([norm(P(i)*∇Eperp[i],Inf)
                                                 for i = 1:length(∇Eperp)])
-maxres(precon_scheme::globalPrecon, P, ∇Eperp) = vecnorm(∇Eperp, Inf)
+maxres(precon_scheme::globalPrecon, P, ∇Eperp) = norm(∇Eperp, Inf)

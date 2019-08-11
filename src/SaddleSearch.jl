@@ -1,8 +1,10 @@
 module SaddleSearch
 
-using LinearAlgebra, Printf
+using Reexport
 
-using Parameters
+@reexport using LinearAlgebra, Printf, Dates
+
+@reexport using Parameters
 
 # include("abstractions.jl")
 

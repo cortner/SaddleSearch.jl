@@ -33,7 +33,7 @@ function run!(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T}) whe
       @printf("-----|-------|--------------------------------\n")
    end
    P = precon_prep!(P, x)
-   v /= sqrt(dot(v, P, v))
+   v /= sqrt(dotP(v, P, v))
    normalize(a) = a / norm(a)
    parallel_vector(a, b) = dot(a, b) * b    # assume b is normalised
    perpendicular_vector(a, b) = a - parallel_vector(a, b)
@@ -192,7 +192,7 @@ function run!(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T}) whe
       x += xstep
 
       # translation residual, store history
-      res_trans = vecnorm(dE0, Inf)
+      res_trans = norm(dE0, Inf)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
          @printf("%4d | %4d  |  %1.2e  %1.2e  %1.2e \n", nit, numdE, res_trans, res_rot, curv)

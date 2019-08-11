@@ -225,7 +225,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
    end
 
    # computation of the initial step
-   r = norm(Fn ./ max.(abs.(X), threshold), Inf) + realmin(Float64)
+   r = norm(Fn ./ max.(abs.(X), threshold), Inf) + floatmin(Float64)
    if h == nothing
       h = 0.5 * rtol^(1/2) / r
       h = max(h, hmin)
@@ -244,7 +244,9 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
 
       # error estimation
       e = 0.5 * h * (Fnew - Fn)
-      err = norm(e ./ max.(maximum([abs.(X) abs.(Xnew)],2), threshold), Inf) + realmin(Float64)
+      @show(X)
+      @show([abs.(X) abs.(Xnew)])
+      err = norm(e ./ max.(maximum([abs.(X) abs.(Xnew)],dims=2), threshold), Inf) + floatmin(Float64)
 
       # accept step if residual is sufficient decreased
       if (   ( Rnew <= Rn * (1 - C1 * h) )         # contraction
@@ -463,7 +465,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       return Xout, log, h
    end
 
-   r = norm(Fn ./ max.(abs.(X), threshold), Inf) + realmin(Float64)
+   r = norm(Fn ./ max.(abs.(X), threshold), Inf) + floatmin(Float64)
    if h0 == nothing
       h0 = 0.5 * rtol^(1/2) / r
       h0 = max(h0, hmin)

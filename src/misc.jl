@@ -73,9 +73,9 @@ maxres(l::IterationLog) = l[:maxres]
 
 
 
-dot(x, A::UniformScaling{T}, y) where {T} = A.λ * dot(x,y)
-dot(x, A::AbstractMatrix, y) = dot(x, A*y)
-norm(P, x) = sqrt(dot(x, P*x))
+dotP(x, A::UniformScaling{T}, y) where {T} = A.λ * dot(x,y)
+dotP(x, A::AbstractMatrix, y) = dot(x, A*y)
+normP(P, x) = sqrt(dot(x, P*x))
 dualnorm(P, f) = sqrt(dot(f, P \ f))
 
 """
@@ -91,8 +91,8 @@ struct PreconSMW{T} <: AbstractMatrix{T}
    smw::T  # the SMW-factor
 end
 
-PreconSMW(P, v, s) = PreconSMW(P, v, P*v, s, s / (1.0 + s * dot(v, P, v)))
+PreconSMW(P, v, s) = PreconSMW(P, v, P*v, s, s / (1.0 + s * dotP(v, P, v)))
 
 import Base: *, \, size
-(*)(A::PreconSMW, x::AbstractVector) = A.P * x + (A.s * dot(A.Pv, x)) * A.Pv
+(*)(A::PreconSMW, x::AbstractVector) = A.P * x + (A.s * dotP(A.Pv, x)) * A.Pv
 (\)(A::PreconSMW, f::AbstractVector) = (A.P \ f) - ((A.smw * dot(A.v, f)) * A.v)

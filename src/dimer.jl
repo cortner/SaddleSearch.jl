@@ -2,7 +2,7 @@
 
 
 function rayleigh(v, x, len, E0, E, P)
-   w = v / sqrt(dot(v, P, v))
+   w = v / sqrt(dotP(v, P, v))
    return 2.0 * (E(x+len/2*w) - 2.0 * E0 + E(x-len/2*v)) / len^2
 end
 
@@ -34,7 +34,7 @@ function run!(method::StaticDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T
    for nit = 0:maxnumdE  # there will be at most this many evaluations
       # normalise v
       P0 = precon_prep!(P0, x)
-      v /= sqrt(dot(v, P0, v))
+      v /= sqrt(dotP(v, P0, v))
       # evaluate gradients, and more stuff
       dE0 = dE(x)
       dEv = dE(x + len * v)
@@ -44,15 +44,15 @@ function run!(method::StaticDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T
       # NEWTON TYPE RESCALING IN v DIRECTION
       if rescale_v
          P = PreconSMW(P0, v, abs(dot(Hv, v)) - 1.0)
-         v /= sqrt(dot(v, P, v))
+         v /= sqrt(dotP(v, P, v))
       else
          P = P0
       end
 
       # translation and rotation residual, store history
-      res_trans = vecnorm(dE0, Inf)
+      res_trans = norm(dE0, Inf)
       q_rot = - Hv + dot(v, Hv) * (P * v)
-      res_rot = vecnorm(q_rot, Inf)
+      res_rot = norm(q_rot, Inf)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
          @printf("%4d | %1.2e  %1.2e  %4.2f  \n", nit, res_trans, res_rot, dot(v, Hv))
@@ -121,7 +121,7 @@ function run!(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T}
 
       # normalise v
       P0 = precon_prep!(P0, x)
-      v /= sqrt(dot(v, P0, v))
+      v /= sqrt(dotP(v, P0, v))
       # evaluate gradients, and more stuff
       dEm = dE(x - len/2 * v)
       dEp = dE(x + len/2 * v)
@@ -132,16 +132,16 @@ function run!(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T}
       # NEWTON TYPE RESCALING IN v DIRECTION
       if rescale_v
          P = PreconSMW(P0, v, abs(dot(Hv, v)) - 1.0)
-         v /= sqrt(dot(v, P, v))
+         v /= sqrt(dotP(v, P, v))
       else
          P = P0
       end
 
       # translation and rotation residual, store history
-      res_trans = vecnorm(dE0, Inf)
+      res_trans = norm(dE0, Inf)
       λ = dot(v, Hv)
       q_rot = - Hv + λ * (P * v)
-      res_rot = vecnorm(q_rot, Inf)
+      res_rot = norm(q_rot, Inf)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
          @printf("%4d | %1.2e  %1.2e  %1.2e  %1.2e  %1.2e \n",
@@ -178,20 +178,20 @@ function run!(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T}
          # Δx, Δv has already been computed (see end of loop)
          Δg = p_trans - p_trans_old
          Δd = p_rot - p_rot_old
-         β = abs( dot(Δx, P, Δg) / dot(Δg, P, Δg) )
-         γ = abs( dot(Δv, P, Δd) / dot(Δd, P, Δd) )
+         β = abs( dotP(Δx, P, Δg) / dotP(Δg, P, Δg) )
+         γ = abs( dotP(Δv, P, Δd) / dotP(Δd, P, Δd) )
       end
 
       # perform linesearch on the translation step
       F_trans = xx -> localmerit(xx, x, v, len, dE0, λ, E)
-      β, numE_ls, _ = linesearch!(ls, F_trans, F_trans(x), - dot(p_trans, P, p_trans),
+      β, numE_ls, _ = linesearch!(ls, F_trans, F_trans(x), - dotP(p_trans, P, p_trans),
                                     x, p_trans, β)
       numE += numE_ls
 
       # perform line-search on rotation step
       E0 = E(x);  numE += 1
       F_rot = vv -> rayleigh(vv, x, len, E0, E, P)
-      γ, numE_ls, _ = linesearch!(ls, F_rot, F_rot(v), -dot(p_rot, P, p_rot),
+      γ, numE_ls, _ = linesearch!(ls, F_rot, F_rot(v), -dotP(p_rot, P, p_rot),
                                     v, p_rot, γ)
       numE += numE_ls
 
@@ -239,7 +239,7 @@ function dimer_project(z, P, precon_prep!)
    n = length(z) ÷ 2
    x, v = z[1:n], z[n+1:end]
    P = precon_prep!(P, x)
-   v /= sqrt(dot(v, P, v))
+   v /= sqrt(dotP(v, P, v))
    znew = copy(z)
    znew[n+1:end] = v
    return znew
