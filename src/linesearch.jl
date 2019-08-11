@@ -8,7 +8,7 @@ export StaticLineSearch, Backtracking
 `type StaticLineSearch`: does nothing, i.e., just returns the step
 proposal.
 """
-type StaticLineSearch end
+struct StaticLineSearch end
 
 linesearch!(ls::StaticLineSearch, F, f0, df0, x, p, α; f0_goal=f0) = α, 0, nothing
 
@@ -23,7 +23,7 @@ kw-parameters:
 * `minα`: smallest allowed step (throws exception otherwise)
 * `mindecfact`: minimal decrease factor
 """
-@with_kw type Backtracking
+@with_kw struct Backtracking
    c1::Float64 = 0.1
    order::Int = 2
    minα::Float64 = 1e-8

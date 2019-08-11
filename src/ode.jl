@@ -5,7 +5,7 @@
 ### Parameters:
 * `h` : step length
 """
-@with_kw type Euler
+@with_kw struct Euler
    h::Float64 = 1e-1
 end
 
@@ -139,7 +139,7 @@ end
 """
 
 
-@with_kw type ODE12r
+@with_kw struct ODE12r
    rtol::Float64 = 1e-1
    threshold::Float64 = 1.0
    C1::Float64 = 1e-2
@@ -382,7 +382,7 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
    return Xout, log, h
 end
 
-@with_kw type momentum_descent
+@with_kw struct momentum_descent
    h::Float64 = 1e-1
    b = 1e-1
    fd_scheme = :central
