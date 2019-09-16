@@ -463,46 +463,122 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       return Xout, log, h
    end
 
-   r = norm(Fn ./ max.(abs.(X), threshold), Inf) + realmin(Float64)
-   if h0 == nothing
+    r = norm(Fn ./ max.(abs.(X), threshold), Inf) + realmin(Float64)
+    if h0 == nothing
       h0 = 0.5 * rtol^(1/2) / r
       h0 = max(h0, hmin)
-   end
+    end
 
-   Xnew = g(X + h0 * Fn, P)
+    nit=1
+    while length(Xout)<2 && nit<=maxnit
+        Xnew = g(X + h0 * Fn, P)
 
-   # return force
-   Pnew = precon_prep!(P, Xnew)
-   Fnew, Rnew, ndE, _ = f(Xnew, Pnew, 1)
+        # return force
+        Pnew = precon_prep!(P, Xnew)
+        Fnew, Rnew, ndE, ddot_P = f(Xnew, Pnew, nit)
 
-   numdE += ndE
+        numdE += ndE
 
-   X, Fn, Rn, P = Xnew, Fnew, Rnew, Pnew
-   push!(Xout, X) # store X
-   push!(log, numE, numdE, Rn) # residual, store history
+        # error estimation
+        e = 0.5 * h0 * (Fnew - Fn)
+        err = norm(e ./ max.(maximum([abs.(X) abs.(Xnew)],2), threshold), Inf) + realmin(Float64)
 
-   # logging
-   if verbose >= 2
-      dt = Dates.format(now(), "HH:MM")
-      @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 1, Rn)
-   end
-   if verbose >= 4 && file!=nothing
-      dt = Dates.format(now(), "HH:MM")
-      strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 1, Rn)
-      write(file, strlog)
-      flush(file)
-   end
-   if Rn <= tol
-      if verbose >= 1
-         println("SADDLESEARCH: $(method) terminates succesfully after 1 Euler iteration.")
-      end
-      if verbose >= 4 && file!=nothing
-         strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after 1 Euler iteration.\n", "$(method)")
-         write(file, strlog)
-         close(file)
-      end
-      return Xout, log, h
-   end
+        # accept step if residual is sufficient decreased
+        if (   ( Rnew <= Rn * (1 - C1 * h0) )         # contraction
+           || ( Rnew <= Rn * C2 && err <= rtol ) )  # moderate growth + error control
+          accept = true
+        else
+          accept = false
+          conditions = (Rnew <= Rn * (1 - C1 * h0), Rnew <= Rn * C2, err <= rtol )
+        end
+
+        # whether we accept or reject this step, we now need a good guess for
+        # the next step-size, from a line-search-like construction
+        y = Fn - Fnew
+        if extrapolate == 1       # F(xn + h Fn) ⋅ Fn ~ 0
+          h_ls = h0 * ddot_P(Fn, Fn) / ddot_P(Fn, y)
+        elseif extrapolate == 2   # F(Xn + h Fn) ⋅ F{n+1} ~ 0
+          h_ls = h0 * ddot_P(Fn, Fnew) / (ddot_P(Fn, y) + 1e-10)
+        elseif extrapolate == 3   # min | F(Xn + h Fn) |
+          h_ls = h0 * ddot_P(Fn, y) / (ddot_P(y, y) + 1e-10)
+        else
+          @printf("SADDLESEARCH: invalid `extrapolate` parameter")
+          if verbose >= 4 && file!=nothing
+              strlog = @sprintf("SADDLESEARCH: invalid `extrapolate` parameter")
+              write(file, strlog)
+              close(file)
+          end
+          error("SADDLESEARCH: invalid `extrapolate` parameter")
+        end
+        if isnan(h_ls) || (h_ls < hmin)
+          h_ls = Inf
+        end
+        # or from the error estimate
+        h_err = h0 * 0.5 * sqrt(rtol/err)
+
+        if accept
+            X, Fn, Rn, P  = Xnew, Fnew, Rnew, Pnew
+
+            push!(Xout, X) # store X
+            push!(log, numE, numdE, Rn) # residual, store history
+
+            # logging
+            if verbose >= 2
+             dt = Dates.format(now(), "HH:MM")
+             @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+            end
+            if verbose >= 4 && file!=nothing
+             dt = Dates.format(now(), "HH:MM")
+             strlog = @sprintf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, nit, Rn)
+             write(file, strlog)
+             flush(file)
+            end
+            if Rn <= tol
+             if verbose >= 1
+                println("SADDLESEARCH: $(method) terminates succesfully after $(nit) iterations.")
+             end
+             if verbose >= 4 && file!=nothing
+                strlog = @sprintf("SADDLESEARCH: %s terminates succesfully after %s iterations.\n", "$(method)", "$(nit)")
+                write(file, strlog)
+                close(file)
+             end
+             return Xout, log, h0
+            end
+
+            if Rn >= maxtol
+                warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+                if verbose >= 4 && file!=nothing
+                 strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
+                 write(file, strlog)
+                 close(file)
+                end
+                push!(Xout, X) # store X
+                push!(log, typemax(Int64), typemax(Int64), Rn) # residual, store history
+                return Xout, log, h0
+            end
+        else
+            # compute new step size
+            h0 = max(0.1 * h0, min(0.25 * h0, h_err, h_ls))
+            # log step-size analytic results
+            if verbose >= 3
+                println("SADDLESEARCH:      reject: new h = $h")
+                println("SADDLESEARCH:               |Fnew| = $(Rnew)")
+                println("SADDLESEARCH:               |Fold| = $(Rn)")
+                println("SADDLESEARCH:        |Fnew|/|Fold| = $(Rnew/Rn)")
+            end
+            if verbose >= 4 && file!=nothing
+            strlog = @sprintf("SADDLESEARCH:      reject: new h = %s
+    SADDLESEARCH:               |Fnew| = %s
+    SADDLESEARCH:               |Fold| = %s
+    SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn)")
+                write(file, strlog)
+                flush(file)
+            end
+        end
+        nit+=1
+    end
+
+    nitA=nit
 
    if b == nothing
       dFn = -df(X, P)
@@ -519,7 +595,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
    end
    @printf("b = %1.2e, h = %1.2e\n",b , h)
 
-   for nit = 2:maxnit
+   for nit = nitA:maxnit
       # if b == nothing
       #    if mod(nit, 50) == 0
       #       dFn = -df(X, P)
