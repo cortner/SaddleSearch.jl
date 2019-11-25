@@ -191,6 +191,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
    push!(log, numE, numdE, Rn)
 
    # logging
+   nit = 0
    if verbose >= 2
       dt = Dates.format(now(), "HH:MM")
       @printf("SADDLESEARCH: %s |%4d |   %1.2e\n", dt, 0, Rn)

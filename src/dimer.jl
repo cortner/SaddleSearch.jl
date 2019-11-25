@@ -230,7 +230,7 @@ function dimer_ode(z, dE, P, precon_prep!, len)
    p_trans = - (P \ dE0) + 2.0 * dot(v, dE0) * v
    p_rot = - (P \ Hv) + dot(Hv, v) * v
    F = [p_trans; p_rot]
-   return F, norm(F, Inf), 2, dot
+   return F, vecnorm([dE0; - Hv + dot(v, Hv) * (P * v)], Inf), 2, dot
 end
 
 function dimer_project(z, P, precon_prep!)
@@ -302,9 +302,9 @@ function run!(method::AccelDimer, E, dE, ddE, x0::Vector, v0::Vector)
    # read all the parameters
    @unpack tol_trans, tol_rot, maxnumdE, len,
             precon_prep!, verbose, precon_rot, rescale_v,
-            a0, b, fd_scheme, redistrib, = method
-   accel = momentum_descent(h = a0, b = b , fd_scheme = fd_scheme,
-                              redistrib = redistrib)
+            h, a0, b, reltol, fd_scheme, redistrib, = method
+   accel = momentum_descent(h = h, h0 = a0, b = b, fd_scheme = fd_scheme,
+                              redistrib = redistrib, rtol = reltol)
    P0=method.precon
 
    # initial condition
