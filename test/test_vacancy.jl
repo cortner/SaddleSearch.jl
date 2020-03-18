@@ -25,7 +25,7 @@
       xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
       @test res_trans(bblog)[end] <= bbdimer.tol_trans
       @test res_rot(bblog)[end] <= bbdimer.tol_rot
-      # @test vecnorm(xbb - x, Inf) < 1e-4
+      # @test norm(xbb - x, Inf) < 1e-4
       println("   BB-Dimer(I): $(numdE(bblog)[end]) ∇E evaluations")
 
       supdimer = SuperlinearDimer(maximum_translation=0.1, max_num_rot=3,

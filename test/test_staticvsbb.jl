@@ -19,7 +19,7 @@ bbdimer = BBDimer(a0_trans=0.002, a0_rot=0.002, verbose=verbose)
 xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
 @test res_trans(bblog)[end] <= dimer.tol_trans
 @test res_rot(bblog)[end] <= dimer.tol_rot
-@test vecnorm(xbb - x, Inf) < 1e-4
+@test norm(xbb - x, Inf) < 1e-4
 
 heading2("Muller potential and preconditioning")
 
@@ -53,7 +53,7 @@ bbdimer = BBDimer(a0_trans=0.5, a0_rot=0.5, verbose=verbose)
 xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
 @test res_trans(bblog)[end] <= dimer.tol_trans
 @test res_rot(bblog)[end] <= dimer.tol_rot
-@test vecnorm(xbb - x, Inf) < 1e-4
+@test norm(xbb - x, Inf) < 1e-4
 
 
 heading2("Ill-conditioned double-well")
@@ -71,7 +71,7 @@ bbdimer = BBDimer(a0_trans=0.1, a0_rot=0.1, verbose=verbose)
 xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
 @test res_trans(bblog)[end] <= dimer.tol_trans
 @test res_rot(bblog)[end] <= dimer.tol_rot
-@test vecnorm(xbb - x, Inf) < 1e-4
+@test norm(xbb - x, Inf) < 1e-4
 
 heading2("Ill-conditioned double-well, but now with preconditioner")
 
@@ -86,6 +86,6 @@ bbdimer = BBDimer(a0_trans=0.66, a0_rot=0.4, precon=V.A,
 xbb, vbb, bblog = run!(bbdimer, E, dE, x0, v0)
 @test res_trans(bblog)[end] <= dimer.tol_trans
 @test res_rot(bblog)[end] <= dimer.tol_rot
-@test vecnorm(xbb - x, Inf) < 1e-4
+@test norm(xbb - x, Inf) < 1e-4
 
 end

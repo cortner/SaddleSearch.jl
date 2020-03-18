@@ -12,6 +12,7 @@ module TestSets
 
 using Parameters
 import ForwardDiff
+import LinearAlgebra: dot, norm
 
 # Available Test Sets:
 export MullerPotential,
@@ -36,7 +37,7 @@ hessian(V, x) = ForwardDiff.hessian(y->energy(V,y), x)
 
 function hessprecond(V, x; stab=0.0)
    H = Symmetric(hessian(V, x))
-   D, V = eig(H)
+   D, V = eigen(H)
    D = abs.(D) .+ stab
    return V * diagm(D) * V'
 end
@@ -48,7 +49,7 @@ end
 #   TODO: add reference
 # ============================================================================
 
-@with_kw type MullerPotential
+@with_kw struct MullerPotential
    B::Vector{Matrix{Float64}} = [ [ -1 0; 0 -10], [-1 0; 0 -10],
                                     [-6.5 5.5; 5.5 -6.5], [0.7 0.3; 0.3 0.7] ]
    A::Vector{Float64} = [-200, -100, -170, 15]
@@ -75,7 +76,7 @@ function ic_path(V::MullerPotential, case=:near, Nimgs=7)
    else
       error("unknown initial condition")
    end
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in LinRange(.0, 1., Nimgs)]
 end
 
 
@@ -83,7 +84,7 @@ end
 # TEST SET: DoubleWell
 # ============================================================================
 
-@with_kw type DoubleWell
+@with_kw struct DoubleWell
    A::Matrix{Float64} = eye(2)
 end
 
@@ -117,7 +118,7 @@ function ic_path(V::DoubleWell, case=:nothing, Nimgs=7)
    else
       error("unknown initial condition")
    end
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in LinRange(.0, 1., Nimgs)]
 end
 
 
@@ -125,7 +126,7 @@ end
 # TEST SET: Lennard-Jones Cluster
 # ============================================================================
 
-@with_kw type LJcluster
+@with_kw struct LJcluster
    ε::Float64 = 0.25
    σ::Float64 = 1.
    ρ_min::Float64 = 1.0
@@ -175,7 +176,7 @@ function ic_path(V::LJcluster, Nimgs=7)
    r1 = [R[5]; R[4]; R[3]; R[2]; R[7]; R[6]; R[1]]
    r2 = [R[5]; R[3]; R[1]; R[2]; R[7]; R[6]; R[4]]
    x0 = V.ρ_min * r1; x1 = V.ρ_min * r2
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in LinRange(.0, 1., Nimgs)]
 end
 
 precond(V::LJcluster, r) = LJaux.exp_precond(reshape(r, 2, length(r) ÷ 2))
@@ -192,17 +193,20 @@ boundary condition.
 """
 module LJaux
 
+using SparseArrays
+import LinearAlgebra: norm, svd, I
+
 function vacancy_refconfig(R, bc)
    A = [1.0 cos(π/3); 0.0 sin(π/3)]
-   cR = ceil(Int, R / minimum(svd(A)[2]))
+   cR = ceil(Int, R / minimum(svd(A).S))
    t = collect(-cR:cR)
    x = ones(length(t)) * t'
    y = t * ones(length(t))'
    X = A * [x[:] y[:]]'
-   r = sqrt.(sum(abs2, X, 1))
-   Xref = X[:, find(0 .< r .<= R)]
-   r = sqrt.(sum(abs2, Xref, 1))
-   I0 = find(r .<= 1.1)[1]
+   r = vec(sqrt.(sum(abs2, X, dims  = 1)))
+   Xref = X[:, findall(0 .< r .<= R)]
+   r = vec(sqrt.(sum(abs2, Xref, dims =  1)))
+   I0 = findall(r .<= 1.1)[1]
    if I0 != 1
       Xref[:, [1,I0]] = Xref[:, [I0,1]]
       r[[1,I0]] = r[[I0,1]]
@@ -210,7 +214,7 @@ function vacancy_refconfig(R, bc)
    if bc == :free
       Ifree = 1:size(Xref, 2)
    elseif bc == :clamped
-      Ifree = find(r .<= R - 2.1)   # freeze two layers of atoms
+      Ifree = findall(r .<= R - 2.1)   # freeze two layers of atoms
    else
       error("unknown parameter `bc = $bc`")
    end
@@ -248,21 +252,21 @@ end
 function exp_precond(X::Matrix; rcut = 2.5, α=3.0)
    nX = size(X, 2)
    P = zeros(2*nX, 2*nX)
-   I = zeros(Int, 2, nX)
-   I[:] = 1:2*nX
+   II = zeros(Int, 2, nX)
+   II[:] = 1:2*nX
    for i = 1:nX, j = i+1:nX
-      Ii, Ij = I[:,i], I[:,j]
+      Ii, Ij = II[:,i], II[:,j]
       Rij = X[:,i] - X[:,j]
       rij = norm(Rij)
       if 0 < rij < rcut
-         a = pphi(rij) * eye(2)
+         a = pphi(rij) * I(2)
          P[Ii, Ij] -= a
          P[Ij, Ii] -= a
          P[Ii, Ii] += a
          P[Ij, Ij] += a
       end
    end
-   return sparse(P) + 0.001 * speye(2*nX)
+   return sparse(P) + 0.001 * sparse(I(2*nX))
 end
 
 end
@@ -272,7 +276,7 @@ end
 
 `bc = :clamped` is also allowed
 """
-type LJVacancy2D
+struct LJVacancy2D
    R::Float64
    Xref::Matrix{Float64}
    Ifree::Vector{Int}
@@ -281,7 +285,7 @@ end
 LJVacancy2D(; R::Float64 = 5.1, bc=:free) =
    LJVacancy2D(R, LJaux.vacancy_refconfig(R, bc)...)
 
-function dofs2pos{T}(V::LJVacancy2D, r::Vector{T})
+function dofs2pos(V::LJVacancy2D, r::Vector{T}) where {T}
    X = convert(Matrix{T}, V.Xref)
    X[:, V.Ifree] = reshape(r, 2, length(r) ÷ 2)
    return X
@@ -324,11 +328,11 @@ function ic_path(V::LJVacancy2D, case=:near, Nimgs=7)
       error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
    end
    x0 = X0[:, V.Ifree][:]; x1 = X1[:, V.Ifree][:]
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in LinRange(.0, 1., Nimgs)]
 end
 
 function pos2dofs(V::LJVacancy2D, P::AbstractMatrix)
-   free = [V.Ifree' * 2 - 1; V.Ifree' * 2][:]
+   free = [V.Ifree' * 2 .- 1; V.Ifree' * 2][:]
    return P[free, free]
 end
 
@@ -345,12 +349,15 @@ precond(V::LJVacancy2D, x::Vector; kwargs...) =
 
 module MorseAux
 
+using SparseArrays
+import LinearAlgebra: norm, svd, I
+
 function island_refconfig(;n_bc1=6, n_bc2=14)
    data = joinpath(Pkg.dir("SaddleSearch"), "data") * "/"
    Xref = readdlm(data*"morse_island_min01a.dat")
-   Ifix = find(u->u<=n_bc1, Xref[:,3])
+   Ifix = findall(u->u<=n_bc1, Xref[:,3])
    Ifree = setdiff(1:size(Xref,1), Ifix)
-   Iisl = find(u->u>=n_bc2, Xref[:,3])
+   Iisl = findall(u->u>=n_bc2, Xref[:,3])
    Ibulk = setdiff(Ifree, Iisl)
    nfree = length(Ifree)
    return Xref, Ifix, Ifree, Iisl, Ibulk, nfree
@@ -359,7 +366,7 @@ end
 end
 
 
-type MorseIsland
+struct MorseIsland
    Xref::Matrix{Float64}
    Ifix::Vector{Int}
    Ifree::Vector{Int}
@@ -445,12 +452,12 @@ function gradient(V::MorseIsland, r)
    R[V.Ifix,: ]= Rfix
    # R = reshape(r, (np,3))
 
-   I = zeros(Int, np, 3)
-   I[:] = 1:nd
+   II = zeros(Int, np, 3)
+   II[:] = 1:nd
 
    for i=1:np, j=i+1:np
       if (R[i,3]>zfix || R[j,3]>zfix)
-         Ii, Ij = I[i,:], I[j,:]
+         Ii, Ij = II[i,:], II[j,:]
          rel = [R[i,k]-R[j,k] for k=1:3]
          [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
          r2sqrt = norm(rel)
@@ -469,9 +476,9 @@ function gradient(V::MorseIsland, r)
       end
    end
 
-   # F = cat(1, f...)
+   # F = cat(f..., dims = 1)
    F *= - 2 * a * aa
-   return F[I[V.Ifree,:][:]]
+   return F[II[V.Ifree,:][:]]
 end
 
 function precond(V::MorseIsland, r)
@@ -500,18 +507,18 @@ function precond(V::MorseIsland, r)
 
    # R = reshape(r, (np,3))
    P = zeros(nd, nd)
-   I = zeros(Int, np, 3)
-   I[:] = 1:nd
+   II = zeros(Int, np, 3)
+   II[:] = 1:nd
    for i=1:np, j=i+1:np
       if (R[i,3]>zfix && R[j,3]>zfix)
-         Ii, Ij = I[i,:], I[j,:]
+         Ii, Ij = II[i,:], II[j,:]
          rel = [R[i,k]-R[j,k] for k=1:3]
          [rel[i] -= box[i] * round(rel[i]/box[i]) for i=1:2]
          r2sqrt = norm(rel)
 
          # if r2sqrt < rc
          e = exp( -a*(r2sqrt - r0) )
-         ddf = 4 * aa * a * a * e * e * eye(3)
+         ddf = 4 * aa * a * a * e * e * I(3)
 
          P[Ii, Ij] -= ddf
          P[Ij, Ii] -= ddf
@@ -522,8 +529,8 @@ function precond(V::MorseIsland, r)
       end
    end
 
-   Q = P[I[V.Ifree,:][:], I[V.Ifree,:][:]]
-   return sparse(Q) + 0.001 * speye(size(Q,1))
+   Q = P[II[V.Ifree,:][:], II[V.Ifree,:][:]]
+   return sparse(Q) + 0.001 * sparse(I(size(Q,1)))
 end
 
 function ic_path(V::MorseIsland, Nimgs=7)
@@ -533,7 +540,7 @@ function ic_path(V::MorseIsland, Nimgs=7)
    X1 = readdlm(data*"morse_island_min02a.dat")
    x1 = X1[V.Ifree, :][:]
 
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in LinRange(.0, 1., Nimgs)]
 end
 
 end

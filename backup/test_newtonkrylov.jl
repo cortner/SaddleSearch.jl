@@ -14,7 +14,7 @@ println("Testing `blocklanczos`")
 
 # create A = -Δ , B = diag(V)   with V positive
 d = 30
-x = linspace(-1,1,d)
+x = LinRange(-1, 1, d)
 A = d^2 * SymTridiagonal(2*ones(d), -ones(d-1))
 B = Diagonal(exp(- x.^2) + 0.1)
 
