@@ -1,7 +1,7 @@
 # using SaddleSearch: run!
 
 
-function run!(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI}) where {T, NI <: Integer}
+function run!(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI}) where {T, NI}
    # read all the parameters
    @unpack tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
    @unpack precon, precon_prep! = precon_scheme
@@ -33,7 +33,7 @@ function run!(method::Union{ODEString, StaticString}, E, dE, x0::Path{T,NI}) whe
    return x_return, log, alpha
 end
 
-function run!(method::AccelString, E, dE, ddE, x0::Path{T,NI}) where {T, NI <: Integer}
+function run!(method::AccelString, E, dE, ddE, x0::Path{T,NI}) where {T, NI}
    # read all the parameters
    @unpack tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends, verbose = method
    @unpack precon, precon_prep! = precon_scheme
@@ -69,7 +69,7 @@ end
 
 # forcing term for string method
 function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE,
-                  precon_scheme, direction, fixed_ends::Bool) where {T, NI <: Integer}
+                  precon_scheme, direction, fixed_ends::Bool) where {T, NI}
 
    x = convert(path_type, X)
    dxds = deepcopy(x)
@@ -85,7 +85,7 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE,
    param /= param[end]; param[end] = 1.
    parametrise!(dxds, x, ds, parametrisation = param)
    dxds ./= point_norm(precon_scheme, P, dxds)
-   dxds[1] = zeros(dxds[1]); dxds[end] = zeros(dxds[1])
+   dxds[1] = zeros(size(dxds[1])); dxds[end] = zeros(size(dxds[1]))
 
    # potential gradient
    dE0_temp = []
@@ -93,8 +93,8 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE,
       dE0_temp = [dE(x[i]) for i in direction]
       cost = length(param)
    else
-      dE0_temp = [[zeros(x[1])]; [dE(x[i]) for i in direction[2:end-1]];
-                  [zeros(x[1])]]
+      dE0_temp = [[zeros(size(x[1]))]; [dE(x[i]) for i in direction[2:end-1]];
+                  [zeros(size(x[1]))]]
       cost = length(param) - 2
    end
    dE0 = [dE0_temp[i] for i in direction]
@@ -112,7 +112,7 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE,
 end
 
 function jacobian(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64},
-                    dE, ddE) where {T, NI <: Integer}
+                    dE, ddE) where {T, NI}
 
    x = convert(path_type, X)
 

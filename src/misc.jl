@@ -71,12 +71,16 @@ res_rot(l::IterationLog) = l[:res_rot]
 maxres(l::IterationLog) = l[:maxres]
 
 
-
-
-dotP(x, A::UniformScaling{T}, y) where {T} = A.λ * dot(x,y)
-dotP(x, A::AbstractMatrix, y) = dot(x, A*y)
-normP(P, x) = sqrt(dot(x, P*x))
+import LinearAlgebra: dot, norm
+LinearAlgebra.dot(x, A::UniformScaling{T}, y) where T = A.λ * dot(x,y)
+LinearAlgebra.dot(x, A::AbstractMatrix, y) = dot(x, A*y)
+LinearAlgebra.norm(P, x) = sqrt(dot(x, P*x))
 dualnorm(P, f) = sqrt(dot(f, P \ f))
+
+# dotP(x, A::UniformScaling{T}, y) where {T} = A.λ * dot(x,y)
+# dotP(x, A::AbstractMatrix, y) = dot(x, A*y)
+# normP(P, x) = sqrt(dot(x, P*x))
+# dualnorm(P, f) = sqrt(dot(f, P \ f))
 
 """
 An abstract linear operator representing `P + s * (Pv) ⊗ (Pv)`
@@ -91,8 +95,8 @@ struct PreconSMW{T} <: AbstractMatrix{T}
    smw::T  # the SMW-factor
 end
 
-PreconSMW(P, v, s) = PreconSMW(P, v, P*v, s, s / (1.0 + s * dotP(v, P, v)))
+PreconSMW(P, v, s) = PreconSMW(P, v, P*v, s, s / (1.0 + s * dot(v, P, v)))
 
 import Base: *, \, size
-(*)(A::PreconSMW, x::AbstractVector) = A.P * x + (A.s * dotP(A.Pv, x)) * A.Pv
+(*)(A::PreconSMW, x::AbstractVector) = A.P * x + (A.s * dot(A.Pv, x)) * A.Pv
 (\)(A::PreconSMW, f::AbstractVector) = (A.P \ f) - ((A.smw * dot(A.v, f)) * A.v)

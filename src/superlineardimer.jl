@@ -33,7 +33,7 @@ function run!(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T}) whe
       @printf("-----|-------|--------------------------------\n")
    end
    P = precon_prep!(P, x)
-   v /= sqrt(dotP(v, P, v))
+   v /= sqrt(dot(v, P, v))
    normalize(a) = a / norm(a)
    parallel_vector(a, b) = dot(a, b) * b    # assume b is normalised
    perpendicular_vector(a, b) = a - parallel_vector(a, b)

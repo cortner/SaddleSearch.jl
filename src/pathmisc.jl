@@ -3,19 +3,19 @@ using Dierckx
 
 export Path
 
-struct Path{T, NI <: Integer}
+struct Path{T, NI}
    x::Vector{T}
    valNI::Type{Val{NI}}
 end
 Path(x::Vector) = Path(x,Val{length(x)})
 
 # vectorise an object of type Path
-# function Base.vec(x::Vector{T}) where {T}
-#    return cat(1, x...)
-# end
+function Base.vec(x::Vector{T}) where {T}
+   return cat(x..., dims = 1)
+end
 
 # convert an object of type Path to type Vector
-function Base.convert(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat}) where {T, NI <: Integer}
+function Base.convert(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat}) where {T, NI}
    return [ X[(n-1)*(length(X)÷NI)+1 : n*(length(X)÷NI)] for n=1:NI]
 end
 
@@ -50,7 +50,7 @@ end
 parametrisation functions of paths for String/NEB-type methods
 """
 # interpolate and reparametrise path
-function parametrise!(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x))) where{T}
+function parametrise!(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=LinRange(0.,1.,length(x))) where{T}
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
@@ -64,15 +64,15 @@ function parametrise!(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=lins
    d²xds² = [[derivative(Sj, s, nu=2) for Sj in S] for s in parametrisation]
 
    # return parametrised variables
-   x_ = cat(2, xref...)
-   dxds_ = cat(2, dxdsref...)
+   x_ = cat(xref..., dims = 2)
+   dxds_ = cat(dxdsref..., dims = 2)
    [x[i] = x_[i,:] for i=1:length(x)]
    [dxds[i] = dxds_[i,:] for i=1:length(x)]
    return d²xds²
 end
 
 # distribute images uniformly with respect to P
-function redistribute(X::Vector{Float64}, path_type::Type{Path{T,NI}}, precon, precon_scheme) where {T, NI<:Integer}
+function redistribute(X::Vector{Float64}, path_type::Type{Path{T,NI}}, precon, precon_scheme) where {T, NI}
 
    x = convert(path_type, X)
    t = deepcopy(x)
@@ -131,7 +131,7 @@ end
 dist(precon_scheme::localPrecon, P, x, i) = precon_scheme.distance(0.5*(P(i)+P(i+1)), x[i], x[i+1])
 dist(precon_scheme::globalPrecon, P, x, i) = precon_scheme.distance(x[i], x[i+1])
 
-dot_P(precon_scheme::localPrecon, x, P, y) = sum([dotP(x[i], P(i), y[i]) for i=1:length(x)])
+dot_P(precon_scheme::localPrecon, x, P, y) = sum([dot(x[i], P(i), y[i]) for i=1:length(x)])
 dot_P(precon_scheme::globalPrecon, x, P, y) = sum([dot(x[i], y[i]) for i=1:length(x)])
 
 point_norm(precon_scheme::localPrecon, P, dxds) = [ 1; [norm(P(i), dxds[i])
@@ -145,14 +145,14 @@ forcing(precon_scheme::localPrecon, P, neg∇Eperp) = return vec(neg∇Eperp)
 forcing(precon_scheme::globalPrecon, P, neg∇Eperp) = vec(P) \ neg∇Eperp
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
-    return - [ [zeros(dxds[1])];
-               κ*[dotP(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1];
-               [zeros(dxds[1])] ]
+    return - [ [zeros(size(dxds[1]))];
+               κ*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1];
+               [zeros(size(dxds[1]))] ]
 end
 function elastic_force(precon_scheme::globalPrecon, P, κ, dxds, d²xds²)
-    return vec(-[ [zeros(dxds[1])];
+    return vec(-[ [zeros(size(dxds[1]))];
                κ*[dot(d²xds²[i], dxds[i]) * dxds[i] for i=2:N-1];
-               [zeros(dxds[1])] ])
+               [zeros(size(dxds[1]))] ])
 end
 
 maxres(precon_scheme::localPrecon, P, ∇Eperp) =  maximum([norm(P(i)*∇Eperp[i],Inf)

@@ -183,5 +183,5 @@ fd_scheme=method.finite_diff_scheme, redistrib=method.redistrib)
 solver(method::StaticNEB) = Euler(h=method.alpha)
 solver(method::ODENEB) = ODE12r(rtol=method.reltol, threshold=method.threshold, h=method.a0)
 # solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b, finite_diff=method.finite_diff_scheme)
-solver(method::AccelNEB) = momentum_descent(h=method.a0, b=method.b, rtol=method.reltol,
+solver(method::AccelNEB) = momentum_descent(h=method.h, h0=method.a0, b=method.b, rtol=method.reltol,
 fd_scheme=method.finite_diff_scheme, redistrib=method.redistrib)

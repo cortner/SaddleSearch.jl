@@ -213,7 +213,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
       return Xout, log, h
    end
    if Rn >= maxtol
-      warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+      @warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
       if verbose >= 4 && file!=nothing
           strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
           write(file, strlog)
@@ -244,8 +244,6 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
 
       # error estimation
       e = 0.5 * h * (Fnew - Fn)
-      @show(X)
-      @show([abs.(X) abs.(Xnew)])
       err = norm(e ./ max.(maximum([abs.(X) abs.(Xnew)],dims=2), threshold), Inf) + floatmin(Float64)
 
       # accept step if residual is sufficient decreased
@@ -311,7 +309,7 @@ SADDLESEARCH: ------|-----|-----------------\n", rtol,threshold)
          end
 
          if Rn >= maxtol
-            warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+            @warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
             if verbose >= 4 && file!=nothing
                 strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
                 write(file, strlog)
@@ -359,7 +357,7 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
 
       # error message if step size is too small
       if abs(h) <= hmin
-         warn("SADDLESEARCH: Step size $h too small at nit = $nit.");
+         @warn("SADDLESEARCH: Step size $h too small at nit = $nit.");
          if verbose >= 4 && file!=nothing
              strlog = @sprintf("SADDLESEARCH: Step size %s too small at nit = %s.\n", "$h", "$nit")
              write(file, strlog)
@@ -508,7 +506,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
 
    if b == nothing
       dFn = -df(X, P)
-      Λ, _ = eig(full(dFn))
+      Λ = eigen(Matrix(dFn)).values
       λmax  = Λ[findmax(real(Λ))[2]]
       _, b = stability(λmax)
       b = b*.5
@@ -525,7 +523,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       # if b == nothing
       #    if mod(nit, 50) == 0
       #       dFn = -df(X, P)
-      #       Λ, _ = eig(dFn)
+      #       Λ = eigen(dFn).values
       #       λmax  = Λ[findmax(real(Λ))[2]]
       #       _, b = stability(λmax)
       #       b = b*.5
@@ -579,7 +577,7 @@ SADDLESEARCH: ------|-----|-----------------\n", h)
       end
 
       if Rn >= maxtol
-         warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
+         @warn("SADDLESEARCH: Residual $Rn is too large at nit = $nit.");
          if verbose >= 4 && file!=nothing
              strlog = @sprintf("SADDLESEARCH: Residual %s too large at nit = %s.\n", "$Rn", "$nit")
              write(file, strlog)

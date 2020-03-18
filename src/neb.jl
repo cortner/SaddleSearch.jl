@@ -1,7 +1,7 @@
 # using SaddleSearch: run!
 
 
-function run!(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI}) where {T, NI <: Integer}
+function run!(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI}) where {T, NI}
    # read all the parameters
    @unpack k, interp, tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends,
             verbose = method
@@ -39,7 +39,7 @@ function run!(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI}) where {T,
    return x_return, log, alpha
 end
 
-function run!(method::AccelNEB, E, dE, ddE, x0::Path{T,NI}) where {T, NI <: Integer}
+function run!(method::AccelNEB, E, dE, ddE, x0::Path{T,NI}) where {T, NI}
    # read all the parameters
    @unpack k, interp, tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends,
             verbose = method
@@ -81,7 +81,7 @@ end
 
 # forcing term for NEB method
 function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, precon_scheme,
-                  direction, k::Float64, interp::Int, fixed_ends::Bool) where {T, NI <: Integer}
+                  direction, k::Float64, interp::Int, fixed_ends::Bool) where {T, NI}
 
    x = convert(path_type, X)
    dxds = deepcopy(x)
@@ -94,9 +94,9 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, pre
    # interpolate path to find tangents and 2nd derivatives
    if interp == 1
       # central finite differences
-      dxds = [[zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(x[1])]]
-      d²xds² = [[zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
-               [zeros(x[1])]]
+      dxds = [[zeros(size(x[1]))]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(size(x[1]))]]
+      d²xds² = [[zeros(size(x[1]))]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
+               [zeros(size(x[1]))]]
    elseif interp > 1
       # splines
       ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
@@ -108,7 +108,7 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, pre
       error("SADDLESEARCH: invalid `interpolate` parameter")
    end
    dxds ./= point_norm(precon_scheme, P, dxds)
-   dxds[1] = zeros(dxds[1]); dxds[end] = zeros(dxds[1])
+   dxds[1] = zeros(size(dxds[1])); dxds[end] = zeros(size(dxds[1]))
 
    # elastic interactions between adjacent images
    Fk = elastic_force(precon_scheme, P, k*N*N, dxds, d²xds²)
@@ -119,8 +119,8 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, pre
       dE0_temp = [dE(x[i]) for i in direction]
       cost = N
    else
-      dE0_temp = [[zeros(x[1])]; [dE(x[i]) for i in direction[2:end-1]];
-                  [zeros(x[1])]]
+      dE0_temp = [[zeros(size(x[1]))]; [dE(x[i]) for i in direction[2:end-1]];
+                  [zeros(size(x[1]))]]
       cost = N - 2
    end
    dE0 = [dE0_temp[i] for i in direction]
@@ -138,7 +138,7 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, pre
 end
 
 function jacobian(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64},
-   dE, ddE, k::Float64) where {T, NI <: Integer}
+   dE, ddE, k::Float64) where {T, NI}
    x = convert(path_type, X)
 
    # preconditioner

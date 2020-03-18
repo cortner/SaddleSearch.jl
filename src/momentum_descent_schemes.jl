@@ -96,7 +96,7 @@ end
 
 length_n(x, n, P) = in(n,2:length(x)-1) ? norm(P(n), x[n+1] - x[n-1]) :
              error("l_n not defined for n<2 and n>N-1")
-t_n(x, n, P) = in(n,2:length(x)-1) ? (x[n+1] - x[n-1])/length_n(x, n, P) : zeros(x[n])
+t_n(x, n, P) = in(n,2:length(x)-1) ? (x[n+1] - x[n-1])/length_n(x, n, P) : zeros(size(x[n]))
 
 F(x, n, ∇E, P) = - ∇E(x[n]) + dot(t_n(x, n, P), ∇E(x[n])) * (P(n) * t_n(x, n, P))
 
@@ -128,5 +128,5 @@ F(x, n, ∇E, P) = - ∇E(x[n]) + dot(t_n(x, n, P), ∇E(x[n])) * (P(n) * t_n(x,
                            kron(Pv*v, v') - (v'*Pv*v)*kron(v, v')
 
 function ref(A::Array{Array{T,2},2}) where {T}
-    return cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
+    return cat([cat(A[n,:]..., dims = 2) for n=1:size(A,1)]..., dims = 1)
 end

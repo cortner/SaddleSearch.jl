@@ -117,9 +117,19 @@ end
    @dimer_shared
 end
 
+# @with_kw struct AccelDimer
+#    a0::Float64 = 1e-1
+#    b = nothing
+#    fd_scheme = :central
+#    redistrib = :canonical
+#    # ------ shared parameters ------
+#    @dimer_shared
+# end
 @with_kw struct AccelDimer
-   a0::Float64 = 1e-1
+   h = nothing
+   a0 = nothing
    b = nothing
+   reltol::Float64
    fd_scheme = :central
    redistrib = :canonical
    # ------ shared parameters ------
