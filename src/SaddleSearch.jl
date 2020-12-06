@@ -10,6 +10,7 @@ using Reexport
 
 # logging, preconditioner transformation, weidth norms and dots,
 include("misc.jl")
+include("logger.jl")
 
 # some line-search related methods
 include("linesearch.jl")
@@ -35,6 +36,7 @@ include("string_types.jl")
 include("pathmisc.jl")
 
 include("momentum_descent_schemes.jl")
+include("momentum_forces.jl")
 
 # string method
 include("string.jl")

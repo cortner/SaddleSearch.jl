@@ -15,13 +15,13 @@ function run!(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI}) where {T,
    log = PathLog()
    # and just start looping
    if verbose >= 2
-       @printf("SADDLESEARCH:         k  =  %1.2e        <- parameters\n", k)
+       @printf("SADDLESEARCH:%18s  =  %1.2e\n", "k", k)
    end
    file = []
    if verbose >= 4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
        file = open("log_$(dt).txt", "w")
-       strlog = @sprintf("SADDLESEARCH:         k  =  %1.2e        <- parameters\n", k)
+       strlog = @sprintf("SADDLESEARCH:%18s  =  %1.2e\n", "k", k)
        write(file, strlog)
        flush(file)
    end
@@ -53,13 +53,13 @@ function run!(method::AccelNEB, E, dE, ddE, x0::Path{T,NI}) where {T, NI}
    log = PathLog()
    # and just start looping
    if verbose >= 2
-       @printf("SADDLESEARCH:         k  =  %1.2e        <- parameters\n", k)
+       @printf("SADDLESEARCH:%18s  =  %1.2e\n", "k", k)
    end
    file = []
    if verbose >= 4
        dt = Dates.format(now(), "d-m-yyyy_HH:MM")
        file = open("log_$(dt).txt", "w")
-       strlog = @sprintf("SADDLESEARCH:         k  =  %1.2e        <- parameters\n", k)
+       strlog = @sprintf("SADDLESEARCH:%18s  =  %1.2e\n", "k", k)
        write(file, strlog)
        flush(file)
    end
@@ -74,6 +74,47 @@ function run!(method::AccelNEB, E, dE, ddE, x0::Path{T,NI}) where {T, NI}
                precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),
                method = "$(typeof(method))",
                verbose = verbose)
+
+   x_return = verbose < 4 ? convert(typeof(x0), xout[end]) : [convert(typeof(x0), xout_n) for xout_n in xout]
+   return x_return, log, alpha
+end
+
+function run!(method::ODEAccelNEB, E, dE, ddE, x0::Path{T,NI}) where {T, NI}
+   # read all the parameters
+   @unpack k, interp, tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends,
+            verbose = method
+   @unpack precon, precon_prep! = precon_scheme
+   @unpack direction = path_traverse
+   # initialise variables
+   x = x0.x
+
+   nit = 0
+   numdE, numE = 0, 0
+   log = PathLog()
+   # and just start looping
+
+   if verbose >= 2
+       @printf("SADDLESEARCH:%18s  =  %1.2e\n", "k", k)
+   end
+   file = []
+   if verbose >= 4
+       dt = Dates.format(now(), "d-m-yyyy_HH:MM")
+       file = open("log_$(dt).txt", "w")
+       strlog = @sprintf("SADDLESEARCH:%18s  =  %1.2e\n", "k", k)
+       write(file, strlog)
+       flush(file)
+   end
+
+   xout, log, alpha = odesolve(solver(method),
+               (X, P, nit) -> forces(P, typeof(x0), X, dE, precon_scheme,
+                                       direction(NI, nit), k, interp, fixed_ends),
+               (X, P) -> jacobian(P, typeof(x0), X, dE, ddE, k),
+               vec(x), log; file = file,
+               tol = tol, maxtol=maxtol, maxnit=maxnit,
+               P = precon,
+               precon_prep! = (P, X) -> precon_prep!(P, convert(typeof(x0), X)),
+               method = "$(typeof(method))",
+               verbose = verbose, path_type = typeof(x0))
 
    x_return = verbose < 4 ? convert(typeof(x0), xout[end]) : [convert(typeof(x0), xout_n) for xout_n in xout]
    return x_return, log, alpha
