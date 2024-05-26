@@ -41,7 +41,7 @@ flow with a fixed step-size.
 
 $(neb_string_shared_docs)
 """
-@with_kw type StaticString
+@with_kw struct StaticString
    alpha::Float64
    # ------ shared parameters ------
    @neb_string_params
@@ -58,7 +58,7 @@ end
 
 $(neb_string_shared_docs)
 """
-@with_kw type ODEString
+@with_kw struct ODEString
    reltol::Float64  # please think about reducing it to one tol parameter `odetol`
    threshold::Float64 = 1.0   # threshold for error estimate; we want to get rid of this
    a0 = nothing      # if a0 is not passed then use a default
@@ -76,7 +76,7 @@ end
 
 $(neb_string_shared_docs)
 """
-@with_kw type AccelString
+@with_kw struct AccelString
    h = nothing      # if h is not passed then use a default
    a0 = nothing      # if a0 is not passed then use a default
    b = nothing      # if b is not passed then optimal value is used
@@ -98,7 +98,7 @@ $(neb_only_docs)
 
 $(neb_string_shared_docs)
 """
-@with_kw type StaticNEB
+@with_kw struct StaticNEB
    alpha::Float64
    @neb_params
    # ------ shared parameters ------
@@ -118,7 +118,7 @@ $(neb_only_docs)
 
 $(neb_string_shared_docs)
 """
-@with_kw type ODENEB
+@with_kw struct ODENEB
    reltol::Float64  # please think about reducing it to one tol parameter `odetol`
    threshold::Float64 = 1.0   # threshold for error estimate; we want to get rid of this
    a0 = nothing      # if a0 is not passed then use a default
@@ -139,7 +139,7 @@ $(neb_only_docs)
 
 $(neb_string_shared_docs)
 """
-@with_kw type AccelNEB
+@with_kw struct AccelNEB
     h = nothing      # if h is not passed then use a default
     a0 = nothing      # if a0 is not passed then use a default
     b = nothing      # if b is not passed then optimal value is used

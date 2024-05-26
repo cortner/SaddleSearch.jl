@@ -1,5 +1,5 @@
 
-function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
+function run!(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI}) where {T,NI}
    # read all the parameters
    @unpack k, interp, tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends,
             verbose = method
@@ -37,7 +37,7 @@ function run!{T,NI}(method::Union{ODENEB, StaticNEB}, E, dE, x0::Path{T,NI})
    return x_return, log, alpha
 end
 
-function run!{T,NI}(method::AccelNEB, E, dE, ddE, x0::Path{T,NI})
+function run!(method::AccelNEB, E, dE, ddE, x0::Path{T,NI}) where {T,NI}
    # read all the parameters
    @unpack k, interp, tol, maxtol, maxnit, precon_scheme, path_traverse, fixed_ends,
             verbose = method
@@ -78,8 +78,8 @@ function run!{T,NI}(method::AccelNEB, E, dE, ddE, x0::Path{T,NI})
 end
 
 # forcing term for NEB method
-function forces{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, precon_scheme,
-                  direction, k::Float64, interp::Int, fixed_ends::Bool)
+function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, precon_scheme,
+                  direction, k::Float64, interp::Int, fixed_ends::Bool) where {T,NI}
 
    x = convert(path_type, X)
    dxds = deepcopy(x)
@@ -124,19 +124,19 @@ function forces{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, d
    dE0 = [dE0_temp[i] for i in direction]
 
    # projecting out tangent term of potential gradient
-   dE0⟂ = proj_grad(precon_scheme, P, dE0, dxds)
+   dE0perp = proj_grad(precon_scheme, P, dE0, dxds)
 
    # collecting force term
-   F = forcing(precon_scheme, precon, dE0⟂-Fk)
+   F = forcing(precon_scheme, precon, dE0perp-Fk)
 
    # residual error
-   res = maxres(precon_scheme, P, dE0⟂)
+   res = maxres(precon_scheme, P, dE0perp)
 
    return F, res, cost, (X, Y) -> dot_P(precon_scheme, convert(path_type, X), P, convert(path_type, Y))
 end
 
-function jacobian{T,NI}(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64},
-   dE, ddE, k::Float64)
+function jacobian(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64},
+   dE, ddE, k::Float64) where {T,NI}
    x = convert(path_type, X)
 
    # preconditioner

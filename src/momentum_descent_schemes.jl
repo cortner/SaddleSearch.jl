@@ -9,9 +9,8 @@ xⁿ⁺¹ = (2-hb)xⁿ + (hb-1)xⁿ⁻¹ - h²∇E(xⁿ)
 * central differences
 (2+hb)xⁿ⁺¹ = 4xⁿ + (hb-2)xⁿ⁻¹ - 2h²∇E(xⁿ)
 """
-
 function finite_diff(scheme, X, Fend, b, h, canonical)
-   H = canonical?h*h:h
+   H = canonical ? h*h : h
    if scheme == :forward
       return X[end]*(2-h*b) + X[end-1]*(b*h-1) + H*Fend
    elseif scheme == :backward
@@ -127,6 +126,6 @@ F(x, n, ∇E, P) = - ∇E(x[n]) + dot(t_n(x, n, P), ∇E(x[n])) * (P(n) * t_n(x,
                            kron(Hv, v') +
                            kron(Pv*v, v') - (v'*Pv*v)*kron(v, v')
 
-function ref{T}(A::Array{Array{T,2},2})
+function ref(A::Array{Array{T,2},2}) where {T}
     return cat(1,[cat(2,A[n,:]...) for n=1:size(A,1)]...)
 end

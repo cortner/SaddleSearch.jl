@@ -10,12 +10,12 @@ end
 Path(x::Vector) = Path(x,Val{length(x)})
 
 # vectorise an object of type Path
-function Base.vec{T}(x::Vector{T})
+function Base.vec(x::Vector{T}) where {T} 
    return cat(1, x...)
 end
 
 # convert an object of type Path to type Vector
-function Base.convert{T, NI}(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat})
+function Base.convert(::Type{Path{T,NI}}, X::Vector{<: AbstractFloat}) where {T, NI}
    return [ X[(n-1)*(length(X)÷NI)+1 : n*(length(X)÷NI)] for n=1:NI]
 end
 
@@ -34,11 +34,11 @@ in a 'serial' manner or in a 'palindrome' manner:
 ### Parameters:
 * `direction` : order of traversing the images along the path
 """
-@with_kw type serial
+@with_kw struct serial
    direction = (M, nit) -> 1:M
 end
 
-@with_kw type palindrome
+@with_kw struct palindrome
    direction = (M, nit) -> M-mod(nit,2)*(M-1):2*mod(nit,2)-1:M-mod(nit+1,2)*(M-1)
 end
 
@@ -49,8 +49,8 @@ end
 """
 parametrisation functions of paths for String/NEB-type methods
 """
-# interpolate and reparametrise path
-function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x)))
+function parametrise!(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x))) where {T}
+   # interpolate and reparametrise path
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
    param /= param[end]; param[end] = 1.
@@ -72,7 +72,7 @@ function parametrise!{T}(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=l
 end
 
 # distribute images uniformly with respect to P
-function redistribute{T,NI}(X::Vector{Float64}, path_type::Type{Path{T,NI}}, precon, precon_scheme)
+function redistribute(X::Vector{Float64}, path_type::Type{Path{T,NI}}, precon, precon_scheme) where {T,NI}
 
    x = convert(path_type, X)
    t = deepcopy(x)
@@ -116,13 +116,13 @@ along the path is preconditioned independently.
 * `maxres` : residual error
 """
 
-@with_kw type localPrecon
+@with_kw struct localPrecon
    precon = I
    precon_prep! = (P, x) -> P
    distance = (P, x1, x2) -> norm(P, x2 - x1)
 end
 
-@with_kw type globalPrecon
+@with_kw struct globalPrecon
    precon = I
    precon_prep! = (P, x) -> P
    distance = (P, x1, x2) -> norm(x2 - x1)
@@ -141,8 +141,8 @@ point_norm(precon_scheme::globalPrecon, P, dxds) = [norm(dxds[i]) for i=1:length
 proj_grad(precon_scheme::localPrecon, P, ∇E, dxds) = -[P(i) \ ∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)]
 proj_grad(precon_scheme::globalPrecon, P, ∇E, dxds) = vec(-[∇E[i] - dot(∇E[i],dxds[i])*dxds[i] for i=1:length(dxds)])
 
-forcing(precon_scheme::localPrecon, P, neg∇E⟂) = return vec(neg∇E⟂)
-forcing(precon_scheme::globalPrecon, P, neg∇E⟂) = vec(P) \ neg∇E⟂
+forcing(precon_scheme::localPrecon, P, neg∇Eperp) = return vec(neg∇Eperp)
+forcing(precon_scheme::globalPrecon, P, neg∇Eperp) = vec(P) \ neg∇Eperp
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
     return - [ [zeros(dxds[1])];
@@ -155,6 +155,6 @@ function elastic_force(precon_scheme::globalPrecon, P, κ, dxds, d²xds²)
                [zeros(dxds[1])] ])
 end
 
-maxres(precon_scheme::localPrecon, P, ∇E⟂) =  maximum([norm(P(i)*∇E⟂[i],Inf)
-                                                for i = 1:length(∇E⟂)])
-maxres(precon_scheme::globalPrecon, P, ∇E⟂) = norm(∇E⟂, Inf)
+maxres(precon_scheme::localPrecon, P, ∇Eperp) =  maximum([norm(P(i)*∇Eperp[i],Inf)
+                                                for i = 1:length(∇Eperp)])
+maxres(precon_scheme::globalPrecon, P, ∇Eperp) = norm(∇Eperp, Inf)
