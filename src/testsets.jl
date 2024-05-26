@@ -10,8 +10,7 @@ Available Testsets:
 """
 module TestSets
 
-using Parameters
-import ForwardDiff
+using Parameters, LinearAlgebra, ForwardDiff
 
 # Available Test Sets:
 export MullerPotential,
@@ -36,7 +35,7 @@ hessian(V, x) = ForwardDiff.hessian(y->energy(V,y), x)
 
 function hessprecond(V, x; stab=0.0)
    H = Symmetric(hessian(V, x))
-   D, V = eig(H)
+   D, V = eigen(H)
    D = abs.(D) .+ stab
    return V * diagm(D) * V'
 end
@@ -48,7 +47,7 @@ end
 #   TODO: add reference
 # ============================================================================
 
-@with_kw type MullerPotential
+@with_kw struct MullerPotential
    B::Vector{Matrix{Float64}} = [ [ -1 0; 0 -10], [-1 0; 0 -10],
                                     [-6.5 5.5; 5.5 -6.5], [0.7 0.3; 0.3 0.7] ]
    A::Vector{Float64} = [-200, -100, -170, 15]
@@ -83,8 +82,8 @@ end
 # TEST SET: DoubleWell
 # ============================================================================
 
-@with_kw type DoubleWell
-   A::Matrix{Float64} = eye(2)
+@with_kw struct DoubleWell
+   A::Matrix{Float64} = [1.0 0.0; 0.0 1.0]
 end
 
 DoubleWell(c::Float64) = DoubleWell( diagm([1.0, c])  )
@@ -125,7 +124,7 @@ end
 # TEST SET: Lennard-Jones Cluster
 # ============================================================================
 
-@with_kw type LJcluster
+@with_kw struct LJcluster
    ε::Float64 = 0.25
    σ::Float64 = 1.
    ρ_min::Float64 = 1.0
@@ -192,19 +191,23 @@ boundary condition.
 """
 module LJaux
 
+using LinearAlgebra, SparseArrays
+
 function vacancy_refconfig(R, bc)
    A = [1.0 cos(π/3); 0.0 sin(π/3)]
-   cR = ceil(Int, R / minimum(svd(A)[2]))
+   cR = ceil(Int, R / minimum(svdvals(A)))
    t = collect(-cR:cR)
    x = ones(length(t)) * t'
    y = t * ones(length(t))'
-   X = A * [x[:] y[:]]'
-   r = sqrt.(sum(abs2, X, 1))
-   Xref = X[:, find(0 .< r .<= R)]
-   r = sqrt.(sum(abs2, Xref, 1))
-   I0 = find(r .<= 1.1)[1]
+   X = A * [x[:]'; y[:]']
+   r = sqrt.(X[1,:].^2 + X[2,:].^2)
+   Ifree = findall(0 .< r .<= R)
+   Xref = X[:, Ifree]
+   r = sqrt.(Xref[1,:].^2 + Xref[2,:].^2)
+   _I0 = findall(r .<= 1.1)
+   I0 = _I0[1] 
    if I0 != 1
-      Xref[:, [1,I0]] = Xref[:, [I0,1]]
+      Xref[:, [1, I0]] = Xref[:, [I0,1]]
       r[[1,I0]] = r[[I0,1]]
    end
    if bc == :free
@@ -245,7 +248,7 @@ function gradient(X::Matrix)
     return dE
 end
 
-function exp_precond(X::Matrix; rcut = 2.5, α=3.0)
+function exp_precond(X::Matrix{T}; rcut = 2.5, α=3.0) where {T} 
    nX = size(X, 2)
    P = zeros(2*nX, 2*nX)
    I = zeros(Int, 2, nX)
@@ -255,14 +258,14 @@ function exp_precond(X::Matrix; rcut = 2.5, α=3.0)
       Rij = X[:,i] - X[:,j]
       rij = norm(Rij)
       if 0 < rij < rcut
-         a = pphi(rij) * eye(2)
+         a = pphi(rij) * T[1 0; 0 1]
          P[Ii, Ij] -= a
          P[Ij, Ii] -= a
          P[Ii, Ii] += a
          P[Ij, Ij] += a
       end
    end
-   return sparse(P) + 0.001 * speye(2*nX)
+   return sparse(P + 0.001 * LinearAlgebra.I)
 end
 
 end
@@ -272,7 +275,7 @@ end
 
 `bc = :clamped` is also allowed
 """
-type LJVacancy2D
+struct LJVacancy2D
    R::Float64
    Xref::Matrix{Float64}
    Ifree::Vector{Int}
@@ -281,7 +284,7 @@ end
 LJVacancy2D(; R::Float64 = 5.1, bc=:free) =
    LJVacancy2D(R, LJaux.vacancy_refconfig(R, bc)...)
 
-function dofs2pos{T}(V::LJVacancy2D, r::Vector{T})
+function dofs2pos(V::LJVacancy2D, r::Vector{T}) where {T} 
    X = convert(Matrix{T}, V.Xref)
    X[:, V.Ifree] = reshape(r, 2, length(r) ÷ 2)
    return X
@@ -328,7 +331,7 @@ function ic_path(V::LJVacancy2D, case=:near, Nimgs=7)
 end
 
 function pos2dofs(V::LJVacancy2D, P::AbstractMatrix)
-   free = [V.Ifree' * 2 - 1; V.Ifree' * 2][:]
+   free = [V.Ifree' * 2 .- 1; V.Ifree' * 2][:]
    return P[free, free]
 end
 
@@ -359,7 +362,7 @@ end
 end
 
 
-type MorseIsland
+struct MorseIsland
    Xref::Matrix{Float64}
    Ifix::Vector{Int}
    Ifree::Vector{Int}
@@ -511,7 +514,7 @@ function precond(V::MorseIsland, r)
 
          # if r2sqrt < rc
          e = exp( -a*(r2sqrt - r0) )
-         ddf = 4 * aa * a * a * e * e * eye(3)
+         ddf = 4 * aa * a * a * e * e * Float64[1 0 0; 0 1 0; 0 0 1]
 
          P[Ii, Ij] -= ddf
          P[Ij, Ii] -= ddf
@@ -523,7 +526,7 @@ function precond(V::MorseIsland, r)
    end
 
    Q = P[I[V.Ifree,:][:], I[V.Ifree,:][:]]
-   return sparse(Q) + 0.001 * speye(size(Q,1))
+   return sparse(Q) + 0.001 * I
 end
 
 function ic_path(V::MorseIsland, Nimgs=7)

@@ -48,9 +48,9 @@ function run!(method::StaticDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T
       end
 
       # translation and rotation residual, store history
-      res_trans = vecnorm(dE0, Inf)
+      res_trans = norm(dE0, Inf)
       q_rot = - Hv + dot(v, Hv) * (P * v)
-      res_rot = vecnorm(q_rot, Inf)
+      res_rot = norm(q_rot, Inf)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
          @printf("%4d | %1.2e  %1.2e  %4.2f  \n", nit, res_trans, res_rot, dot(v, Hv))
@@ -107,6 +107,9 @@ function run!(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T}
       @printf("-----|------------------------------------------------\n")
    end
    nit = 0
+   Δx = 0 * x
+   Δv = 0 * v
+
    while true
       nit += 1
 
@@ -136,10 +139,10 @@ function run!(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T}
       end
 
       # translation and rotation residual, store history
-      res_trans = vecnorm(dE0, Inf)
+      res_trans = norm(dE0, Inf)
       λ = dot(v, Hv)
       q_rot = - Hv + λ * (P * v)
-      res_rot = vecnorm(q_rot, Inf)
+      res_rot = norm(q_rot, Inf)
       push!(log, numE, numdE, res_trans, res_rot)
       if verbose >= 2
          @printf("%4d | %1.2e  %1.2e  %1.2e  %1.2e  %1.2e \n",

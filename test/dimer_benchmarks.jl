@@ -1,7 +1,7 @@
 
 # TODO: add preconditioner to the Problem description??
 
-type WalkerProblem
+struct WalkerProblem
    V
    E
    dE

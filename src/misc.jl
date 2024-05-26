@@ -101,3 +101,8 @@ PreconSMW(P, v, s) = PreconSMW(P, v, P*v, s, s / (1.0 + s * dot(v, P, v)))
 
 (*)(A::PreconSMW, x::AbstractVector) = A.P * x + (A.s * dot(A.Pv, x)) * A.Pv
 (\)(A::PreconSMW, f::AbstractVector) = (A.P \ f) - ((A.smw * dot(A.v, f)) * A.v)
+
+Base.size(A::PreconSMW) = size(A.P)
+
+LinearAlgebra.dot(u::Vector{Float64}, A::PreconSMW, v::Vector{Float64}) = 
+      dot(u, A.P, v) + A.s * dot(A.Pv, u) * dot(A.Pv, v)

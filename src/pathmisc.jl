@@ -157,4 +157,4 @@ end
 
 maxres(precon_scheme::localPrecon, P, ∇E⟂) =  maximum([norm(P(i)*∇E⟂[i],Inf)
                                                 for i = 1:length(∇E⟂)])
-maxres(precon_scheme::globalPrecon, P, ∇E⟂) = vecnorm(∇E⟂, Inf)
+maxres(precon_scheme::globalPrecon, P, ∇E⟂) = norm(∇E⟂, Inf)
