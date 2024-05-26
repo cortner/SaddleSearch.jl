@@ -14,6 +14,7 @@ include("linesearch.jl")
 # numerical ode dolvers
 include("ode.jl")
 
+
 # =========== Walker-type saddle search methods ============
 
 include("dimer_types.jl")
@@ -24,20 +25,20 @@ include("dimer.jl")
 include("superlineardimer.jl")
 
 
-# ============ Sting type methods ===================
-# string, neb type definitions
-include("string_types.jl")
+# # ============ Sting type methods ===================
+# # string, neb type definitions
+# include("string_types.jl")
 
-# path manipulation: linear algebra in the path's framework
-include("pathmisc.jl")
+# # path manipulation: linear algebra in the path's framework
+# include("pathmisc.jl")
 
-include("momentum_descent_schemes.jl")
+# include("momentum_descent_schemes.jl")
 
-# string method
-include("string.jl")
+# # string method
+# include("string.jl")
 
-# NEB method
-include("neb.jl")
+# # NEB method
+# include("neb.jl")
 
 
 end # module

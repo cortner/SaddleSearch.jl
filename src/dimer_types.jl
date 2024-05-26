@@ -37,7 +37,7 @@ steps with a fixed step-size.
 
 $(dimer_shared_docs)
 """
-@with_kw type StaticDimer
+@with_kw struct StaticDimer
    a_trans::Float64
    a_rot::Float64
    # ------ shared parameters ------
@@ -72,7 +72,7 @@ Math. Comp. 85, 2016
 N. Gould and C. Ortner and D. Packwood
 http://arxiv.org/abs/1407.2817
 """
-@with_kw type BBDimer
+@with_kw struct BBDimer
    a0_trans::Float64
    a0_rot::Float64
    ls = StaticLineSearch()
@@ -96,7 +96,7 @@ article & ASE implementation
 
 $(dimer_shared_docs)
 """
-@with_kw type SuperlinearDimer
+@with_kw struct SuperlinearDimer
    maximum_translation::Float64 = 0.001
    max_num_rot::Int = 1
    trial_angle::Float64 = pi / 4.0
@@ -109,7 +109,7 @@ $(dimer_shared_docs)
 end
 
 
-@with_kw type ODEDimer
+@with_kw struct ODEDimer
    ode::ODE12r = ODE12r()
    # order::Int = 1    # what is this???
    # damping::Float64 = 1.0   # TODO: add a relative damping for rotation vs translation
@@ -117,7 +117,7 @@ end
    @dimer_shared
 end
 
-@with_kw type AccelDimer
+@with_kw struct AccelDimer
    a0::Float64 = 1e-1
    b = nothing
    fd_scheme = :central

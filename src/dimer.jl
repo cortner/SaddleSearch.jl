@@ -13,7 +13,7 @@ localmerit(x, x0, v0, len, g0, λ0, E) = (
 
 
 
-function run!{T}(method::StaticDimer, E, dE, x0::Vector{T}, v0::Vector{T})
+function run!(method::StaticDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T} 
 
    # read all the parameters
    @unpack a_trans, a_rot, tol_trans, tol_rot, maxnumdE, len,
@@ -88,7 +88,7 @@ end
 
 
 
-function run!{T}(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T})
+function run!(method::BBDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T}
 
    # read all the parameters
    @unpack a0_trans, a0_rot, tol_trans, tol_rot, maxnumdE, len,

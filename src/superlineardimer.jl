@@ -1,7 +1,7 @@
 
 
 
-function run!{T}(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T})
+function run!(method::SuperlinearDimer, E, dE, x0::Vector{T}, v0::Vector{T}) where {T} 
    # read all the parameters
    @unpack maximum_translation, max_num_rot, trial_angle, trial_trans_step, extrapolate, translation_method,
            tol_trans, tol_rot, maxnumdE, len, precon_prep!, verbose = method
