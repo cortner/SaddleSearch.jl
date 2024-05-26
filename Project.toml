@@ -11,6 +11,15 @@ Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
+[compat]
+julia = "1.9, 1.10"
+ForwardDiff = "0.10" 
+Parameters = "0.12" 
+Dates = "1.9, 1.10"
+SparseArrays = "1.9, 1.10"
+LinearAlgebra = "1.9, 1.10"
+Printf = "1.9, 1.10"
+
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
