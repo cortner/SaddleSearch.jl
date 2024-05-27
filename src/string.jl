@@ -83,7 +83,8 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE,
    param /= param[end]; param[end] = 1.
    parametrise!(dxds, x, ds, parametrisation = param)
    dxds ./= point_norm(precon_scheme, P, dxds)
-   dxds[1] = zeros(dxds[1]); dxds[end] = zeros(dxds[1])
+   dxds[1] = zeros(eltype(dxds[1]), length(dxds[1]))
+   dxds[end] = zeros(eltype(dxds[1]), length(dxds[1]))
 
    # potential gradient
    dE0_temp = []

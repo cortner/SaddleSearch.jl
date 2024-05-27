@@ -74,7 +74,7 @@ function ic_path(V::MullerPotential, case=:near, Nimgs=7)
    else
       error("unknown initial condition")
    end
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in range(.0, 1., length = Nimgs)]
 end
 
 
@@ -116,7 +116,7 @@ function ic_path(V::DoubleWell, case=:nothing, Nimgs=7)
    else
       error("unknown initial condition")
    end
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in range(.0, 1., length = Nimgs)]
 end
 
 
@@ -174,7 +174,7 @@ function ic_path(V::LJcluster, Nimgs=7)
    r1 = [R[5]; R[4]; R[3]; R[2]; R[7]; R[6]; R[1]]
    r2 = [R[5]; R[3]; R[1]; R[2]; R[7]; R[6]; R[4]]
    x0 = V.ρ_min * r1; x1 = V.ρ_min * r2
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in range(.0, 1., length = Nimgs)]
 end
 
 precond(V::LJcluster, r) = LJaux.exp_precond(reshape(r, 2, length(r) ÷ 2))
@@ -327,7 +327,7 @@ function ic_path(V::LJVacancy2D, case=:near, Nimgs=7)
       error("unkown `case` $(case) in `icdimer(::LJVacancy2D,...)`")
    end
    x0 = X0[:, V.Ifree][:]; x1 = X1[:, V.Ifree][:]
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in range(.0, 1., length = Nimgs)]
 end
 
 function pos2dofs(V::LJVacancy2D, P::AbstractMatrix)
@@ -536,7 +536,7 @@ function ic_path(V::MorseIsland, Nimgs=7)
    X1 = readdlm(data*"morse_island_min02a.dat")
    x1 = X1[V.Ifree, :][:]
 
-   return [(1-s)*x0 + s*x1 for s in linspace(.0, 1., Nimgs)]
+   return [(1-s)*x0 + s*x1 for s in range(.0, 1., length = Nimgs)]
 end
 
 end

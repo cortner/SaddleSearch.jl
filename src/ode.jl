@@ -362,7 +362,7 @@ SADDLESEARCH:        |Fnew|/|Fold| = %s\n", "$h", "$(Rnew)", "$(Rn)", "$(Rnew/Rn
 
       # error message if step size is too small
       if abs(h) <= hmin
-         warn("SADDLESEARCH: Step size $h too small at nit = $nit.");
+         @warn("SADDLESEARCH: Step size $h too small at nit = $nit.");
          if verbose >= 4 && file!=nothing
              strlog = @sprintf("SADDLESEARCH: Step size %s too small at nit = %s.\n", "$h", "$nit")
              write(file, strlog)

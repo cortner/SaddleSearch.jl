@@ -11,5 +11,6 @@ println("≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡≡�
    @testset "StaticDimer vs BBDimer" begin include("test_staticvsbb.jl") end
    @testset "Vacancy" begin include("test_vacancy.jl") end
    @testset "LineSearchDimer" begin include("test_lsdimer.jl") end
+   @testset "MEP Methods" begin include("test_string.jl") end 
 end
 

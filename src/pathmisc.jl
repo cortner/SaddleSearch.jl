@@ -11,7 +11,7 @@ Path(x::Vector) = Path(x,Val{length(x)})
 
 # vectorise an object of type Path
 function Base.vec(x::Vector{T}) where {T} 
-   return cat(1, x...)
+   return cat(x...; dims = 1)
 end
 
 # convert an object of type Path to type Vector
@@ -49,7 +49,9 @@ end
 """
 parametrisation functions of paths for String/NEB-type methods
 """
-function parametrise!(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=linspace(0.,1.,length(x))) where {T}
+function parametrise!(dxds::Vector{T}, x::Vector{T}, ds::T; 
+                      parametrisation=range(0.,1.,length = length(x))
+                     ) where {T}
    # interpolate and reparametrise path
 
    param = [0; [sum(ds[1:i]) for i in 1:length(ds)]]
@@ -64,8 +66,8 @@ function parametrise!(dxds::Vector{T}, x::Vector{T}, ds::T; parametrisation=lins
    d²xds² = [[derivative(Sj, s, nu=2) for Sj in S] for s in parametrisation]
 
    # return parametrised variables
-   x_ = cat(2, xref...)
-   dxds_ = cat(2, dxdsref...)
+   x_ = cat(xref...; dims = 2)
+   dxds_ = cat(dxdsref...; dims = 2)
    [x[i] = x_[i,:] for i=1:length(x)]
    [dxds[i] = dxds_[i,:] for i=1:length(x)]
    return d²xds²
@@ -145,14 +147,16 @@ forcing(precon_scheme::localPrecon, P, neg∇Eperp) = return vec(neg∇Eperp)
 forcing(precon_scheme::globalPrecon, P, neg∇Eperp) = vec(P) \ neg∇Eperp
 
 function elastic_force(precon_scheme::localPrecon, P, κ, dxds, d²xds²)
-    return - [ [zeros(dxds[1])];
+   zz = zeros(eltype(dxds[1]), length(dxds[1]))
+    return - [ [copy(zz)];
                κ*[dot(d²xds²[i], P(i), dxds[i]) * dxds[i] for i=2:length(dxds)-1];
-               [zeros(dxds[1])] ]
+               [copy(zz)] ]
 end
 function elastic_force(precon_scheme::globalPrecon, P, κ, dxds, d²xds²)
-    return vec(-[ [zeros(dxds[1])];
+   zz = zeros(eltype(dxds[1]), length(dxds[1]))
+    return vec(-[ [copy(zz)];
                κ*[dot(d²xds²[i], dxds[i]) * dxds[i] for i=2:N-1];
-               [zeros(dxds[1])] ])
+               [copy(zz)] ])
 end
 
 maxres(precon_scheme::localPrecon, P, ∇Eperp) =  maximum([norm(P(i)*∇Eperp[i],Inf)

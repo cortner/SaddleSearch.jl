@@ -92,9 +92,10 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, pre
    # interpolate path to find tangents and 2nd derivatives
    if interp == 1
       # central finite differences
-      dxds = [[zeros(x[1])]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [zeros(x[1])]]
-      d²xds² = [[zeros(x[1])]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
-               [zeros(x[1])]]
+      zz = zeros(eltype(x[1]), size(x[1]))
+      dxds = [[copy(zz)]; [0.5*(x[i+1]-x[i-1]) for i=2:N-1]; [copy(zz)]]
+      d²xds² = [[copy(zz)]; [x[i+1] - 2*x[i] + x[i-1] for i=2:N-1];
+               [copy(zz)]]
    elseif interp > 1
       # splines
       ds = [dist(precon_scheme, P, x, i) for i=1:length(x)-1]
@@ -106,7 +107,8 @@ function forces(precon, path_type::Type{Path{T,NI}}, X::Vector{Float64}, dE, pre
       error("SADDLESEARCH: invalid `interpolate` parameter")
    end
    dxds ./= point_norm(precon_scheme, P, dxds)
-   dxds[1] = zeros(dxds[1]); dxds[end] = zeros(dxds[1])
+   dxds[1]   = zeros(eltype(dxds[1]), length(dxds[1]))
+   dxds[end] = zeros(eltype(dxds[1]), length(dxds[1]))
 
    # elastic interactions between adjacent images
    Fk = elastic_force(precon_scheme, P, k*N*N, dxds, d²xds²)
