@@ -14,6 +14,7 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 
 [compat]
 Dates = "1.9, 1.10"
+Dierckx = "0.5.3"
 ForwardDiff = "0.10"
 LinearAlgebra = "1.9, 1.10"
 Parameters = "0.12"
