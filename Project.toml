@@ -1,7 +1,7 @@
 name = "SaddleSearch"
 uuid = "75381b30-3731-4e86-91cd-f2c0a8b56a68"
 authors = ["Christoph Ortner <christophortner@gmail.com> and contributors"]
-version = "0.0.1"
+version = "0.0.2"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"

@@ -31,7 +31,7 @@ in a 'serial' manner or in a 'palindrome' manner:
 * `serial` : traverse path always in the same direction.
 * `palindrome` : the order of computing the energy of the images along a path is reversed after each iteration.
 
-### Parameters:
+### Parameters:
 * `direction` : order of traversing the images along the path
 """
 @with_kw struct serial
@@ -74,7 +74,8 @@ function parametrise!(dxds::Vector{T}, x::Vector{T}, ds::T;
 end
 
 # distribute images uniformly with respect to P
-function redistribute(X::Vector{Float64}, path_type::Type{Path{T,NI}}, precon, precon_scheme) where {T,NI}
+function redistribute(X::Vector{Float64}, path_type::Type{Path{T,NI}}, 
+                      precon, precon_scheme) where {T,NI}
 
    x = convert(path_type, X)
    t = deepcopy(x)
@@ -103,7 +104,7 @@ state space.
 `globalPrecon` : the preconditioner is applied to the force directly, each point
 along the path is preconditioned independently.
 
-### Parameters:
+### Parameters:
 * `precon` : preconditioner
 * `precon_prep!` : update function for preconditioner
 * `distance` : distance metric
