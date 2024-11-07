@@ -1,6 +1,7 @@
 module SaddleSearch
 
-using Parameters
+using Parameters, Dates
+import Dates: now
 
 export run!
 
